@@ -1,0 +1,15 @@
+<div class="drawer lg:drawer-open">
+  <input id="main-drawer" type="checkbox" class="drawer-toggle" />
+
+  <div class="drawer-content flex flex-col bg-base-200 min-h-screen">
+    <app-dashboard-navbar></app-dashboard-navbar>
+
+    <main class="p-6 flex-1">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <div class="drawer-side z-20">
+    <app-dashboard-sidebar></app-dashboard-sidebar>
+  </div>
+</div>

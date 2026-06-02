@@ -1,0 +1,248 @@
+<div class="container mx-auto p-6 max-w-5xl">
+  <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="space-y-6">
+    <div class="card bg-base-100 shadow-xl border border-base-200">
+      <div class="card-body">
+        <h2 class="card-title text-xl font-bold text-primary mb-4">📦 ข้อมูลหลักสินค้า</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-control w-full">
+            <label class="label"
+              ><span class="label-text font-medium">ชื่อสินค้า (ไทย) *</span></label
+            >
+            <input
+              type="text"
+              formControlName="productNameTh"
+              placeholder="เช่น เสื้อยืดลายกราฟิก"
+              class="input input-bordered w-full"
+            />
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"
+              ><span class="label-text font-medium">ชื่อสินค้า (อังกฤษ)</span></label
+            >
+            <input
+              type="text"
+              formControlName="productNameEn"
+              placeholder="e.g. Graphic T-Shirt"
+              class="input input-bordered w-full"
+            />
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">แบรนด์สินค้า</span></label>
+            <input
+              type="text"
+              formControlName="brandName"
+              placeholder="เช่น MyBrand"
+              class="input input-bordered w-full"
+            />
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"
+              ><span class="label-text font-medium">หมวดหมู่สินค้า *</span></label
+            >
+            <select formControlName="categoryId" class="select select-bordered w-full">
+              <option value="" disabled>เลือกหมวดหมู่</option>
+              @for (cat of categories(); track cat.id) {
+                <option [value]="cat.id">{{ cat.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">ประเภทสินค้า</span></label>
+            <select formControlName="productType" class="select select-bordered w-full">
+              <option value="Product">Product (สินค้าทั่วไป)</option>
+              <option value="Service">Service (บริการ)</option>
+              <option value="Consumable">Consumable (วัสดุสิ้นเปลือง)</option>
+            </select>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">สถานะสินค้า</span></label>
+            <select formControlName="productStatus" class="select select-bordered w-full">
+              <option value="Available">พร้อมจำหน่าย (Available)</option>
+              <option value="Unavailable">งดจำหน่ายชั่วคราว (Unavailable)</option>
+              <option value="Discontinued">ยกเลิกผลิต (Discontinued)</option>
+              <option value="Internal_Use">ใช้ภายในองค์กร (Internal Use)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-control w-full mt-4">
+          <label class="label"><span class="label-text font-medium">รายละเอียดสินค้า</span></label>
+          <textarea
+            formControlName="description"
+            class="textarea textarea-bordered h-24"
+            placeholder="ระบุรายละเอียดสินค้า..."
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl border border-base-200">
+      <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h2 class="card-title text-xl font-bold text-secondary">
+              🔍 รายการสินค้าหน่วยย่อย (Variants / SKU)
+            </h2>
+            <p class="text-xs text-base-content/60 mt-1">
+              สินค้า 1 ชิ้น สามารถมีได้หลายขนาด, สี หรือรหัส SKU
+            </p>
+          </div>
+          <button type="button" (click)="addVariant()" class="btn btn-secondary btn-sm gap-2">
+            ➕ เพิ่ม SKU
+          </button>
+        </div>
+
+        @if (variants.length === 0) {
+          <div
+            class="text-center py-8 border-2 border-dashed border-base-300 rounded-xl text-base-content/50"
+          >
+            ยังไม่มีข้อมูล SKU กรุณากดปุ่ม "เพิ่ม SKU" ด้านบน
+          </div>
+        } @else {
+          <div formArrayName="variants" class="space-y-6">
+            @for (variant of variants.controls; track $index) {
+              <div
+                [formGroupName]="$index"
+                class="p-4 border border-base-300 rounded-xl bg-base-50/50 relative"
+              >
+                <button
+                  type="button"
+                  (click)="removeVariant($index)"
+                  class="btn btn-circle btn-error btn-xs absolute top-4 right-4 text-white"
+                >
+                  ✕
+                </button>
+
+                <div class="badge badge-neutral mb-3">SKU #{{ $index + 1 }}</div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">รหัส SKU *</label>
+                    <input
+                      type="text"
+                      formControlName="sku"
+                      placeholder="เช่น PROD-XL-001"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">บาร์โค้ด</label>
+                    <input
+                      type="text"
+                      formControlName="barcode"
+                      placeholder="Barcode"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">หน่วยนับ *</label>
+                    <input
+                      type="text"
+                      formControlName="unitOfMeasure"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">ราคาขาย (บาท) *</label>
+                    <input
+                      type="number"
+                      formControlName="basePrice"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">สต็อกเริ่มต้น *</label>
+                    <input
+                      type="number"
+                      formControlName="currentQuantity"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1"
+                      >จุดเตือนสต็อกต่ำ (Reorder)*</label
+                    >
+                    <input
+                      type="number"
+                      formControlName="reorderPoint"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control md:col-span-2">
+                    <label class="label-text text-xs font-semibold mb-1"
+                      >ขนาด (กว้าง x ยาว x สูง ซม.) / น้ำหนัก (กรัม)</label
+                    >
+                    <div class="join w-full">
+                      <input
+                        type="number"
+                        formControlName="width"
+                        placeholder="ก"
+                        class="input input-bordered input-sm join-item w-1/4"
+                        title="กว้าง"
+                      />
+                      <input
+                        type="number"
+                        formControlName="length"
+                        placeholder="ย"
+                        class="input input-bordered input-sm join-item w-1/4"
+                        title="ยาว"
+                      />
+                      <input
+                        type="number"
+                        formControlName="height"
+                        placeholder="ส"
+                        class="input input-bordered input-sm join-item w-1/4"
+                        title="สูง"
+                      />
+                      <input
+                        type="number"
+                        formControlName="weight"
+                        placeholder="น้ำหนัก"
+                        class="input input-bordered input-sm join-item w-1/4"
+                        title="น้ำหนัก"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (submitError()) {
+      <div class="alert alert-error">
+        <span>{{ submitError() }}</span>
+      </div>
+    }
+
+    <div class="flex justify-end gap-3">
+      <button type="button" class="btn btn-ghost" routerLink="/products">ยกเลิก</button>
+      <button
+        type="submit"
+        [disabled]="productForm.invalid || isSubmitting()"
+        class="btn btn-primary px-8 transition-colors duration-150 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300"
+      >
+        @if (isSubmitting()) {
+          <span class="loading loading-spinner loading-xs"></span>
+          กำลังบันทึก...
+        } @else {
+          💾 บันทึกข้อมูลสินค้า
+        }
+      </button>
+    </div>
+  </form>
+</div>
