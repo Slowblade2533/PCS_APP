@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -6,18 +5,36 @@ using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace PCS_API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(IAuthService authService, IAntiforgery antiforgery) : ControllerBase
+public class AuthController(IAuthService authService) : ControllerBase
 {
+    private void GenerateXsrfCookie()
+    {
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        
+        Response.Cookies.Append(
+            "XSRF-TOKEN",
+            token,
+            new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTimeOffset.UtcNow.AddDays(7)
+            });
+    }
+
     [AllowAnonymous]
     [HttpGet("csrf-token")]
     public IActionResult GetCsrfToken()
     {
-        antiforgery.GetAndStoreTokens(HttpContext);
+        GenerateXsrfCookie();
+
         return NoContent();
     }
 
@@ -52,9 +69,14 @@ public class AuthController(IAuthService authService, IAntiforgery antiforgery) 
             authProperties
         );
 
-        antiforgery.GetAndStoreTokens(HttpContext);
+        GenerateXsrfCookie();
 
-        return Ok(new { id = user.Id, email = user.Email, name = user.FullName });
+        return Ok(new
+        {
+            id = user.Id,
+            email = user.Email,
+            name = user.FullName
+        });
     }
 
     [Authorize]

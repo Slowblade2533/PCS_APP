@@ -97,12 +97,20 @@
               </td>
               <td class="text-center">
                 <div class="join">
-                  <button class="btn btn-square btn-ghost btn-sm join-item" title="ดูรายละเอียด">
-                    👁️
-                  </button>
-                  <button class="btn btn-square btn-ghost btn-sm join-item text-info" title="แก้ไข">
-                    ✏️
-                  </button>
+                  <a
+                    class="btn btn-ghost btn-sm join-item text-neutral"
+                    [routerLink]="['/products', prod.productId]"
+                    [queryParams]="{ mode: 'view' }"
+                  >
+                    👁️ ดูรายละเอียด
+                  </a>
+                  <a
+                    class="btn btn-ghost btn-sm join-item text-info"
+                    [routerLink]="['/products', prod.productId]"
+                    [queryParams]="{ mode: 'edit' }"
+                  >
+                    ✏️ แก้ไข
+                  </a>
                 </div>
               </td>
             </tr>

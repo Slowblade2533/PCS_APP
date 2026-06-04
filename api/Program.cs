@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using PCS_API.Handlers;
@@ -38,15 +37,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddAntiforgery(options =>
-{
-    options.Cookie.Name = "XSRF-TOKEN";
-    options.Cookie.HttpOnly = false;
-    options.Cookie.SameSite = SameSiteMode.None;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.HeaderName = "X-XSRF-TOKEN";
-});
-
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IPasswordHasher<UserTable>, PasswordHasher<UserTable>>();
@@ -69,9 +59,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AngularApp");
 app.UseAuthentication();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseAuthorization();
 
-// Require CSRF token on unsafe methods when auth cookie is present.
 app.Use(async (context, next) =>
 {
     if (HttpMethods.IsGet(context.Request.Method)
@@ -83,35 +74,37 @@ app.Use(async (context, next) =>
         return;
     }
 
-    // ข้าม logout
-    if (context.Request.Path.StartsWithSegments("/api/auth/logout"))
+    if (context.Request.Path.StartsWithSegments("/api/auth/login"))
     {
         await next();
         return;
     }
 
-    if (!context.Request.Cookies.ContainsKey("AuthCookie"))
+    if (context.Request.Path.StartsWithSegments("/api/auth/csrf-token"))
     {
         await next();
         return;
     }
 
-    var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+    var cookieToken = context.Request.Cookies["XSRF-TOKEN"];
+    var headerToken = context.Request.Headers["X-XSRF-TOKEN"].ToString();
 
-    try
-    {
-        await antiforgery.ValidateRequestAsync(context);
-        await next();
-    }
-    catch (AntiforgeryValidationException)
+    if (string.IsNullOrWhiteSpace(cookieToken)
+        || string.IsNullOrWhiteSpace(headerToken)
+        || cookieToken != headerToken)
     {
         context.Response.StatusCode = StatusCodes.Status400BadRequest;
+
         await context.Response.WriteAsJsonAsync(new
         {
-            statusCode = StatusCodes.Status400BadRequest,
-            message = "Invalid or missing CSRF token."
+            statusCode = 400,
+            message = "Invalid CSRF token."
         });
+
+        return;
     }
+
+    await next();
 });
 
 app.MapControllers();

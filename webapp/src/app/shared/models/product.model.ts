@@ -42,6 +42,7 @@ export interface ProductVariantCreatePayload {
   discountPrice: number;
   currentQuantity: number;
   reorderPoint: number;
+  imageUrl?: string | null;
 }
 
 export interface ProductCreatePayload {

@@ -1,4 +1,16 @@
 <div class="container mx-auto p-6 max-w-5xl">
+  <div class="mb-4">
+    <h1 class="text-2xl font-bold">
+      @if (currentMode() === 'view') {
+        👁️ รายละเอียดข้อมูลสินค้า
+      } @else if (currentMode() === 'edit') {
+        ✏️ แก้ไขข้อมูลสินค้า
+      } @else {
+        📦 เพิ่มสินค้าใหม่
+      }
+    </h1>
+  </div>
+
   <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="space-y-6">
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body">
@@ -93,9 +105,11 @@
               สินค้า 1 ชิ้น สามารถมีได้หลายขนาด, สี หรือรหัส SKU
             </p>
           </div>
-          <button type="button" (click)="addVariant()" class="btn btn-secondary btn-sm gap-2">
-            ➕ เพิ่ม SKU
-          </button>
+          @if (currentMode() !== 'view') {
+            <button type="button" (click)="addVariant()" class="btn btn-secondary btn-sm gap-2">
+              ➕ เพิ่ม SKU
+            </button>
+          }
         </div>
 
         @if (variants.length === 0) {
@@ -111,15 +125,64 @@
                 [formGroupName]="$index"
                 class="p-4 border border-base-300 rounded-xl bg-base-50/50 relative"
               >
-                <button
-                  type="button"
-                  (click)="removeVariant($index)"
-                  class="btn btn-circle btn-error btn-xs absolute top-4 right-4 text-white"
-                >
-                  ✕
-                </button>
+                @if (currentMode() !== 'view') {
+                  <button
+                    type="button"
+                    (click)="removeVariant($index)"
+                    class="btn btn-circle btn-error btn-xs absolute top-4 right-4 text-white"
+                  >
+                    ✕
+                  </button>
+                }
 
                 <div class="badge badge-neutral mb-3">SKU #{{ $index + 1 }}</div>
+
+                <div class="form-control mb-4 p-3 bg-base-100 rounded-lg border border-base-200">
+                  <label class="label-text text-xs font-semibold mb-2">รูปภาพประกอบ SKU</label>
+                  <div class="flex items-center gap-4">
+                    @if (variant.get('imageUrl')?.value) {
+                      <div
+                        class="relative w-24 h-24 border rounded-md overflow-hidden bg-base-200 flex-shrink-0"
+                      >
+                        <img
+                          [src]="apiOrigin + variant.get('imageUrl')?.value"
+                          alt="Preview"
+                          class="object-cover w-full h-full"
+                        />
+                        @if (currentMode() !== 'view') {
+                          <button
+                            type="button"
+                            (click)="removeVariantImage($index)"
+                            class="absolute top-1 right-1 btn btn-circle btn-xs btn-error text-white opacity-80 hover:opacity-100"
+                          >
+                            ✕
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <div
+                        class="w-24 h-24 border-2 border-dashed rounded-md bg-base-50 flex items-center justify-center text-base-content/30 flex-shrink-0"
+                      >
+                        <span class="text-xs">ไม่มีรูปภาพ</span>
+                      </div>
+                    }
+
+                    @if (currentMode() !== 'view') {
+                      <div class="flex-1">
+                        <input
+                          type="file"
+                          accept="image/jpeg, image/png, image/webp"
+                          class="file-input file-input-bordered file-input-sm w-full max-w-xs"
+                          (change)="onVariantImageSelected($event, $index)"
+                          [disabled]="isUploadingImage()"
+                        />
+                        <p class="text-[10px] text-base-content/50 mt-1">
+                          รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB
+                        </p>
+                      </div>
+                    }
+                  </div>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div class="form-control">
@@ -230,19 +293,225 @@
     }
 
     <div class="flex justify-end gap-3">
-      <button type="button" class="btn btn-ghost" routerLink="/products">ยกเลิก</button>
-      <button
-        type="submit"
-        [disabled]="productForm.invalid || isSubmitting()"
-        class="btn btn-primary px-8 transition-colors duration-150 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300"
-      >
-        @if (isSubmitting()) {
-          <span class="loading loading-spinner loading-xs"></span>
-          กำลังบันทึก...
-        } @else {
-          💾 บันทึกข้อมูลสินค้า
-        }
+      <button type="button" class="btn btn-ghost" routerLink="/products">
+        {{ currentMode() === 'view' ? 'กลับหน้าหลัก' : 'ยกเลิก' }}
       </button>
+
+      @if (currentMode() !== 'view' && isModified()) {
+        <button
+          type="submit"
+          [disabled]="productForm.invalid || isSubmitting()"
+          class="btn btn-primary px-8 transition-colors duration-150 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300"
+        >
+          @if (isSubmitting()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            กำลังบันทึก...
+          } @else {
+            💾 ตรวจสอบและบันทึกข้อมูล
+          }
+        </button>
+      }
     </div>
   </form>
+</div>
+
+<div class="modal" [class.modal-open]="showReviewModal()">
+  <div class="modal-box max-w-3xl border border-base-200 shadow-2xl">
+    <h3 class="font-bold text-lg text-warning flex items-center gap-2 mb-4">
+      ⚠️ กรุณาตรวจสอบข้อมูลเปรียบเทียบก่อนทำการบันทึก
+    </h3>
+
+    <div class="space-y-6 text-sm border-b pb-4 max-h-[60vh] overflow-y-auto pr-2">
+      <div>
+        <h4 class="font-bold text-primary mb-2 flex items-center gap-1">📦 ข้อมูลหลักของสินค้า</h4>
+        <div class="border border-base-200 rounded-xl overflow-hidden bg-base-100 shadow-sm">
+          <table class="table table-sm w-full">
+            <thead class="bg-base-200/60 text-base-content">
+              <tr>
+                <th class="w-1/4">หัวข้อ</th>
+                <th class="w-3/8">ข้อมูลเดิม (ก่อนแก้ไข)</th>
+                <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of getComparisonReport(); track item.label) {
+                <tr
+                  [class.bg-warning/5]="item.isChanged"
+                  class="transition-colors border-b border-base-100"
+                >
+                  <td class="font-semibold text-neutral">{{ item.label }}</td>
+
+                  <td
+                    [class.text-base-content/50]="item.isChanged"
+                    [class.text-base-content]="!item.isChanged"
+                  >
+                    {{ item.old }}
+                  </td>
+
+                  <td>
+                    @if (item.isChanged) {
+                      <span class="text-warning font-bold">
+                        {{ item.new }}
+                      </span>
+                    } @else {
+                      <span class="text-base-content/30 italic text-xs">
+                        (ไม่มีการเปลี่ยนแปลง)
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-bold text-secondary mb-2 flex items-center gap-1">
+          🔍 ตรวจสอบรายละเอียดรายการ SKU ย่อย
+        </h4>
+
+        <div class="space-y-4">
+          @for (skuGroup of getVariantsComparison(); track $index) {
+            <div class="border border-base-200 rounded-xl bg-base-100 shadow-sm overflow-hidden">
+              <div
+                class="bg-base-200/40 px-4 py-2 flex justify-between items-center border-b border-base-200"
+              >
+                <span class="font-mono font-bold text-sm text-neutral">
+                  📦 รหัสสินค้า: {{ skuGroup.skuName }}
+                </span>
+                <div>
+                  @if (skuGroup.isNew) {
+                    <span class="badge badge-success text-white badge-sm">✨ เพิ่ม SKU ใหม่</span>
+                  } @else if (skuGroup.isChanged) {
+                    <span class="badge badge-warning text-white badge-sm"
+                      >✏️ มีการแก้ไขข้อมูลภายใน</span
+                    >
+                  } @else {
+                    <span class="badge badge-ghost text-base-content/40 badge-sm"
+                      >➖ ไม่มีการเปลี่ยนแปลง</span
+                    >
+                  }
+                </div>
+              </div>
+
+              <table class="table table-xs w-full">
+                <thead class="bg-base-50 text-base-content/80">
+                  <tr>
+                    <th class="w-1/4">คุณลักษณะย่อย</th>
+                    <th class="w-3/8">ข้อมูลเดิม</th>
+                    <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detail of skuGroup.details; track detail.field) {
+                    <tr
+                      [class.bg-warning/5]="detail.isChanged"
+                      class="transition-colors border-b border-base-50"
+                    >
+                      <td class="font-medium text-base-content/70 pl-4">{{ detail.field }}</td>
+
+                      <td
+                        [class.text-base-content/50]="detail.isChanged"
+                        [class.text-base-content]="!detail.isChanged"
+                      >
+                        @if (detail.isImage) {
+                          @if (detail.old) {
+                            <div
+                              class="w-12 h-12 border rounded-md overflow-hidden bg-base-100 shadow-sm"
+                            >
+                              <img
+                                [src]="apiOrigin + detail.old"
+                                class="object-cover w-full h-full"
+                              />
+                            </div>
+                          } @else {
+                            <span class="text-base-content/40 text-xs">ไม่มีรูปภาพ</span>
+                          }
+                        } @else {
+                          @if (detail.field.includes('ราคา')) {
+                            {{ detail.old !== '-' ? '฿' + (detail.old | number: '1.2-2') : '-' }}
+                          } @else if (
+                            detail.field.includes('สต็อก') ||
+                            detail.field.includes('จุดเตือน') ||
+                            detail.field.includes('น้ำหนัก')
+                          ) {
+                            {{ detail.old !== '-' ? (detail.old | number) : '-' }}
+                          } @else {
+                            {{ detail.old }}
+                          }
+                        }
+                      </td>
+
+                      <td>
+                        @if (detail.isChanged) {
+                          @if (detail.isImage) {
+                            @if (detail.new) {
+                              <div
+                                class="w-12 h-12 border border-warning rounded-md overflow-hidden bg-base-100 shadow-sm"
+                              >
+                                <img
+                                  [src]="apiOrigin + detail.new"
+                                  class="object-cover w-full h-full"
+                                />
+                              </div>
+                            } @else {
+                              <span class="text-error font-bold text-xs">🔴 ลบรูปภาพออก</span>
+                            }
+                          } @else {
+                            <span class="text-warning font-bold">
+                              @if (
+                                detail.field.includes('ProductPrice') ||
+                                detail.field.includes('ราคา')
+                              ) {
+                                ฿{{ detail.new | number: '1.2-2' }}
+                              } @else if (
+                                detail.field.includes('สต็อก') ||
+                                detail.field.includes('จุดเตือน') ||
+                                detail.field.includes('น้ำหนัก')
+                              ) {
+                                {{ detail.new | number }}
+                              } @else {
+                                {{ detail.new }}
+                              }
+                            </span>
+                          }
+                        } @else {
+                          <span class="text-base-content/30 italic text-xs"
+                            >(ไม่มีการเปลี่ยนแปลง)</span
+                          >
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @empty {
+            <div class="text-center py-4 text-base-content/40 italic">
+              ไม่มีข้อมูล SKU ย่อยในสินค้านี้
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" (click)="showReviewModal.set(false)">
+          ย้อนกลับไปแก้ไข
+        </button>
+        <button
+          type="button"
+          class="btn btn-success text-white px-6"
+          [disabled]="isSubmitting()"
+          (click)="executeSubmit()"
+        >
+          @if (isSubmitting()) {
+            <span class="loading loading-spinner loading-xs"></span> กำลังประมวลผล...
+          } @else {
+            ยืนยันการบันทึกข้อมูลด่วน
+          }
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

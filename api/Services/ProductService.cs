@@ -19,4 +19,14 @@ public class ProductService : IProductService
     {
         return await _productRepository.GetPagedProductsAsync(search);
     }
+
+    public async Task<object?> GetProductByIdAsync(int id)
+    {
+        return await _productRepository.GetProductDetailAsync(id);
+    }
+
+    public async Task<bool> UpdateProductAsync(int id, ProductCreateDto dto)
+    {
+        return await _productRepository.UpdateProductWithVariantsAsync(id, dto);
+    }
 }

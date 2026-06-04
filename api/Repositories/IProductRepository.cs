@@ -6,4 +6,6 @@ public interface IProductRepository
 {
     Task<int> CreateProductWithVariantsAsync(ProductCreateDto dto);
     Task<PagedResult<ProductListDto>> GetPagedProductsAsync(ProductSearchParams search);
+    Task<object?> GetProductDetailAsync(int productId);
+    Task<bool> UpdateProductWithVariantsAsync(int productId, ProductCreateDto dto);
 }

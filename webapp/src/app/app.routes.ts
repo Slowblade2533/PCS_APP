@@ -33,6 +33,10 @@ export const routes: Routes = [
         path: 'products/create',
         component: ProductCreate,
       },
+      {
+        path: 'products/:id',
+        component: ProductCreate,
+      },
     ],
   },
   {

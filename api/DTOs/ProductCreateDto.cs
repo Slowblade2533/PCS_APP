@@ -10,11 +10,13 @@ public class ProductCreateDto
     public string ProductType { get; set; } = "Product";
     public string ProductStatus { get; set; } = "Available";
     public int? CreatedBy { get; set; }
+    public int? UpdatedBy { get; set; }
     public List<VariantCreateDto> Variants { get; set; } = new();
 }
 
 public class VariantCreateDto
 {
+    public int? VariantId { get; set; }
     public string Sku { get; set; } = null!;
     public string? Barcode { get; set; }
     public string UnitOfMeasure { get; set; } = "อัน";
@@ -30,4 +32,7 @@ public class VariantCreateDto
     // สำหรับตาราง Stocks
     public int CurrentQuantity { get; set; } = 0;
     public int ReorderPoint { get; set; } = 0;
+
+    // สำหรับรูปภาพ
+    public string? ImageUrl { get; set; }
 }

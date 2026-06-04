@@ -43,4 +43,22 @@ export class ProductService {
   createProduct(payload: ProductCreatePayload): Observable<ProductCreateResponse> {
     return this.http.post<ProductCreateResponse>(this.apiUrl, payload, this.httpOptions);
   }
+
+  getProductById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`, this.httpOptions);
+  }
+
+  updateProduct(id: number, payload: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, payload, this.httpOptions);
+  }
+
+  uploadImage(file: File): Observable<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ imageUrl: string }>(
+      `${API_BASE_URL}/upload/product-image`,
+      formData,
+      this.httpOptions,
+    );
+  }
 }
