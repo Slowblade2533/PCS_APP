@@ -1,0 +1,140 @@
+<div class="container mx-auto p-6 max-w-4xl">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">{{ isEditMode() ? 'แก้ไขหมวดหมู่สินค้า' : 'เพิ่มหมวดหมู่สินค้าใหม่ (สร้างได้สูงสุด 3 ระดับ)' }}</h1>
+    <div class="breadcrumbs text-sm text-base-content/60 mt-1">
+      <ul>
+        <li><a routerLink="/dashboard">หน้าแรก</a></li>
+        <li><a routerLink="/settings/categories">หมวดหมู่สินค้า</a></li>
+        <li>{{ isEditMode() ? 'แก้ไข' : 'เพิ่ม' }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="card bg-base-100 shadow-xl border border-base-200">
+    <div class="card-body">
+      @if (errorMsg()) {
+        <div role="alert" class="alert alert-error mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="size-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>{{ errorMsg() }}</span>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        @if (isEditMode()) {
+          <!-- EDIT MODE -->
+          <!-- Category Name -->
+          <fieldset class="fieldset md:col-span-2">
+            <legend class="fieldset-legend">ชื่อหมวดหมู่ <span class="text-error">*</span></legend>
+            <input
+              type="text"
+              class="input input-bordered w-full"
+              [class.input-error]="isInvalid('categoryName')"
+              placeholder="เช่น เตาปิ้งย่าง"
+              formControlName="categoryName"
+              maxlength="200"
+            />
+          </fieldset>
+
+          <!-- Parent Category -->
+          <fieldset class="fieldset md:col-span-2">
+            <legend class="fieldset-legend">หมวดหมู่หลัก (Parent Category)</legend>
+            <p class="text-xs text-base-content/60 mb-2">หากต้องการให้เป็นหมวดหมู่ย่อย กรุณาเลือกหมวดหมู่หลัก</p>
+            <app-category-search formControlName="parentId" placeholder="พิมพ์เพื่อค้นหาหมวดหมู่หลัก"></app-category-search>
+          </fieldset>
+        } @else {
+          <!-- CREATE MODE (3-LEVEL BATCH) -->
+          <div class="md:col-span-2 space-y-4">
+            <div class="alert alert-info bg-info/10 border-info/20 text-info-content">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <div>
+                <h3 class="font-bold">เคล็ดลับการสร้าง</h3>
+                <div class="text-sm">พิมพ์ชื่อหมวดหมู่ที่ต้องการ หากมีชื่อนี้อยู่แล้วในระบบ ระบบจะดึงของเดิมมาใช้โดยอัตโนมัติ ไม่ต้องกลัวข้อมูลซ้ำซ้อน!</div>
+              </div>
+            </div>
+
+            <fieldset class="fieldset border-l-4 border-primary pl-4">
+              <legend class="fieldset-legend text-primary font-bold">1. กลุ่มหลัก (Level 1) <span class="text-error">*</span></legend>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                [class.input-error]="isInvalid('level1Name')"
+                placeholder="เช่น เครื่องใช้ในบ้าน"
+                formControlName="level1Name"
+                maxlength="200"
+              />
+            </fieldset>
+
+            <fieldset class="fieldset border-l-4 border-secondary pl-4">
+              <legend class="fieldset-legend text-secondary font-bold">2. กลุ่มรอง (Level 2)</legend>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="เช่น เครื่องครัว (ถ้ามี)"
+                formControlName="level2Name"
+                maxlength="200"
+              />
+            </fieldset>
+
+            <fieldset class="fieldset border-l-4 border-accent pl-4">
+              <legend class="fieldset-legend text-accent font-bold">3. กลุ่มย่อย (Level 3)</legend>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                placeholder="เช่น เตาปิ้งย่าง (ถ้ามี)"
+                formControlName="level3Name"
+                maxlength="200"
+              />
+            </fieldset>
+          </div>
+        }
+
+        <!-- Description -->
+        <fieldset class="fieldset md:col-span-2 mt-4">
+          <legend class="fieldset-legend">รายละเอียดเพิ่มเติม</legend>
+          <textarea
+            class="textarea textarea-bordered w-full"
+            placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
+            formControlName="description"
+            rows="3"
+            maxlength="1000"
+          ></textarea>
+        </fieldset>
+
+        <!-- Sort Order -->
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">ลำดับการจัดเรียง (Sort Order)</legend>
+          <p class="text-xs text-base-content/60 mb-2">
+            ใช้กำหนดลำดับการแสดงผลในหน้าเว็บ (เลขน้อยจะแสดงก่อน) <br/>
+            * หากตั้งค่าเป็น 0 ระบบจะเรียงตามตัวอักษรเป็นค่าเริ่มต้น
+          </p>
+          <input
+            type="number"
+            class="input input-bordered w-full"
+            [class.input-error]="isInvalid('sortOrder')"
+            formControlName="sortOrder"
+            min="0"
+          />
+        </fieldset>
+
+        <!-- IsActive -->
+        <fieldset class="fieldset flex justify-center flex-col mt-4">
+          <label class="label cursor-pointer justify-start gap-4">
+            <input type="checkbox" class="toggle toggle-success" formControlName="isActive" />
+            <span class="label-text font-medium text-base">เปิดใช้งาน</span>
+          </label>
+        </fieldset>
+      </div>
+
+      <div class="card-actions justify-end mt-6 pt-4 border-t border-base-200">
+        <a routerLink="/settings/categories" class="btn btn-ghost">ยกเลิก</a>
+        <button type="submit" class="btn btn-primary px-8" [disabled]="submitting() || form.invalid">
+          @if (submitting()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          บันทึกข้อมูล
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

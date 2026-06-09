@@ -1,32 +1,27 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 
 namespace PCS_API.Services;
 
-public class ProductService : IProductService
+public class ProductService(IProductRepository productRepository) : IProductService
 {
-    private readonly IProductRepository _productRepository;
-    public ProductService(IProductRepository productRepository)
+    public async Task<ResultDto<int>> CreateProductAsync(ProductCreateDto dto)
     {
-        _productRepository = productRepository;
-    }
-    public async Task<int> CreateProductAsync(ProductCreateDto dto)
-    {
-        return await _productRepository.CreateProductWithVariantsAsync(dto);
+        return await productRepository.CreateProductWithVariantsAsync(dto);
     }
 
-    public async Task<PagedResult<ProductListDto>> GetProductsAsync(ProductSearchParams search)
+    public async Task<PagedResultDto<ProductListDto>> GetProductsAsync(ProductSearchParamsDto search)
     {
-        return await _productRepository.GetPagedProductsAsync(search);
+        return await productRepository.GetPagedProductsAsync(search);
     }
 
-    public async Task<object?> GetProductByIdAsync(int id)
+    public async Task<ProductDetailDto?> GetProductByIdAsync(int id)
     {
-        return await _productRepository.GetProductDetailAsync(id);
+        return await productRepository.GetProductDetailAsync(id);
     }
 
-    public async Task<bool> UpdateProductAsync(int id, ProductCreateDto dto)
+    public async Task<ResultDto<bool>> UpdateProductAsync(int id, ProductCreateDto dto)
     {
-        return await _productRepository.UpdateProductWithVariantsAsync(id, dto);
+        return await productRepository.UpdateProductWithVariantsAsync(id, dto);
     }
 }

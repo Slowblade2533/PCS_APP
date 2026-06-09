@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 using System.Net;
 
 namespace PCS_API.Handlers;
@@ -20,6 +20,11 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         else if (exception is ArgumentException)
         {
             statusCode = HttpStatusCode.BadRequest;
+            message = exception.Message;
+        }
+        else if (exception is InvalidOperationException)
+        {
+            statusCode = HttpStatusCode.Conflict;
             message = exception.Message;
         }
 

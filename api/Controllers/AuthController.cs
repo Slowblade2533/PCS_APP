@@ -9,8 +9,9 @@ using System.Security.Cryptography;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
+[Authorize]
 public class AuthController(IAuthService authService) : ControllerBase
 {
     private void GenerateXsrfCookie()
@@ -49,6 +50,8 @@ public class AuthController(IAuthService authService) : ControllerBase
             return BadRequest(new { message = "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
         }
 
+        var permissions = await authService.GetUserPermissionsAsync(user.Id);
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -56,7 +59,21 @@ public class AuthController(IAuthService authService) : ControllerBase
             new(ClaimTypes.Name, user.FullName)
         };
 
+        foreach (var role in permissions.Select(p => p.RoleName).Distinct())
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+            
+        foreach (var p in permissions)
+        {
+            if (!claims.Any(c => c.Type == "permission" && c.Value == p.PermissionCode))
+            {
+                claims.Add(new Claim("permission", p.PermissionCode));
+            }
+        }
+
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
         var authProperties = new AuthenticationProperties
         {
             IsPersistent = true,
@@ -75,7 +92,9 @@ public class AuthController(IAuthService authService) : ControllerBase
         {
             id = user.Id,
             email = user.Email,
-            name = user.FullName
+            name = user.FullName,
+            roles = permissions.Select(p => p.RoleName).Distinct(),
+            permissions = permissions.Select(p => p.PermissionCode).Distinct()
         });
     }
 
@@ -83,8 +102,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         Response.Cookies.Delete("AuthCookie");
         Response.Cookies.Delete("XSRF-TOKEN");
@@ -103,7 +121,9 @@ public class AuthController(IAuthService authService) : ControllerBase
         {
             id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
             email = User.FindFirst(ClaimTypes.Email)?.Value,
-            name = User.FindFirst(ClaimTypes.Name)?.Value
+            name = User.FindFirst(ClaimTypes.Name)?.Value,
+            roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value),
+            permissions = User.FindAll("permission").Select(c => c.Value)
         });
     }
 }

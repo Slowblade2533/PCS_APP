@@ -1,11 +1,11 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 
 namespace PCS_API.Repositories;
 
 public interface IProductRepository
 {
-    Task<int> CreateProductWithVariantsAsync(ProductCreateDto dto);
-    Task<PagedResult<ProductListDto>> GetPagedProductsAsync(ProductSearchParams search);
-    Task<object?> GetProductDetailAsync(int productId);
-    Task<bool> UpdateProductWithVariantsAsync(int productId, ProductCreateDto dto);
+    Task<ResultDto<int>> CreateProductWithVariantsAsync(ProductCreateDto dto);
+    Task<PagedResultDto<ProductListDto>> GetPagedProductsAsync(ProductSearchParamsDto search);
+    Task<ProductDetailDto?> GetProductDetailAsync(int productId);
+    Task<ResultDto<bool>> UpdateProductWithVariantsAsync(int productId, ProductCreateDto dto);
 }

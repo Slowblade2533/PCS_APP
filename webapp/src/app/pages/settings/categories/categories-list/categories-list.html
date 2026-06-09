@@ -1,0 +1,92 @@
+<div class="container mx-auto p-6 max-w-6xl">
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-base-content">🗂️ จัดการหมวดหมู่สินค้า (Categories)</h1>
+      <p class="text-sm text-base-content/60 mt-1">จัดการลำดับชั้นหมวดหมู่สินค้าแบบกลุ่มหลักและย่อย</p>
+    </div>
+    <div class="flex items-center gap-3 w-full md:w-auto">
+      <select class="select select-bordered w-full md:w-auto" (change)="selectedLevel.set($any($event.target).value === 'null' ? null : +$any($event.target).value)">
+        <option value="null" [selected]="selectedLevel() === null">แสดงทั้งหมด</option>
+        <option value="1" [selected]="selectedLevel() === 1">เฉพาะกลุ่มหลัก (Level 1)</option>
+        <option value="2" [selected]="selectedLevel() === 2">เฉพาะกลุ่มรอง (Level 2)</option>
+        <option value="3" [selected]="selectedLevel() === 3">เฉพาะกลุ่มย่อย (Level 3)</option>
+      </select>
+      <a routerLink="/settings/categories/create" class="btn btn-primary gap-2 shadow-sm shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        เพิ่มหมวดหมู่
+      </a>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-xl border border-base-200">
+    <div class="card-body p-0">
+      @if (isLoading()) {
+        <div class="flex justify-center p-12">
+          <span class="loading loading-spinner loading-lg text-primary"></span>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr class="bg-base-200/50">
+                <th class="pl-6">ลำดับชั้นหมวดหมู่ (Hierarchy)</th>
+                <th class="w-32">ระดับชั้น</th>
+                <th class="w-32">สถานะ</th>
+                <th class="w-24 text-right pr-6">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cat of filteredCategories(); track cat.categoryId) {
+                <tr>
+                  <td class="pl-6">
+                    <div class="flex flex-wrap items-center gap-y-1">
+                      @for (part of cat.fullPath.split(' > '); track $index) {
+                        <span class="inline-flex items-center gap-1.5 mr-2">
+                          <span class="text-xs px-1.5 py-0.5 rounded bg-base-200 text-base-content/70">
+                            {{ $index === 0 ? 'กลุ่มหลัก' : ($index === 1 ? 'กลุ่มรอง' : 'กลุ่มย่อย') }}
+                          </span>
+                          <span class="font-medium" [class.text-primary]="$index === (cat.level - 1)">{{ part }}</span>
+                          @if ($index < cat.fullPath.split(' > ').length - 1) {
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-3 text-base-content/30 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                          }
+                        </span>
+                      }
+                    </div>
+                    @if (cat.description) {
+                      <div class="text-xs text-base-content/60 mt-1 ml-1">{{ cat.description }}</div>
+                    }
+                  </td>
+                  <td>
+                    <div class="badge badge-outline">ระดับ {{ cat.level }}</div>
+                  </td>
+                  <td>
+                    @if (cat.isActive) {
+                      <div class="badge badge-success badge-sm gap-1"><div class="size-1.5 rounded-full bg-white"></div>ใช้งาน</div>
+                    } @else {
+                      <div class="badge badge-ghost badge-sm gap-1"><div class="size-1.5 rounded-full bg-base-content/30"></div>ระงับ</div>
+                    }
+                  </td>
+                  <td class="text-right pr-6">
+                    <a [routerLink]="['/settings/categories', cat.categoryId]" class="btn btn-sm btn-ghost btn-square text-primary" title="แก้ไข">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-ghost btn-square text-error" title="ลบ" (click)="deleteCategory(cat.categoryId)">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+              @if (filteredCategories().length === 0) {
+                <tr>
+                  <td colspan="4" class="text-center py-8 text-base-content/50">
+                    ไม่มีข้อมูลหมวดหมู่สินค้าในระดับที่เลือก
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>

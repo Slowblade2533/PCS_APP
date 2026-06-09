@@ -1,13 +1,11 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { API_ORIGIN } from '../config/api.config';
+import { environment } from '../../../environments/environment';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function readCookie(name: string): string | null {
   const target = `${name}=`;
-  const cookie = document.cookie
-    .split('; ')
-    .find((part) => part.startsWith(target));
+  const cookie = document.cookie.split('; ').find((part) => part.startsWith(target));
 
   if (!cookie) {
     return null;
@@ -23,7 +21,7 @@ export const xsrfInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // Angular built-in XSRF skips absolute URLs, so add header manually for trusted API origin.
-  if (!req.url.startsWith(API_ORIGIN)) {
+  if (!req.url.startsWith(environment.apiUrl)) {
     return next(req);
   }
 

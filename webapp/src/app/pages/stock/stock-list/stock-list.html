@@ -1,0 +1,157 @@
+<div class="container mx-auto p-6 max-w-6xl space-y-5">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">สินค้าคงคลัง</h1>
+      <p class="text-base-content/60 text-sm mt-0.5">ติดตามจำนวนสต็อกแยกตามสาขา</p>
+    </div>
+    <a routerLink="/stock/transactions" class="btn btn-outline btn-sm gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="size-4"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+        />
+      </svg>
+      ประวัติการเคลื่อนไหว
+    </a>
+  </div>
+
+  <!-- Filters -->
+  <app-product-search-filter
+    [searchTerm]="query.search || ''"
+    (searchTermChange)="onSearchChange($event)"
+    [selectedStatus]="query.productStatus || ''"
+    (selectedStatusChange)="query.productStatus = $event"
+    [selectedType]="query.productType || ''"
+    (selectedTypeChange)="query.productType = $event"
+    [selectedInventoryGroup]="query.inventoryGroup || ''"
+    (selectedInventoryGroupChange)="query.inventoryGroup = $event"
+    (filterChange)="onFilterChange()"
+  >
+    <div class="form-control">
+      <label class="label py-1"><span class="label-text text-xs">สาขา</span></label>
+      <select
+        class="select select-bordered select-md w-full"
+        [(ngModel)]="selectedBranchId"
+        (ngModelChange)="onBranchChange($event)"
+      >
+        <option [ngValue]="null">ทุกสาขา</option>
+        @for (branch of branches(); track branch.id) {
+          <option [ngValue]="branch.id">{{ branch.branchName }}</option>
+        }
+      </select>
+    </div>
+  </app-product-search-filter>
+
+  <!-- Table -->
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body p-0">
+      @if (loading()) {
+        <div class="flex justify-center py-16">
+          <span class="loading loading-spinner loading-md"></span>
+        </div>
+      } @else if (result()?.items?.length === 0) {
+        <div class="flex flex-col items-center py-16 gap-2 text-base-content/40">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="size-12"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
+          </svg>
+          <p class="font-medium">ไม่พบข้อมูลสต็อก</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="table table-zebra">
+            <thead>
+              <tr class="border-b border-base-200">
+                <th>สินค้า / SKU</th>
+                <th>สาขา</th>
+                <th class="text-right">สต็อกปัจจุบัน</th>
+                <th class="text-right">จองแล้ว</th>
+                <th class="text-right">พร้อมจ่าย</th>
+                <th>อัปเดตล่าสุด</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of result()?.items; track item.variantId) {
+                <tr>
+                  <td>
+                    <div>
+                      <p class="font-medium text-sm">{{ item.productName }}</p>
+                      <p class="text-xs text-base-content/50">{{ item.variantName }}</p>
+                      <div class="flex gap-1 mt-0.5">
+                        <span class="badge badge-ghost badge-xs font-mono">{{ item.sku }}</span>
+                        @if (item.barcode) {
+                          <span class="badge badge-ghost badge-xs font-mono">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="size-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/></svg>
+                            {{ item.barcode }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-outline badge-sm">{{ item.branchName }}</span>
+                  </td>
+                  <td class="text-right font-mono font-semibold">
+                    {{ item.currentQuantity | number }}
+                  </td>
+                  <td class="text-right font-mono text-warning">
+                    {{ item.reservedQuantity | number }}
+                  </td>
+                  <td class="text-right">
+                    <span
+                      class="font-mono font-bold"
+                      [class.text-success]="item.availableQuantity > 0"
+                      [class.text-error]="item.availableQuantity === 0"
+                    >
+                      {{ item.availableQuantity | number }}
+                    </span>
+                  </td>
+                  <td class="text-sm text-base-content/60">
+                    {{ item.updatedAt | date: 'dd/MM/yy HH:mm' }}
+                  </td>
+                  <td>
+                    <a
+                      [routerLink]="['/stock/adjust']"
+                      [queryParams]="{ variantId: item.variantId, branchId: item.branchId }"
+                      class="btn btn-ghost btn-xs"
+                    >
+                      ปรับสต็อก
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <app-pagination
+          [page]="query.page"
+          [pageSize]="query.pageSize"
+          [totalCount]="result()?.totalCount ?? 0"
+          (pageChange)="changePage($event)"
+        ></app-pagination>
+      }
+    </div>
+  </div>
+</div>

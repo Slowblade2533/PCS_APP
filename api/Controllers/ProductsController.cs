@@ -11,59 +11,71 @@ namespace PCS_API.Controllers;
 public class ProductsController(IProductService productService) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Policy = "CanCreateProduct")]
     public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto dto)
     {
         if (!ModelState.IsValid)
+        {
             return BadRequest(ModelState);
-
-        try
-        {
-            int newProductId = await productService.CreateProductAsync(dto);
-
-            return CreatedAtAction(nameof(CreateProduct),
-                new { id = newProductId },
-                new
-                {
-                    message = "สร้างสินค้าสำเร็จ",
-                    productId = newProductId
-                });
         }
-        catch (InvalidOperationException ex) // ✨ จับข้อความเตือนเรื่องค่าซ้ำจากการตรวจเช็ค
+
+        var result = await productService.CreateProductAsync(dto);
+
+        if (!result.IsSuccess)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = result.ErrorMessage });
         }
+
+        return CreatedAtAction(nameof(CreateProduct),
+            new { id = result.Value },
+            new
+            {
+                message = "สร้างสินค้าสำเร็จ",
+                productId = result.Value
+            });
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetProducts([FromQuery] ProductSearchParams searchParams)
+    [Authorize(Policy = "CanViewProduct")]
+    public async Task<IActionResult> GetProducts([FromQuery] ProductSearchParamsDto searchParams)
     {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
         var result = await productService.GetProductsAsync(searchParams);
+
         return Ok(result);
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "CanViewProduct")]
     public async Task<IActionResult> GetProductById(int id)
     {
         var product = await productService.GetProductByIdAsync(id);
-        if (product == null) return NotFound(new { message = "ไม่พบข้อมูลสินค้าที่ระบุ" });
+
+        if (product == null)
+        {
+            return NotFound(new { message = "ไม่พบข้อมูลสินค้าที่ระบุ" });
+        }
+
         return Ok(product);
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "CanEditProduct")]
     public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductCreateDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        try
+        if (!ModelState.IsValid)
         {
-            bool isUpdated = await productService.UpdateProductAsync(id, dto);
-            if (!isUpdated) return NotFound(new { message = "ไม่พบสินค้าที่ต้องการแก้ไข" });
+            return BadRequest(ModelState);
+        }
 
-            return Ok(new { message = "แก้ไขข้อมูลสินค้าสำเร็จ" });
-        }
-        catch (InvalidOperationException ex) // ✨ จับข้อความเตือนเรื่องค่าซ้ำจากการตรวจเช็คในโหมดแก้ไข
+        var result = await productService.UpdateProductAsync(id, dto);
+
+        if (!result.IsSuccess)
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = result.ErrorMessage });
         }
+
+        return Ok(new { message = "แก้ไขข้อมูลสินค้าสำเร็จ" });
     }
 }

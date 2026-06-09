@@ -1,0 +1,19 @@
+<!-- Thumbnail Image -->
+<img 
+  [src]="imageUrl" 
+  [class]="imageClass" 
+  [alt]="altText"
+  (mouseenter)="onMouseEnter($event)"
+  (mousemove)="onMouseMove($event)"
+  (mouseleave)="onMouseLeave()"
+/>
+
+<!-- Global Hover Preview Overlay -->
+@if (showPreview()) {
+  <div 
+    class="fixed z-[9999] pointer-events-none bg-base-100 p-2 rounded-lg shadow-2xl border border-base-200 transition-none"
+    [style]="previewStyle()"
+  >
+    <img [src]="imageUrl" class="max-w-[500px] max-h-[500px] object-contain rounded-md" [alt]="altText + ' Large'" />
+  </div>
+}

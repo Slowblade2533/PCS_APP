@@ -1,7 +1,9 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService, LoginCredentials } from '../../shared/services/auth.service';
+import { LoginCredentials } from '../../shared/models/user.models';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -10,17 +12,15 @@ import { AuthService, LoginCredentials } from '../../shared/services/auth.servic
   styleUrl: './login.css',
 })
 export class Login implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private authService = inject(AuthService);
+  private destroyRef = inject(DestroyRef);
+
   loginForm: FormGroup;
   isPasswordVisible = false;
   isLoading = signal(false);
   returnUrl = '/dashboard';
-  /*
-  Email: superuser@email.com
-  Password: PCSAdmin123!
-  */
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private authService = inject(AuthService);
 
   constructor(private fb: FormBuilder) {
     this.loginForm = this.fb.group({
@@ -48,16 +48,19 @@ export class Login implements OnInit {
         rememberMe: Boolean(formValue.rememberMe),
       };
 
-      this.authService.login(credentials).subscribe({
-        next: () => {
-          this.isLoading.set(false);
-          this.onLoginSuccess();
-        },
-        error: (err) => {
-          this.isLoading.set(false);
-          alert(err.error?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
-        },
-      });
+      this.authService
+        .login(credentials)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.isLoading.set(false);
+            this.onLoginSuccess();
+          },
+          error: (err) => {
+            this.isLoading.set(false);
+            alert(err.error?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+          },
+        });
     }
   }
 

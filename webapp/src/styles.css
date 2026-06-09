@@ -4,3 +4,11 @@
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
 }
+
+@layer base {
+  html {
+    /* ใช้ font-size: 18px (แทนเปอร์เซ็นต์ทศนิยม) เพื่อป้องกันปัญหา Chromium Browser Crash (STATUS_BREAKPOINT) 
+       เนื่องจากการคำนวณ Sub-pixel Layout แบบอนันต์ในบางกรณี */
+    font-size: 18px;
+  }
+}

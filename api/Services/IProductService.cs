@@ -1,11 +1,11 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 
 namespace PCS_API.Services;
 
 public interface IProductService
 {
-    Task<int> CreateProductAsync(ProductCreateDto dto);
-    Task<PagedResult<ProductListDto>> GetProductsAsync(ProductSearchParams search);
-    Task<object?> GetProductByIdAsync(int id);
-    Task<bool> UpdateProductAsync(int id, ProductCreateDto dto);
+    Task<ResultDto<int>> CreateProductAsync(ProductCreateDto dto);
+    Task<PagedResultDto<ProductListDto>> GetProductsAsync(ProductSearchParamsDto search);
+    Task<ProductDetailDto?> GetProductByIdAsync(int id);
+    Task<ResultDto<bool>> UpdateProductAsync(int id, ProductCreateDto dto);
 }

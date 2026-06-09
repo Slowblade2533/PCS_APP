@@ -1,0 +1,60 @@
+<div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+  <div class="card-body p-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div class="form-control">
+        <label class="label py-1"><span class="label-text text-xs">ค้นหาชื่อ/แบรนด์/รหัส</span></label>
+        <input
+          type="text"
+          [ngModel]="searchTerm"
+          (ngModelChange)="onSearchTextChange($event)"
+          placeholder="ค้นหาสินค้า..."
+          class="input input-bordered input-md w-full"
+        />
+      </div>
+
+      <div class="form-control">
+        <label class="label py-1"><span class="label-text text-xs">สถานะการจำหน่าย</span></label>
+        <select
+          [ngModel]="selectedStatus"
+          (ngModelChange)="selectedStatusChange.emit($event); onSelectChange()"
+          class="select select-bordered select-md w-full"
+        >
+          <option value="">ทั้งหมด</option>
+          <option value="Available">พร้อมจำหน่าย</option>
+          <option value="Unavailable">งดจำหน่ายชั่วคราว</option>
+          <option value="Discontinued">ยกเลิกผลิต</option>
+        </select>
+      </div>
+
+      <div class="form-control">
+        <label class="label py-1"><span class="label-text text-xs">ประเภทสินค้า</span></label>
+        <select
+          [ngModel]="selectedType"
+          (ngModelChange)="selectedTypeChange.emit($event); onSelectChange()"
+          class="select select-bordered select-md w-full"
+        >
+          <option value="">ทั้งหมด</option>
+          <option value="Product">สินค้าทั่วไป</option>
+          <option value="Service">บริการ</option>
+          <option value="Consumable">วัสดุสิ้นเปลือง</option>
+        </select>
+      </div>
+
+      <div class="form-control">
+        <label class="label py-1"><span class="label-text text-xs">กลุ่มคลังสินค้า</span></label>
+        <select
+          [ngModel]="selectedInventoryGroup"
+          (ngModelChange)="selectedInventoryGroupChange.emit($event); onSelectChange()"
+          class="select select-bordered select-md w-full"
+        >
+          <option value="">ทั้งหมด</option>
+          <option value="ForSale">สินค้าจำหน่าย</option>
+          <option value="Internal">ใช้ภายในองค์กร</option>
+        </select>
+      </div>
+
+      <!-- Slot for extra filters like Branch -->
+      <ng-content></ng-content>
+    </div>
+  </div>
+</div>

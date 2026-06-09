@@ -1,32 +1,24 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using PCS_API.Models;
 using PCS_API.Repositories;
 
 namespace PCS_API.Services;
 
-public class AuthService : IAuthService
+public class AuthService(IUserRepository userRepository, IPasswordHasher<UserTableModel> passwordHasher) : IAuthService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IPasswordHasher<UserTable> _passwordHasher;
-
-    public AuthService(IUserRepository userRepository, IPasswordHasher<UserTable> passwordHasher)
+    public async Task<UserTableModel?> AuthenticateAsync(string email, string password)
     {
-        _userRepository = userRepository;
-        _passwordHasher = passwordHasher;
-    }
+        var user = await userRepository.GetActiveUserByEmailAsync(email);
+        if (user == null) return null;
 
-    public async Task<UserTable?> AuthenticateAsync(string email, string password)
-    {
-        var user = await _userRepository.GetActiveUserByEmailAsync(email);
-
-        if (user == null)
-            return null;
-
-        var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
-
-        if (verificationResult == PasswordVerificationResult.Failed)
-            return null;
+        var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+        if (verificationResult == PasswordVerificationResult.Failed) return null;
 
         return user;
+    }
+
+    public async Task<IEnumerable<UserPermissionInfoModel>> GetUserPermissionsAsync(int userId)
+    {
+        return await userRepository.GetUserPermissionsAsync(userId);
     }
 }

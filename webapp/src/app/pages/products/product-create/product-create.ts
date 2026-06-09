@@ -1,14 +1,19 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { API_ORIGIN } from '../../../shared/config/api.config';
+import { debounceTime } from 'rxjs/operators';
+import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../shared/services/auth.service';
 import { ProductService } from '../../../shared/services/product.service';
 
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
+import { CategorySearchComponent } from '../../../shared/components/category-search/category-search';
+
 @Component({
   selector: 'app-product-create',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, ImageHoverPreview, CategorySearchComponent],
   templateUrl: './product-create.html',
   styleUrl: './product-create.css',
 })
@@ -18,6 +23,7 @@ export class ProductCreate implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   isFormReady = signal<boolean>(false);
   isSubmitting = signal<boolean>(false);
@@ -29,14 +35,11 @@ export class ProductCreate implements OnInit {
   showReviewModal = signal<boolean>(false);
 
   isModified = signal<boolean>(false);
+  comparisonReport = signal<any[]>([]);
+  variantsComparison = signal<any[]>([]);
   private originalFormValue: any = null;
-  readonly apiOrigin = API_ORIGIN;
 
-  categories = signal([
-    { id: 1, name: 'เตาปิ้งย่าง' },
-    { id: 2, name: 'ตะแกรงปิ้งย่าง' },
-    { id: 3, name: 'กระทะย่าง' },
-  ]);
+  readonly apiOrigin = environment.apiUrl;
 
   productForm: FormGroup = this.fb.group({
     productNameTh: ['', [Validators.required]],
@@ -46,6 +49,8 @@ export class ProductCreate implements OnInit {
     categoryId: ['', [Validators.required]],
     productType: ['Product', [Validators.required]],
     productStatus: ['Available', [Validators.required]],
+    isStockTracked: [true, [Validators.required]],
+    inventoryGroup: ['ForSale', [Validators.required]],
     variants: this.fb.array([]),
   });
 
@@ -70,78 +75,84 @@ export class ProductCreate implements OnInit {
   }
 
   loadProductDetail(id: number) {
-    this.productService.getProductById(id).subscribe({
-      next: (product) => {
-        console.log('API Response:', product);
-        if (!product) {
-          this.submitError.set('ไม่พบข้อมูลสินค้าชิ้นนี้ในระบบ');
-          this.isFormReady.set(true);
-          return;
-        }
+    this.productService
+      .getProductById(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (product) => {
+          if (!product) {
+            this.submitError.set('ไม่พบข้อมูลสินค้าชิ้นนี้ในระบบ');
+            this.isFormReady.set(true);
+            return;
+          }
 
-        const nameTh = product.ProductNameTh ?? product.productNameTh;
-        const nameEn = product.ProductNameEn ?? product.productNameEn;
-        const desc = product.Description ?? product.description;
-        const brand = product.BrandName ?? product.brandName;
-        const catId = product.CategoryId ?? product.categoryId;
-        const type = product.ProductType ?? product.productType;
-        const status = product.ProductStatus ?? product.productStatus;
+          const nameTh = product.productNameTh;
+          const nameEn = product.productNameEn;
+          const desc = product.description;
+          const brand = product.brandName;
+          const catId = product.categoryId;
+          const type = product.productType;
+          const status = product.productStatus;
+          const isTracked = product.isStockTracked ?? true;
+          const invGroup = product.inventoryGroup ?? 'ForSale';
 
-        this.productForm.patchValue({
-          productNameTh: nameTh,
-          productNameEn: nameEn,
-          description: desc,
-          brandName: brand,
-          categoryId: catId,
-          productType: type || 'Product',
-          productStatus: status || 'Available',
-        });
-
-        this.variants.clear();
-        const variantsData = product.variants ?? product.Variants;
-        if (variantsData && Array.isArray(variantsData)) {
-          variantsData.forEach((v: any) => {
-            this.addVariantWithData(v);
+          this.productForm.patchValue({
+            productNameTh: nameTh,
+            productNameEn: nameEn,
+            description: desc,
+            brandName: brand,
+            categoryId: catId,
+            productType: type || 'Product',
+            productStatus: status || 'Available',
+            isStockTracked: isTracked,
+            inventoryGroup: invGroup,
           });
-        }
 
-        if (this.currentMode() === 'view') {
-          this.productForm.disable();
-        }
+          this.variants.clear();
+          const variantsData = product.variants;
 
-        this.isFormReady.set(true);
+          if (variantsData && Array.isArray(variantsData)) {
+            variantsData.forEach((v: any) => {
+              this.addVariantWithData(v);
+            });
+          }
 
-        this.originalFormValue = this.productForm.getRawValue();
-        this.isModified.set(false); // เริ่มต้นยังไม่ได้แก้ไขอะไร
-        this.trackFormChanges();
-      },
-      error: (err) => {
-        console.error('Error loading product:', err);
-        this.submitError.set('ไม่สามารถดึงข้อมูลรายละเอียดสินค้าได้');
-        this.isFormReady.set(true);
-      },
-    });
+          if (this.currentMode() === 'view') {
+            this.productForm.disable();
+          }
+
+          this.isFormReady.set(true);
+          this.originalFormValue = this.productForm.getRawValue();
+          this.isModified.set(false); // เริ่มต้นยังไม่ได้แก้ไขอะไร
+          this.trackFormChanges();
+        },
+        error: (err) => {
+          console.error('Error loading product:', err);
+          this.submitError.set('ไม่สามารถดึงข้อมูลรายละเอียดสินค้าได้');
+          this.isFormReady.set(true);
+        },
+      });
   }
 
   trackFormChanges(): void {
-    this.productForm.valueChanges.subscribe(() => {
-      if (this.currentMode() === 'create') {
-        this.isModified.set(this.productForm.dirty);
-      } else if (this.currentMode() === 'edit') {
-        const currentFormValue = this.productForm.getRawValue();
-        const hasChanged =
-          JSON.stringify(this.originalFormValue) !== JSON.stringify(currentFormValue);
-        this.isModified.set(hasChanged);
-      }
-    });
+    this.productForm.valueChanges
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.currentMode() === 'create') {
+          this.isModified.set(this.productForm.dirty);
+        } else if (this.currentMode() === 'edit') {
+          const currentFormValue = this.productForm.getRawValue();
+          const hasChanged =
+            JSON.stringify(this.originalFormValue) !== JSON.stringify(currentFormValue);
+          this.isModified.set(hasChanged);
+        }
+      });
   }
 
   getComparisonReport() {
     const current = this.productForm.getRawValue();
     const old = this.originalFormValue || {};
-    const getCatName = (id: any) => this.categories().find((c) => c.id === Number(id))?.name || id;
-
-    // เตรียมค่าเพื่อทำการเปรียบเทียบแบบ Trim ข้อมูลป้องกันสเปซว่าง
+    const getCatName = (id: any) => id ? `รหัสหมวดหมู่: ${id}` : '-';
     const oldNameTh = (old.productNameTh || '').trim();
     const newNameTh = (current.productNameTh || '').trim();
     const oldNameEn = (old.productNameEn || '').trim();
@@ -189,6 +200,18 @@ export class ProductCreate implements OnInit {
         isChanged: old.productStatus !== current.productStatus,
       },
       {
+        label: 'การนับสต็อก',
+        old: old.isStockTracked ? 'นับสต็อก' : 'ไม่นับสต็อก',
+        new: current.isStockTracked ? 'นับสต็อก' : 'ไม่นับสต็อก',
+        isChanged: old.isStockTracked !== current.isStockTracked,
+      },
+      {
+        label: 'กลุ่มคลังสินค้า',
+        old: old.inventoryGroup === 'Internal' ? 'ใช้ภายในองค์กร' : 'สินค้าจำหน่าย',
+        new: current.inventoryGroup === 'Internal' ? 'ใช้ภายในองค์กร' : 'สินค้าจำหน่าย',
+        isChanged: old.inventoryGroup !== current.inventoryGroup,
+      },
+      {
         label: 'รายละเอียดสินค้า',
         old: oldDesc || '-',
         new: newDesc || '-',
@@ -203,8 +226,6 @@ export class ProductCreate implements OnInit {
 
     return currentVariants.map((v: any, index: number) => {
       const oldV = oldVariants[index];
-
-      // ฟังก์ชันตัวช่วยดึงข้อความขนาด กว้าง x ยาว x สูง
       const getDimText = (item: any) => {
         if (!item) return '-';
         const w = item.width ?? 0;
@@ -213,8 +234,6 @@ export class ProductCreate implements OnInit {
         return `${w} x ${l} x ${h} ซม.`;
       };
 
-      // กรณี 1: เป็น SKU ที่เพิ่มเข้ามาใหม่
-      // 1. เพิ่มรายการตรวจเช็ค "รูปภาพประกอบ" ในฝั่งกรณี SKU ใหม่ (oldV ไม่มีค่า)
       if (!oldV) {
         return {
           skuName: v.sku || `SKU ใหม่ลำดับที่ #${index + 1}`,
@@ -222,13 +241,18 @@ export class ProductCreate implements OnInit {
           details: [
             { field: 'รหัส SKU', old: '-', new: v.sku || '-', isChanged: true },
             { field: 'บาร์โค้ด', old: '-', new: v.barcode || '-', isChanged: true },
+            { field: 'ชื่อตัวเลือก (ไทย)', old: '-', new: v.variantNameTh || '-', isChanged: true },
+            { field: 'ชื่อตัวเลือก (Eng)', old: '-', new: v.variantNameEn || '-', isChanged: true },
+            { field: 'สี (Color)', old: '-', new: v.color || '-', isChanged: true },
+            { field: 'ขนาด (Size)', old: '-', new: v.sizeLabel || '-', isChanged: true },
+            { field: 'ลวดลาย (Style)', old: '-', new: v.stylePattern || '-', isChanged: true },
             {
               field: 'รูปภาพประกอบ SKU',
               old: null,
               new: v.imageUrl || null,
               isChanged: !!v.imageUrl,
               isImage: true,
-            }, // ✨ เพิ่มบรรทัดนี้
+            },
             { field: 'หน่วยนับ', old: '-', new: v.unitOfMeasure || 'อัน', isChanged: true },
             { field: 'ขนาด (กว้างxยาวxสูง)', old: '-', new: getDimText(v), isChanged: true },
             { field: 'น้ำหนัก (กรัม)', old: '-', new: v.weight ?? 0, isChanged: true },
@@ -239,13 +263,11 @@ export class ProductCreate implements OnInit {
         };
       }
 
-      // ตรวจเช็กการเปลี่ยนแปลงของขนาด (เช็กแยกทีละแกน)
       const isDimChanged =
         Number(oldV.width) !== Number(v.width) ||
         Number(oldV.length) !== Number(v.length) ||
         Number(oldV.height) !== Number(v.height);
 
-      // กรณี 2: เป็น SKU เดิมที่มีอยู่แล้ว แต่นำมาเช็กความเปลี่ยนแปลง
       const detailsReport = [
         {
           field: 'รหัส SKU',
@@ -265,6 +287,36 @@ export class ProductCreate implements OnInit {
           old: oldV.barcode || '-',
           new: v.barcode || '-',
           isChanged: (oldV.barcode || '').trim() !== (v.barcode || '').trim(),
+        },
+        {
+          field: 'ชื่อตัวเลือก (ไทย)',
+          old: oldV.variantNameTh || '-',
+          new: v.variantNameTh || '-',
+          isChanged: (oldV.variantNameTh || '').trim() !== (v.variantNameTh || '').trim(),
+        },
+        {
+          field: 'ชื่อตัวเลือก (Eng)',
+          old: oldV.variantNameEn || '-',
+          new: v.variantNameEn || '-',
+          isChanged: (oldV.variantNameEn || '').trim() !== (v.variantNameEn || '').trim(),
+        },
+        {
+          field: 'สี (Color)',
+          old: oldV.color || '-',
+          new: v.color || '-',
+          isChanged: (oldV.color || '').trim() !== (v.color || '').trim(),
+        },
+        {
+          field: 'ขนาด (Size)',
+          old: oldV.sizeLabel || '-',
+          new: v.sizeLabel || '-',
+          isChanged: (oldV.sizeLabel || '').trim() !== (v.sizeLabel || '').trim(),
+        },
+        {
+          field: 'ลวดลาย (Style)',
+          old: oldV.stylePattern || '-',
+          new: v.stylePattern || '-',
+          isChanged: (oldV.stylePattern || '').trim() !== (v.stylePattern || '').trim(),
         },
         {
           field: 'หน่วยนับ',
@@ -304,7 +356,6 @@ export class ProductCreate implements OnInit {
         },
       ];
 
-      // เช็กภาพรวมว่า SKU ตัวนี้มีฟิลด์ใดฟิลด์หนึ่งเปลี่ยนไปหรือไม่
       const hasAnyChange = detailsReport.some((d) => d.isChanged);
 
       return {
@@ -317,27 +368,25 @@ export class ProductCreate implements OnInit {
   }
 
   addVariantWithData(v: any): void {
-    // 💡 ดักจับแบบยืดหยุ่นสำหรับฝั่ง SKU ตัวย่อย
     const variantForm = this.fb.group({
-      variantId: [v.VariantId ?? v.variantId],
-      sku: [v.Sku ?? v.sku, [Validators.required]],
-      barcode: [v.Barcode ?? v.barcode],
-      imageUrl: [v.ImageUrl ?? v.imageUrl ?? null],
-      unitOfMeasure: [v.UnitOfMeasure ?? v.unitOfMeasure ?? 'อัน', [Validators.required]],
-      width: [v.Width ?? v.width ?? 0.01, [Validators.required, Validators.min(0)]],
-      length: [v.Length ?? v.length ?? 0.01, [Validators.required, Validators.min(0)]],
-      height: [v.Height ?? v.height ?? 0.01, [Validators.required, Validators.min(0)]],
-      weight: [v.Weight ?? v.weight ?? 0.01, [Validators.required, Validators.min(0)]],
-      basePrice: [v.BasePrice ?? v.basePrice ?? 0.0, [Validators.required, Validators.min(0)]],
-      discountPrice: [v.DiscountPrice ?? v.discountPrice ?? 0.0, [Validators.min(0)]],
-      currentQuantity: [
-        v.CurrentQuantity ?? v.currentQuantity ?? 0,
-        [Validators.required, Validators.min(0)],
-      ],
-      reorderPoint: [
-        v.ReorderPoint ?? v.reorderPoint ?? 0,
-        [Validators.required, Validators.min(0)],
-      ],
+      variantId: [v.variantId],
+      sku: [v.sku, [Validators.required]],
+      barcode: [v.barcode],
+      variantNameTh: [v.variantNameTh],
+      variantNameEn: [v.variantNameEn],
+      color: [v.color],
+      sizeLabel: [v.sizeLabel],
+      stylePattern: [v.stylePattern],
+      imageUrl: [v.imageUrl ?? null],
+      unitOfMeasure: [v.unitOfMeasure ?? 'อัน', [Validators.required]],
+      width: [v.width ?? 0.01, [Validators.required, Validators.min(0)]],
+      length: [v.length ?? 0.01, [Validators.required, Validators.min(0)]],
+      height: [v.height ?? 0.01, [Validators.required, Validators.min(0)]],
+      weight: [v.weight ?? 0.01, [Validators.required, Validators.min(0)]],
+      basePrice: [v.basePrice ?? 0.0, [Validators.required, Validators.min(0)]],
+      discountPrice: [v.discountPrice ?? 0.0, [Validators.min(0)]],
+      currentQuantity: [v.currentQuantity ?? 0, [Validators.required, Validators.min(0)]],
+      reorderPoint: [v.reorderPoint ?? 0, [Validators.required, Validators.min(0)]],
     });
 
     if (this.currentMode() === 'view') {
@@ -346,12 +395,16 @@ export class ProductCreate implements OnInit {
     this.variants.push(variantForm);
   }
 
-  // ฟังก์ชันกดเพิ่ม SKU เปล่าใหม่ (กรณีโหมดสร้าง/แก้ไข)
   addVariant(): void {
     const variantForm = this.fb.group({
       variantId: [null],
       sku: ['', [Validators.required]],
       barcode: [''],
+      variantNameTh: [''],
+      variantNameEn: [''],
+      color: [''],
+      sizeLabel: [''],
+      stylePattern: [''],
       imageUrl: [null],
       unitOfMeasure: ['อัน', [Validators.required]],
       width: [0.01, [Validators.required, Validators.min(0)]],
@@ -370,11 +423,9 @@ export class ProductCreate implements OnInit {
     this.variants.removeAt(index);
   }
 
-  // ✨ 1. ฟังก์ชันจัดการเมื่อเลือกไฟล์รูปภาพ
   onVariantImageSelected(event: any, variantIndex: number): void {
     const file = event.target.files[0];
     if (!file) return;
-
     if (file.size > 2 * 1024 * 1024) {
       this.submitError.set('ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB');
       return;
@@ -383,23 +434,25 @@ export class ProductCreate implements OnInit {
     this.isUploadingImage.set(true);
     this.submitError.set(null);
 
-    this.productService.uploadImage(file).subscribe({
-      next: (res: any) => {
-        const variantForm = this.variants.at(variantIndex) as FormGroup;
-        variantForm.patchValue({ imageUrl: res.imageUrl });
-        variantForm.markAsDirty();
-        this.isModified.set(true);
-        this.isUploadingImage.set(false);
-      },
-      error: (err: any) => {
-        console.error('Upload failed', err);
-        this.submitError.set('ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง');
-        this.isUploadingImage.set(false);
-      },
-    });
+    this.productService
+      .uploadImage(file)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: any) => {
+          const variantForm = this.variants.at(variantIndex) as FormGroup;
+          variantForm.patchValue({ imageUrl: res.imageUrl });
+          variantForm.markAsDirty();
+          this.isModified.set(true);
+          this.isUploadingImage.set(false);
+        },
+        error: (err: any) => {
+          console.error('Upload failed', err);
+          this.submitError.set('ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง');
+          this.isUploadingImage.set(false);
+        },
+      });
   }
 
-  // ✨ 2. ฟังก์ชันลบรูปภาพออกจากฟอร์ม
   removeVariantImage(variantIndex: number): void {
     const variantForm = this.variants.at(variantIndex) as FormGroup;
     variantForm.patchValue({ imageUrl: null });
@@ -407,7 +460,6 @@ export class ProductCreate implements OnInit {
     this.isModified.set(true);
   }
 
-  // กดปุ่มบันทึก ให้เด้งหน้าต่าง Review ก่อน
   onPreSubmit(): void {
     this.submitError.set(null);
     if (!this.productForm.valid) {
@@ -415,9 +467,7 @@ export class ProductCreate implements OnInit {
       return;
     }
 
-    // ✨ [เพิ่มจุดนี้] ดักจับรหัส SKU และ Barcode ซ้ำกันเองภายในฟอร์มหน้าเว็บ
     const rawVariants = this.variants.getRawValue();
-
     const skus = rawVariants.map((v) => (v.sku || '').trim().toLowerCase()).filter((s) => s !== '');
     const hasDuplicateSku = skus.some((item, index) => skus.indexOf(item) !== index);
     if (hasDuplicateSku) {
@@ -443,50 +493,52 @@ export class ProductCreate implements OnInit {
       return;
     }
 
-    // เปิด Modal ให้ Review ข้อมูล
+    this.comparisonReport.set(this.getComparisonReport());
+    this.variantsComparison.set(this.getVariantsComparison());
     this.showReviewModal.set(true);
   }
 
-  // ยืนยันการบันทึกข้อมูลจริงจากหน้าต่าง Review
   executeSubmit(): void {
     this.showReviewModal.set(false);
     const payload = this.buildPayload();
     this.isSubmitting.set(true);
 
     if (this.currentMode() === 'edit') {
-      // เรียกใช้ API อัปเดตสินค้า
-      this.productService.updateProduct(this.productId()!, payload).subscribe({
-        next: () => {
-          this.isSubmitting.set(false);
-          this.router.navigate(['/products']);
-        },
-        error: (err) => {
-          this.isSubmitting.set(false);
-          this.submitError.set(err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้');
-        },
-      });
+      this.productService
+        .updateProduct(this.productId()!, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.isSubmitting.set(false);
+            this.router.navigate(['/products']);
+          },
+          error: (err) => {
+            this.isSubmitting.set(false);
+            this.submitError.set(err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้');
+          },
+        });
     } else {
-      // เรียกใช้ API สร้างสินค้าอันเดิม
-      this.productService.createProduct(payload).subscribe({
-        next: () => {
-          this.isSubmitting.set(false);
-          this.router.navigate(['/products']);
-        },
-        error: (err) => {
-          this.isSubmitting.set(false);
-          this.submitError.set(err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้');
-        },
-      });
+      this.productService
+        .createProduct(payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.isSubmitting.set(false);
+            this.router.navigate(['/products']);
+          },
+          error: (err) => {
+            this.isSubmitting.set(false);
+            this.submitError.set(err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้');
+          },
+        });
     }
   }
 
-  // เปลี่ยนชื่อฟังก์ชันเดิมเล็กน้อยเพื่อให้ล้อไปกับระบบใหม่
   onSubmit() {
     this.onPreSubmit();
   }
 
   private buildPayload(): any {
-    // ปรับโครงสร้าง payload ให้แนบ `variantId` ไปด้วย (กรณี Edit)
     const raw = this.productForm.getRawValue();
     const currentUserId = Number(this.authService.currentUser()?.id);
 
@@ -498,12 +550,19 @@ export class ProductCreate implements OnInit {
       categoryId: Number(raw.categoryId),
       productType: raw.productType,
       productStatus: raw.productStatus,
+      isStockTracked: Boolean(raw.isStockTracked),
+      inventoryGroup: raw.inventoryGroup,
       updatedBy: this.currentMode() === 'edit' ? currentUserId : undefined,
       createdBy: this.currentMode() === 'create' ? currentUserId : undefined,
       variants: (raw.variants ?? []).map((variant: any) => ({
         variantId: variant.variantId ? Number(variant.variantId) : undefined,
         sku: String(variant.sku ?? '').trim(),
         barcode: String(variant.barcode ?? '').trim() || undefined,
+        variantNameTh: String(variant.variantNameTh ?? '').trim() || undefined,
+        variantNameEn: String(variant.variantNameEn ?? '').trim() || undefined,
+        color: String(variant.color ?? '').trim() || undefined,
+        sizeLabel: String(variant.sizeLabel ?? '').trim() || undefined,
+        stylePattern: String(variant.stylePattern ?? '').trim() || undefined,
         imageUrl: variant.imageUrl || undefined,
         unitOfMeasure: String(variant.unitOfMeasure ?? 'อัน'),
         width: Number(variant.width ?? 0),

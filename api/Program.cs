@@ -1,5 +1,9 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.FileProviders;
 using PCS_API.Handlers;
 using PCS_API.Models;
 using PCS_API.Repositories;
@@ -15,6 +19,17 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("GlobalLimiter", opt =>
+    {
+        opt.PermitLimit = 100;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 2;
     });
 });
 
@@ -35,17 +50,53 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    // System
+    options.AddPolicy("CanManageSettings", p => p.Requirements.Add(new PermissionRequirementHandler("system:settings")));
+    options.AddPolicy("CanViewAuditLog", p => p.Requirements.Add(new PermissionRequirementHandler("system:audit_log")));
+
+    // User
+    options.AddPolicy("CanViewUsers", p => p.Requirements.Add(new PermissionRequirementHandler("user:view")));
+    options.AddPolicy("CanManageUsers", p => p.Requirements.Add(new PermissionRequirementHandler("user:manage")));
+
+    // Product
+    options.AddPolicy("CanViewProduct", p => p.Requirements.Add(new PermissionRequirementHandler("product:view")));
+    options.AddPolicy("CanCreateProduct", p => p.Requirements.Add(new PermissionRequirementHandler("product:create")));
+    options.AddPolicy("CanEditProduct", p => p.Requirements.Add(new PermissionRequirementHandler("product:edit")));
+    options.AddPolicy("CanViewProductCost", p => p.Requirements.Add(new PermissionRequirementHandler("product:view_cost")));
+
+    // Stock
+    options.AddPolicy("CanViewStock", p => p.Requirements.Add(new PermissionRequirementHandler("stock:view")));
+    options.AddPolicy("CanStockIn", p => p.Requirements.Add(new PermissionRequirementHandler("stock:in")));
+    options.AddPolicy("CanStockOut", p => p.Requirements.Add(new PermissionRequirementHandler("stock:out")));
+    options.AddPolicy("CanStockAdjust", p => p.Requirements.Add(new PermissionRequirementHandler("stock:adjust")));
+
+    // Upload
+    options.AddPolicy("CanUploadImage", p => p.Requirements.Add(new PermissionRequirementHandler("upload:image")));
+
+    // Report
+    options.AddPolicy("CanViewReport", p => p.Requirements.Add(new PermissionRequirementHandler("report:view")));
+});
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-builder.Services.AddScoped<IPasswordHasher<UserTable>, PasswordHasher<UserTable>>();
+builder.Services.AddScoped<IPasswordHasher<UserTableModel>, PasswordHasher<UserTableModel>>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IStockRepository, StockRepository>();
+builder.Services.AddScoped<IStockService, StockService>();
+builder.Services.AddSingleton<ImageCleanupChannel>();
+builder.Services.AddHostedService<ImageCleanupBackgroundService>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -58,10 +109,21 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AngularApp");
-app.UseAuthentication();
-app.UseStaticFiles();
+app.UseRateLimiter(); // Add Rate Limiter
+
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseStaticFiles(); // After Authorization so we can protect it if needed
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"), "uploads")
+        ),
+    RequestPath = "/api/uploads"
+});
 
 app.Use(async (context, next) =>
 {

@@ -52,15 +52,10 @@
           </div>
 
           <div class="form-control w-full">
-            <label class="label"
-              ><span class="label-text font-medium">หมวดหมู่สินค้า *</span></label
-            >
-            <select formControlName="categoryId" class="select select-bordered w-full">
-              <option value="" disabled>เลือกหมวดหมู่</option>
-              @for (cat of categories(); track cat.id) {
-                <option [value]="cat.id">{{ cat.name }}</option>
-              }
-            </select>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">หมวดหมู่สินค้า <span class="text-error">*</span></legend>
+              <app-category-search formControlName="categoryId" placeholder="ค้นหาหมวดหมู่ (เช่น เตาปิ้งย่าง)" [restrictLevel]="3"></app-category-search>
+            </fieldset>
           </div>
 
           <div class="form-control w-full">
@@ -73,12 +68,33 @@
           </div>
 
           <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">การนับสต็อก</span></label>
+            <div class="flex items-center mt-2">
+              <input
+                type="checkbox"
+                formControlName="isStockTracked"
+                class="toggle toggle-primary"
+              />
+              <span class="ml-3 text-sm">
+                {{ productForm.get('isStockTracked')?.value ? 'นับสต็อก (สร้างความเคลื่อนไหวสต็อก)' : 'ไม่นับสต็อก (บันทึกค่าใช้จ่ายทันที)' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">กลุ่มคลังสินค้า</span></label>
+            <select formControlName="inventoryGroup" class="select select-bordered w-full">
+              <option value="ForSale">สินค้าจำหน่าย (For Sale)</option>
+              <option value="Internal">ใช้ภายในองค์กร (Internal Use)</option>
+            </select>
+          </div>
+
+          <div class="form-control w-full">
             <label class="label"><span class="label-text font-medium">สถานะสินค้า</span></label>
             <select formControlName="productStatus" class="select select-bordered w-full">
               <option value="Available">พร้อมจำหน่าย (Available)</option>
               <option value="Unavailable">งดจำหน่ายชั่วคราว (Unavailable)</option>
               <option value="Discontinued">ยกเลิกผลิต (Discontinued)</option>
-              <option value="Internal_Use">ใช้ภายในองค์กร (Internal Use)</option>
             </select>
           </div>
         </div>
@@ -135,20 +151,36 @@
                   </button>
                 }
 
-                <div class="badge badge-neutral mb-3">SKU #{{ $index + 1 }}</div>
+                <div class="badge badge-neutral mb-3 flex gap-1">
+                  SKU #{{ $index + 1 }}
+                  @if (variant.get('variantNameTh')?.value) {
+                    <span class="opacity-90 font-medium">
+                      ({{ variant.get('variantNameTh')?.value }})
+                    </span>
+                  } @else if (
+                    variant.get('color')?.value ||
+                    variant.get('sizeLabel')?.value ||
+                    variant.get('stylePattern')?.value
+                  ) {
+                    <span class="opacity-70 font-normal">
+                      ({{ variant.get('color')?.value }} {{ variant.get('sizeLabel')?.value }}
+                      {{ variant.get('stylePattern')?.value }})
+                    </span>
+                  }
+                </div>
 
                 <div class="form-control mb-4 p-3 bg-base-100 rounded-lg border border-base-200">
                   <label class="label-text text-xs font-semibold mb-2">รูปภาพประกอบ SKU</label>
                   <div class="flex items-center gap-4">
                     @if (variant.get('imageUrl')?.value) {
                       <div
-                        class="relative w-24 h-24 border rounded-md overflow-hidden bg-base-200 flex-shrink-0"
+                        class="relative flex-shrink-0"
                       >
-                        <img
-                          [src]="apiOrigin + variant.get('imageUrl')?.value"
-                          alt="Preview"
-                          class="object-cover w-full h-full"
-                        />
+                        <app-image-hover-preview 
+                          [imageUrl]="apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value)"
+                          altText="Preview"
+                          imageClass="w-24 h-24 border rounded-md object-cover bg-base-200 cursor-pointer"
+                        ></app-image-hover-preview>
                         @if (currentMode() !== 'view') {
                           <button
                             type="button"
@@ -205,6 +237,56 @@
                     />
                   </div>
 
+                  <div class="form-control md:col-span-2">
+                    <label class="label-text text-xs font-semibold mb-1">ชื่อตัวเลือก (ไทย)</label>
+                    <input
+                      type="text"
+                      formControlName="variantNameTh"
+                      placeholder="เช่น เตาหมูกระทะมินิ ขนาด 17x13cm"
+                      class="input input-bordered input-sm w-full"
+                    />
+                  </div>
+
+                  <div class="form-control md:col-span-2">
+                    <label class="label-text text-xs font-semibold mb-1">ชื่อตัวเลือก (Eng)</label>
+                    <input
+                      type="text"
+                      formControlName="variantNameEn"
+                      placeholder="เช่น Mini BBQ Grill 17x13cm"
+                      class="input input-bordered input-sm w-full"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">สี (Color)</label>
+                    <input
+                      type="text"
+                      formControlName="color"
+                      placeholder="เช่น แดง, น้ำเงิน"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">ขนาด (Size)</label>
+                    <input
+                      type="text"
+                      formControlName="sizeLabel"
+                      placeholder="เช่น S, M, L, XL"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-xs font-semibold mb-1">ลวดลาย (Style)</label>
+                    <input
+                      type="text"
+                      formControlName="stylePattern"
+                      placeholder="เช่น ลายทาง, ลายจุด"
+                      class="input input-bordered input-sm"
+                    />
+                  </div>
+
                   <div class="form-control">
                     <label class="label-text text-xs font-semibold mb-1">หน่วยนับ *</label>
                     <input
@@ -219,15 +301,6 @@
                     <input
                       type="number"
                       formControlName="basePrice"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">สต็อกเริ่มต้น *</label>
-                    <input
-                      type="number"
-                      formControlName="currentQuantity"
                       class="input input-bordered input-sm"
                     />
                   </div>
@@ -334,7 +407,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of getComparisonReport(); track item.label) {
+              @for (item of comparisonReport(); track item.label) {
                 <tr
                   [class.bg-warning/5]="item.isChanged"
                   class="transition-colors border-b border-base-100"
@@ -372,7 +445,7 @@
         </h4>
 
         <div class="space-y-4">
-          @for (skuGroup of getVariantsComparison(); track $index) {
+          @for (skuGroup of variantsComparison(); track $index) {
             <div class="border border-base-200 rounded-xl bg-base-100 shadow-sm overflow-hidden">
               <div
                 class="bg-base-200/40 px-4 py-2 flex justify-between items-center border-b border-base-200"
