@@ -2,7 +2,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between mb-8">
     <div>
-      <h1 class="text-2xl font-bold text-base-content">ข้อมูลบริษัท / สาขา</h1>
+      <h1 class="text-2xl font-bold text-fuchsia-600 dark:text-fuchsia-400">🏢 ข้อมูลบริษัท / สาขา</h1>
       <p class="text-sm text-base-content/70 mt-1">
         จัดการข้อมูลโปรไฟล์บริษัท โลโก้ และรายละเอียดสำหรับการออกเอกสารต่างๆ
       </p>
@@ -15,34 +15,67 @@
     </div>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
-      
       <!-- General Section -->
       <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body">
           <h2 class="card-title text-lg mb-4">ข้อมูลทั่วไป</h2>
-          
+
           <div class="flex flex-col md:flex-row gap-6">
             <!-- Logo Upload -->
             <div class="flex flex-col items-center justify-start space-y-4 md:w-1/3">
               <div class="avatar">
-                <div class="w-32 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden bg-base-200 flex items-center justify-center">
+                <div
+                  class="w-32 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden bg-base-200 flex items-center justify-center"
+                >
                   @if (form.get('logoUrl')?.value) {
-                    <img [src]="apiOrigin + form.get('logoUrl')?.value" alt="Company Logo" class="object-cover" />
+                    <img
+                      [src]="apiOrigin + form.get('logoUrl')?.value"
+                      alt="Company Logo"
+                      class="object-cover"
+                    />
                   } @else {
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-base-content/30">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      class="w-12 h-12 text-base-content/30"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"
+                      />
                     </svg>
                   }
                 </div>
               </div>
               <div class="flex flex-col w-full gap-2 px-4">
-                <label class="btn btn-outline btn-primary btn-sm w-full" [class.btn-disabled]="isUploadingLogo()">
-                  @if (isUploadingLogo()) { <span class="loading loading-spinner loading-xs"></span> }
+                <label
+                  class="btn btn-outline btn-primary btn-sm w-full"
+                  [class.btn-disabled]="isUploadingLogo()"
+                >
+                  @if (isUploadingLogo()) {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
                   อัปโหลดโลโก้
-                  <input type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp" (change)="onFileSelected($event)" [disabled]="isUploadingLogo()" />
+                  <input
+                    type="file"
+                    class="hidden"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    (change)="onFileSelected($event)"
+                    [disabled]="isUploadingLogo()"
+                  />
                 </label>
                 @if (form.get('logoUrl')?.value) {
-                  <button type="button" class="btn btn-ghost btn-sm text-error w-full" (click)="removeLogo()">ลบโลโก้</button>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm text-error w-full"
+                    (click)="removeLogo()"
+                  >
+                    ลบโลโก้
+                  </button>
                 }
               </div>
             </div>
@@ -50,18 +83,41 @@
             <!-- Basic Info -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
               <div class="form-control">
-                <label class="label"><span class="label-text font-semibold">รหัสสาขา <span class="text-error">*</span></span></label>
-                <input type="text" formControlName="branchCode" class="input input-bordered w-full" placeholder="00000" maxlength="5" />
-                <label class="label text-xs text-base-content/60">เลข 5 หลัก (00000 สำหรับสำนักงานใหญ่)</label>
+                <label class="label"
+                  ><span class="label-text font-semibold"
+                    >รหัสสาขา <span class="text-error">*</span></span
+                  ></label
+                >
+                <input
+                  type="text"
+                  formControlName="branchCode"
+                  class="input input-bordered w-full"
+                  placeholder="00000"
+                  maxlength="5"
+                />
+                <label class="label text-xs text-base-content/60"
+                  >เลข 5 หลัก (00000 สำหรับสำนักงานใหญ่)</label
+                >
               </div>
 
               <div class="form-control">
-                <label class="label"><span class="label-text font-semibold">ชื่อสาขา (เรียกใช้ภายใน) <span class="text-error">*</span></span></label>
-                <input type="text" formControlName="branchName" class="input input-bordered w-full" placeholder="เช่น สำนักงานใหญ่" />
+                <label class="label"
+                  ><span class="label-text font-semibold"
+                    >ชื่อสาขา (เรียกใช้ภายใน) <span class="text-error">*</span></span
+                  ></label
+                >
+                <input
+                  type="text"
+                  formControlName="branchName"
+                  class="input input-bordered w-full"
+                  placeholder="เช่น สำนักงานใหญ่"
+                />
               </div>
-              
+
               <div class="form-control">
-                <label class="label"><span class="label-text font-semibold">ประเภทผู้ประกอบการ</span></label>
+                <label class="label"
+                  ><span class="label-text font-semibold">ประเภทผู้ประกอบการ</span></label
+                >
                 <select formControlName="entityType" class="select select-bordered w-full">
                   <option value="Individual">บุคคลธรรมดา</option>
                   <option value="Juristic">นิติบุคคล</option>
@@ -69,7 +125,11 @@
               </div>
 
               <div class="form-control">
-                <label class="label"><span class="label-text font-semibold">รูปแบบองค์กร (กรณีพิมพ์เอกสาร)</span></label>
+                <label class="label"
+                  ><span class="label-text font-semibold"
+                    >รูปแบบองค์กร (กรณีพิมพ์เอกสาร)</span
+                  ></label
+                >
                 <select formControlName="companyType" class="select select-bordered w-full">
                   <option value="บุคคลธรรมดา">บุคคลธรรมดา</option>
                   <option value="บริษัทจำกัด">บริษัทจำกัด</option>
@@ -78,39 +138,86 @@
               </div>
 
               <div class="form-control md:col-span-2">
-                <label class="label"><span class="label-text font-semibold">ชื่อจดทะเบียน (นิติบุคคล/บุคคลธรรมดา)</span></label>
-                <input type="text" formControlName="registrationName" class="input input-bordered w-full" placeholder="เช่น บริษัท พีซีเอส จำกัด หรือ นายสมชาย ใจดี" />
+                <label class="label"
+                  ><span class="label-text font-semibold"
+                    >ชื่อจดทะเบียน (นิติบุคคล/บุคคลธรรมดา)</span
+                  ></label
+                >
+                <input
+                  type="text"
+                  formControlName="registrationName"
+                  class="input input-bordered w-full"
+                  placeholder="เช่น บริษัท พีซีเอส จำกัด หรือ นายสมชาย ใจดี"
+                />
               </div>
 
               <div class="form-control md:col-span-2">
-                <label class="label"><span class="label-text font-semibold">เลขประจำตัวผู้เสียภาษี / เลขบัตรประชาชน</span></label>
-                <input type="text" formControlName="taxId" class="input input-bordered w-full" placeholder="เลข 13 หลัก" />
+                <label class="label"
+                  ><span class="label-text font-semibold"
+                    >เลขประจำตัวผู้เสียภาษี / เลขบัตรประชาชน</span
+                  ></label
+                >
+                <input
+                  type="text"
+                  formControlName="taxId"
+                  class="input input-bordered w-full"
+                  placeholder="เลข 13 หลัก"
+                />
               </div>
 
-              <div class="form-control md:col-span-2 bg-base-200/50 p-4 rounded-lg border border-base-200">
+              <div
+                class="form-control md:col-span-2 bg-base-200/50 p-4 rounded-lg border border-base-200"
+              >
                 <label class="label cursor-pointer justify-start gap-4">
-                  <input type="checkbox" formControlName="isVatRegistered" class="toggle toggle-primary" />
-                  <span class="label-text font-semibold text-lg">จดทะเบียนภาษีมูลค่าเพิ่ม (VAT)</span>
+                  <input
+                    type="checkbox"
+                    formControlName="isVatRegistered"
+                    class="toggle toggle-primary"
+                  />
+                  <span class="label-text font-semibold text-lg"
+                    >จดทะเบียนภาษีมูลค่าเพิ่ม (VAT)</span
+                  >
                 </label>
-                
+
                 @if (form.get('isVatRegistered')?.value) {
                   <div class="mt-4 flex flex-col md:flex-row gap-4 items-start">
                     <div class="flex-1">
-                      <label class="label"><span class="label-text font-semibold">เอกสาร ภ.พ.20</span></label>
-                      <input type="file" class="file-input file-input-bordered file-input-sm w-full max-w-xs" accept=".jpg,.jpeg,.png,.webp,.pdf" (change)="onVatDocSelected($event)" [disabled]="isUploadingVatDoc()" />
-                      <div class="mt-2 text-xs text-base-content/60">อัปโหลดสำเนา ภ.พ.20 (JPG, PNG, PDF)</div>
+                      <label class="label"
+                        ><span class="label-text font-semibold">เอกสาร ภ.พ.20</span></label
+                      >
+                      <input
+                        type="file"
+                        class="file-input file-input-bordered file-input-sm w-full max-w-xs"
+                        accept=".jpg,.jpeg,.png,.webp,.pdf"
+                        (change)="onVatDocSelected($event)"
+                        [disabled]="isUploadingVatDoc()"
+                      />
+                      <div class="mt-2 text-xs text-base-content/60">
+                        อัปโหลดสำเนา ภ.พ.20 (JPG, PNG, PDF)
+                      </div>
                     </div>
-                    
+
                     @if (form.get('vatDocumentUrl')?.value) {
                       <div class="flex flex-col items-center gap-2">
-                        <div class="w-24 h-24 bg-base-100 rounded border flex items-center justify-center overflow-hidden">
+                        <div
+                          class="w-24 h-24 bg-base-100 rounded border flex items-center justify-center overflow-hidden"
+                        >
                           @if (form.get('vatDocumentUrl')?.value.endsWith('.pdf')) {
                             <span class="text-error font-bold">PDF</span>
                           } @else {
-                            <img [src]="apiOrigin + form.get('vatDocumentUrl')?.value" class="object-cover w-full h-full" />
+                            <img
+                              [src]="apiOrigin + form.get('vatDocumentUrl')?.value"
+                              class="object-cover w-full h-full"
+                            />
                           }
                         </div>
-                        <button type="button" class="btn btn-xs btn-error btn-outline" (click)="removeVatDoc()">ลบเอกสาร</button>
+                        <button
+                          type="button"
+                          class="btn btn-xs btn-error btn-outline"
+                          (click)="removeVatDoc()"
+                        >
+                          ลบเอกสาร
+                        </button>
                       </div>
                     }
                   </div>
@@ -125,21 +232,39 @@
       <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="card-body">
           <h2 class="card-title text-lg mb-4">ข้อมูลติดต่อ & ที่อยู่</h2>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control">
-              <label class="label"><span class="label-text font-semibold">เบอร์โทรศัพท์</span></label>
-              <input type="tel" formControlName="phone" class="input input-bordered w-full" placeholder="เช่น 02-123-4567" />
+              <label class="label"
+                ><span class="label-text font-semibold">เบอร์โทรศัพท์</span></label
+              >
+              <input
+                type="tel"
+                formControlName="phone"
+                class="input input-bordered w-full"
+                placeholder="เช่น 02-123-4567"
+              />
             </div>
-            
+
             <div class="form-control">
               <label class="label"><span class="label-text font-semibold">อีเมล</span></label>
-              <input type="email" formControlName="email" class="input input-bordered w-full" placeholder="เช่น contact@company.com" />
+              <input
+                type="email"
+                formControlName="email"
+                class="input input-bordered w-full"
+                placeholder="เช่น contact@company.com"
+              />
             </div>
 
             <div class="form-control md:col-span-2">
-              <label class="label"><span class="label-text font-semibold">ที่อยู่ (สำหรับออกใบกำกับภาษี)</span></label>
-              <textarea formControlName="address" class="textarea textarea-bordered h-24" placeholder="กรอกที่อยู่ให้ครบถ้วน..."></textarea>
+              <label class="label"
+                ><span class="label-text font-semibold">ที่อยู่ (สำหรับออกใบกำกับภาษี)</span></label
+              >
+              <textarea
+                formControlName="address"
+                class="textarea textarea-bordered h-24"
+                placeholder="กรอกที่อยู่ให้ครบถ้วน..."
+              ></textarea>
             </div>
           </div>
         </div>
@@ -147,13 +272,16 @@
 
       <!-- Action Buttons -->
       <div class="flex justify-end gap-3 mt-6">
-        <button type="button" class="btn btn-ghost" (click)="loadProfile()" [disabled]="isSaving()">ยกเลิก/คืนค่าเดิม</button>
+        <button type="button" class="btn btn-ghost" (click)="loadProfile()" [disabled]="isSaving()">
+          ยกเลิก/คืนค่าเดิม
+        </button>
         <button type="submit" class="btn btn-primary" [disabled]="isSaving() || form.invalid">
-          @if (isSaving()) { <span class="loading loading-spinner loading-xs"></span> }
+          @if (isSaving()) {
+            <span class="loading loading-spinner loading-xs"></span>
+          }
           บันทึกข้อมูล
         </button>
       </div>
-      
     </form>
   }
 </div>

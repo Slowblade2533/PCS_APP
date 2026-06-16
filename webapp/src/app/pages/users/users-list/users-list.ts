@@ -1,81 +1,102 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { UserListItem, UserListQuery } from '../../../shared/models/user.models';
 import { UserManagementService } from '../../../shared/services/user-management.service';
-import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, DatePipe, PaginationComponent],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, PaginationComponent],
   templateUrl: './users-list.html',
-  styleUrl: './users-list.css',
 })
 export class UsersList implements OnInit {
-  private readonly userService = inject(UserManagementService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly userService = inject(UserManagementService);
 
-  private readonly search$ = new Subject<string>();
+  private readonly refresh$ = new BehaviorSubject<void>(undefined);
 
   loading = signal(false);
-  togglingId = signal<number | null>(null);
   result = signal<PagedResult<UserListItem> | null>(null);
+  togglingId = signal<number | null>(null);
 
-  searchText = '';
-  selectedIsActive: boolean | undefined = undefined;
+  filterForm = new FormGroup({
+    searchText: new FormControl(''),
+    selectedIsActive: new FormControl<boolean | undefined>(undefined),
+  });
 
   query: UserListQuery = { page: 1, pageSize: 20 };
 
-  private currentReq?: import('rxjs').Subscription;
-
   ngOnInit(): void {
-    this.loadUsers();
-
-    this.search$
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+    this.filterForm
+      .get('searchText')
+      ?.valueChanges.pipe(
+        debounceTime(350),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe((search) => {
         this.query = { ...this.query, search: search || undefined, page: 1 };
-        this.loadUsers();
+        this.refresh$.next();
       });
-  }
 
-  loadUsers(): void {
-    if (this.currentReq) {
-      this.currentReq.unsubscribe();
-    }
+    this.filterForm
+      .get('selectedIsActive')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((isActive) => {
+        this.query = { ...this.query, isActive: isActive === null ? undefined : isActive, page: 1 };
+        this.refresh$.next();
+      });
 
-    this.loading.set(true);
-    this.currentReq = this.userService
-      .getUsers(this.query)
+    this.refresh$
       .pipe(
-        finalize(() => {
-          this.loading.set(false);
+        tap(() => this.loading.set(true)),
+        switchMap(() => {
+          const s = this.query.search?.trim() || '';
+          if (s.length > 0 && s.length < 3) {
+            return of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 });
+          }
+          return this.userService
+            .getUsers(this.query)
+            .pipe(
+              catchError(() =>
+                of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 }),
+              ),
+            );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((res) => this.result.set(res));
+      .subscribe((res) => {
+        this.result.set(res);
+        this.loading.set(false);
+      });
   }
 
-  onSearchChange(value: string): void {
-    this.search$.next(value);
-  }
-
-  onStatusChange(isActive: boolean | undefined): void {
-    this.query = { ...this.query, isActive, page: 1 };
+  changePage(page: number): void {
+    this.query = { ...this.query, page };
     this.loadUsers();
+  }
+
+  hasNextPage(): boolean {
+    const total = this.result()?.totalCount ?? 0;
+    return this.query.page * this.query.pageSize < total;
+  }
+
+  loadUsers(): void {
+    this.refresh$.next();
   }
 
   toggleActive(user: UserListItem): void {
@@ -102,15 +123,5 @@ export class UsersList implements OnInit {
         },
         error: () => this.loadUsers(),
       });
-  }
-
-  changePage(page: number): void {
-    this.query = { ...this.query, page };
-    this.loadUsers();
-  }
-
-  hasNextPage(): boolean {
-    const total = this.result()?.totalCount ?? 0;
-    return this.query.page * this.query.pageSize < total;
   }
 }

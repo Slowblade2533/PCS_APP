@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "analyzing-dotnet-performance": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-diag/skills/analyzing-dotnet-performance/SKILL.md",
+      "computedHash": "455c653913449f6fc71807fd9824dbb610d4f2e716ec0b0e4ae5c5c442ddb09b"
+    },
+    "angular-developer": {
+      "source": "angular/skills",
+      "sourceType": "github",
+      "skillPath": "angular-developer/SKILL.md",
+      "computedHash": "bc96134b414131115d2d2722c15421fa70b5e2c23e03e121407554566450d9c5"
+    },
+    "azure-sql-best-practices": {
+      "source": "amthomas46/azure-sql-best-practices",
+      "sourceType": "github",
+      "skillPath": "skills/azure-sql-best-practices/SKILL.md",
+      "computedHash": "64f1047270432b5acf9ff91edfa19a01998fc3dcbeb3997e1907719836203d47"
+    },
+    "dotnet-trace-collect": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-diag/skills/dotnet-trace-collect/SKILL.md",
+      "computedHash": "0f85e5292974bb2892327da90327b3f20d8341bf82fc6f55b4c4020e41cd6c5c"
+    },
+    "dotnet-webapi": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-aspnetcore/skills/dotnet-webapi/SKILL.md",
+      "computedHash": "9f9ca386ddefb34ebeaf269c6a7dac0bd0a8e9ea901ad5c489cd4d5e7c61fb22"
+    },
+    "sentry-dotnet-sdk": {
+      "source": "getsentry/sentry-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sentry-dotnet-sdk/SKILL.md",
+      "computedHash": "54d7d960fd75eaa38f0570e78f1bc259f2bc16771a2da304656277307cfdc7e1"
+    }
+  }
+}

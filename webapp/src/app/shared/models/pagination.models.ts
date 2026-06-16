@@ -5,3 +5,8 @@ export interface PagedResult<T> {
   pageSize: number;
   totalPages: number;
 }
+
+export interface PaginationParams {
+  pageNumber?: number;
+  pageSize?: number;
+}

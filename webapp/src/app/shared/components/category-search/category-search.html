@@ -1,64 +1,83 @@
 <div class="relative w-full">
-    <div class="relative flex items-center">
-        <!-- Search Icon -->
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            @if (isLoading()) {
-                <span class="loading loading-spinner loading-xs text-base-content/50"></span>
-            } @else {
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-            }
-        </div>
-        
-        <input 
-            type="text" 
-            [formControl]="searchControl"
-            [placeholder]="placeholder"
-            class="input input-bordered w-full pl-10 pr-10" 
-            [class.input-disabled]="disabled"
-            (focus)="onInputClick()"
-            (click)="onInputClick()"
-            autocomplete="off"
-        />
-
-        <!-- Clear Button -->
-        @if (selectedCategory() || searchControl.value) {
-            <button 
-                type="button" 
-                class="absolute inset-y-0 right-0 pr-3 flex items-center"
-                (click)="clearSelection($event)"
-                [disabled]="disabled"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/40 hover:text-error transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        }
+  <div class="relative flex items-center">
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      @if (isLoading()) {
+        <span class="loading loading-spinner loading-xs text-base-content/50"></span>
+      } @else {
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 text-base-content/40"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      }
     </div>
 
-    <!-- Dropdown -->
-    @if (showDropdown()) {
-        <ul class="absolute z-50 mt-1 w-full bg-base-100 shadow-xl max-h-60 rounded-box overflow-auto border border-base-200">
-            @if (categories().length === 0 && !isLoading()) {
-                <li class="p-4 text-center text-sm text-base-content/60">
-                    ไม่พบหมวดหมู่ที่ค้นหา
-                </li>
-            }
+    <input
+      type="text"
+      [formControl]="searchControl"
+      [placeholder]="placeholder"
+      class="input input-bordered w-full pl-10 pr-10"
+      [class.input-disabled]="disabled"
+      (focus)="onInputClick()"
+      (click)="onInputClick()"
+      autocomplete="off"
+    />
 
-            @for (category of categories(); track category.categoryId) {
-                <li 
-                    class="p-3 hover:bg-base-200 cursor-pointer text-sm border-b border-base-100 last:border-0"
-                    (click)="onSelectCategory(category)"
-                    [class.bg-primary]="selectedCategory()?.categoryId === category.categoryId"
-                    [class.text-primary-content]="selectedCategory()?.categoryId === category.categoryId"
-                >
-                    <div class="flex flex-col">
-                        <span class="font-medium">{{ category.categoryName }}</span>
-                        <span class="text-xs opacity-70 mt-0.5">{{ category.fullPath }}</span>
-                    </div>
-                </li>
-            }
-        </ul>
+    @if (selectedCategory() || searchControl.value) {
+      <button
+        type="button"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center"
+        (click)="clearSelection($event)"
+        [disabled]="disabled"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4 text-base-content/40 hover:text-error transition-colors"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
     }
+  </div>
+
+  @if (showDropdown()) {
+    <ul
+      class="absolute z-50 mt-1 w-full bg-base-100 shadow-xl max-h-60 rounded-box overflow-auto border border-base-200"
+    >
+      @if (categories().length === 0 && !isLoading()) {
+        <li class="p-4 text-center text-sm text-base-content/60">ไม่พบหมวดหมู่ที่ค้นหา</li>
+      }
+
+      @for (category of categories(); track category.categoryId) {
+        <li
+          class="p-3 hover:bg-base-200 cursor-pointer text-sm border-b border-base-100 last:border-0"
+          (click)="onSelectCategory(category)"
+          [class.bg-primary]="selectedCategory()?.categoryId === category.categoryId"
+          [class.text-primary-content]="selectedCategory()?.categoryId === category.categoryId"
+        >
+          <div class="flex flex-col">
+            <span class="font-medium">{{ category.categoryName }}</span>
+            <span class="text-xs opacity-70 mt-0.5">{{ category.fullPath }}</span>
+          </div>
+        </li>
+      }
+    </ul>
+  }
 </div>

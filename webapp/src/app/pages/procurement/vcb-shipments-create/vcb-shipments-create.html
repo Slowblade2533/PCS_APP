@@ -1,0 +1,438 @@
+<div class="container mx-auto p-6 max-w-6xl w-full">
+  <div class="flex items-center gap-4 mb-8">
+    <button class="btn btn-circle btn-ghost" (click)="location.back()">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+        />
+      </svg>
+    </button>
+    <div>
+      <h1 class="text-2xl font-bold text-violet-600 dark:text-violet-400">📥 สร้างใบรับสินค้า VCANBUY</h1>
+      <p class="text-base-content/60 mt-1">รับสินค้าจากจีน แจกแจงหมายเลขกล่อง และอัปเดตสต็อก</p>
+    </div>
+  </div>
+
+  <form [formGroup]="shipmentForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-6">
+    <!-- ค้นหาออเดอร์อ้างอิง -->
+    @if (!selectedDelivery) {
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-4">1. เลือกบิลขนส่ง VCANBUY อ้างอิง</h2>
+
+          <div class="flex flex-col gap-4 mb-4">
+            <div class="relative w-full">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-5 text-base-content/50"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                class="input input-bordered w-full pl-10 focus:input-primary"
+                placeholder="ค้นหาด้วยเลขบิลขนส่ง (TOUT...)"
+                (input)="onSearchChange($event)"
+              />
+            </div>
+          </div>
+
+          <div class="overflow-x-auto relative border border-base-200 rounded-box">
+            @if (isSearching) {
+              <div
+                class="absolute inset-0 bg-base-100/50 backdrop-blur-sm flex items-center justify-center z-10"
+              >
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+              </div>
+            }
+            <table class="table table-zebra w-full">
+              <thead>
+                <tr class="bg-base-200/50">
+                  <th>เลขบิลขนส่ง</th>
+                  <th>เลขใบสั่งซื้อ (XLY)</th>
+                  <th>วันที่ส่ง</th>
+                  <th>บริษัทขนส่ง</th>
+                  <th>เลขกล่อง (TX)</th>
+                  <th class="text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (del of searchResults; track del.id) {
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td class="font-bold text-primary">{{ del.deliveryNo }}</td>
+                    <td class="text-sm opacity-90 text-info">{{ del.orderNumbers || '-' }}</td>
+                    <td>{{ del.orderDate | date: 'dd/MM/yyyy' }}</td>
+                    <td>{{ del.domesticShippingCompany }}</td>
+                    <td class="text-sm opacity-80">{{ del.packageBoxes || '-' }}</td>
+                    <td class="text-center">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                        (click)="selectDelivery(del)"
+                      >
+                        เลือก
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  @if (!isSearching) {
+                    <tr>
+                      <td colspan="5" class="text-center py-8 text-base-content/50">
+                        ไม่พบข้อมูลออเดอร์ (สถานะรอดำเนินการ)
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-4 flex justify-between items-center">
+            <div class="text-sm text-base-content/70">
+              แสดงรายการทั้งหมด <span class="font-bold">{{ totalCount }}</span>
+            </div>
+            <app-pagination
+              [page]="searchParams.page"
+              [pageSize]="searchParams.pageSize"
+              [totalCount]="totalCount"
+              (pageChange)="onPageChange($event)"
+            >
+            </app-pagination>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (selectedDelivery) {
+      <div class="alert alert-success shadow-sm flex justify-between">
+        <div class="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="stroke-current shrink-0 h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <div>
+            <h3 class="font-bold">บิลขนส่งอ้างอิง: {{ selectedDelivery.deliveryNo }}</h3>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn btn-sm btn-ghost"
+          (click)="
+            selectedDelivery = null;
+            shipmentForm.patchValue({ deliveryId: null });
+            searchResults = [];
+            items.clear()
+          "
+        >
+          เปลี่ยนบิลขนส่ง
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-4">
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">ใบสั่งซื้อที่เกี่ยวข้อง (Orders)</h2>
+            <div class="flex flex-wrap gap-2">
+              @for (order of selectedDelivery.orders; track order.orderId) {
+                <div class="badge badge-primary p-3">{{ order.orderNo }}</div>
+              } @empty {
+                <span class="text-sm text-base-content/50">ไม่มีข้อมูลใบสั่งซื้อ</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body p-4">
+            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">กล่องพัสดุที่ส่งมากับบิลนี้ (Boxes)</h2>
+            <div class="overflow-visible">
+              <table class="table table-sm table-zebra w-full">
+                <thead class="sticky top-0 bg-base-100">
+                  <tr>
+                    <th>กล่องแพ๊กรวม (TX)</th>
+                    <th class="text-center">กล่องย่อย (CX)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of selectedDelivery.items; track item.id) {
+                    <tr>
+                      <td class="font-bold text-primary">{{ item.packageBoxNo }}</td>
+                      <td class="text-center">
+                        @if (getParsedSubBoxes(item.containedBoxNumbers).length > 0) {
+                          <div class="dropdown dropdown-hover dropdown-end">
+                            <div tabindex="0" role="button" class="btn btn-xs btn-outline btn-info">ดู {{ getParsedSubBoxes(item.containedBoxNumbers).length }} กล่อง</div>
+                            <ul tabindex="0" class="dropdown-content z-[99] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-200">
+                              <li class="menu-title text-xs border-b border-base-200 pb-1 mb-1">รายการกล่อง CX</li>
+                              @for (sub of getParsedSubBoxes(item.containedBoxNumbers); track sub.boxNo) {
+                                <li>
+                                  <a [class.line-through]="isBoxReceived(sub.boxNo)" [class.text-success]="isBoxReceived(sub.boxNo)" [class.opacity-60]="isBoxReceived(sub.boxNo)">
+                                    {{ sub.boxNo }} 
+                                    @if (isBoxReceived(sub.boxNo)) {
+                                      <span class="badge badge-success badge-sm ml-auto">รับแล้ว</span>
+                                    } @else {
+                                      <span class="text-xs opacity-60 ml-auto">{{ sub.weight || 0 }}kg</span>
+                                    }
+                                  </a>
+                                </li>
+                              }
+                            </ul>
+                          </div>
+                        } @else {
+                          <span class="text-sm text-base-content/50">-</span>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="2" class="text-center text-sm text-base-content/50">ไม่มีข้อมูลกล่อง</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="card-title text-xl">3. เลือกรายการที่ได้รับในรอบนี้</h2>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline btn-primary"
+              (click)="addAllItems()"
+            >
+              เพิ่มทั้งหมด
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mb-4">
+            @for (ordItem of availableOrderItems; track ordItem.id) {
+              @if ((ordItem.remainingQuantity ?? ordItem.quantity) > 0) {
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost border border-base-300 group relative"
+                  (click)="addItemToShipment(ordItem)"
+                >
+                  <div class="avatar mr-1">
+                    <div class="w-6 h-6 rounded bg-base-200">
+                      <img [src]="ordItem.imageUrl ? apiOrigin + ordItem.imageUrl : 'assets/images/no-image.png'" onerror="this.src='assets/images/no-image.png'" />
+                    </div>
+                  </div>
+                  <span>+ {{ ordItem.productName }} (เหลือ x{{ ordItem.remainingQuantity ?? ordItem.quantity }})</span>
+                  
+                  <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none">
+                    <img [src]="ordItem.imageUrl ? apiOrigin + ordItem.imageUrl : 'assets/images/no-image.png'" class="w-full h-full object-contain rounded" onerror="this.src='assets/images/no-image.png'" />
+                  </div>
+                </button>
+              }
+            }
+          </div>
+
+          <div class="divider mt-0 mb-0"></div>
+
+          <!-- แบบฟอร์มกรอกรายการที่เลือก -->
+          <div formArrayName="items" class="flex flex-col gap-4 py-4">
+            @for (item of items.controls; track item; let i = $index) {
+              <div
+                [formGroupName]="i"
+                class="border border-base-300 rounded-box p-4 bg-base-50 relative"
+              >
+                <button
+                  type="button"
+                  class="btn btn-sm btn-circle btn-ghost text-error absolute right-2 top-2"
+                  (click)="removeItem(i)"
+                >
+                  ✕
+                </button>
+
+                <div class="flex flex-col md:flex-row gap-4 mb-4">
+                  <div class="avatar group relative">
+                    <div class="w-16 h-16 rounded bg-base-200 cursor-pointer">
+                      <img [src]="item.get('imageUrl')?.value ? apiOrigin + item.get('imageUrl')?.value : 'assets/images/no-image.png'" onerror="this.src='assets/images/no-image.png'" />
+                    </div>
+                    <div class="absolute left-full top-0 ml-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none">
+                      <img [src]="item.get('imageUrl')?.value ? apiOrigin + item.get('imageUrl')?.value : 'assets/images/no-image.png'" class="w-full h-full object-contain rounded" onerror="this.src='assets/images/no-image.png'" />
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-bold text-lg text-primary">
+                      {{ item.get('productName')?.value }}
+                    </div>
+                    <div class="text-sm opacity-70">
+                      SKU: {{ item.get('sku')?.value }} | จำนวนที่สั่ง:
+                      <span class="font-bold text-error">{{
+                        item.get('expectedQuantity')?.value
+                      }}</span>
+                      ชิ้น
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div class="form-control lg:col-span-2">
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >หมายเลขกล่องที่รับ (Box)*</label
+                    >
+                    @if (availableSubBoxes.length > 0) {
+                      <select
+                        formControlName="boxNumbers"
+                        class="select select-bordered focus:select-primary w-full"
+                      >
+                        <option value="" disabled selected>เลือกกล่องที่รับ (CX...)</option>
+                        @for (box of availableSubBoxes; track box) {
+                          <option [value]="box">{{ box }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <input
+                        type="text"
+                        formControlName="boxNumbers"
+                        class="input input-bordered focus:input-primary w-full"
+                        placeholder="เช่น CX2605280693"
+                      />
+                    }
+                  </div>
+
+                  <div class="form-control lg:col-span-1">
+                    <label class="label-text text-sm font-semibold mb-1.5">สถานะการรับ*</label>
+                    <select
+                      formControlName="receiptStatus"
+                      class="select select-bordered focus:select-primary w-full"
+                    >
+                      <option value="Complete">รับครบ</option>
+                      <option value="Incomplete">รับขาด</option>
+                      <option value="Over">รับเกิน</option>
+                      <option value="WrongItem">รับไม่ตรง</option>
+                    </select>
+                  </div>
+
+                  @if (item.get('receiptStatus')?.value !== 'WrongItem') {
+                    <div class="form-control lg:col-span-1">
+                      <label class="label-text text-sm font-semibold mb-1.5 text-success"
+                        >สภาพดีพร้อมขาย*</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="goodQuantity"
+                        class="input input-bordered text-center font-bold w-full"
+                        min="0"
+                      />
+                    </div>
+                    <div class="form-control lg:col-span-1">
+                      <label class="label-text text-sm font-semibold mb-1.5 text-warning"
+                        >ชำรุด/ไม่สมบูรณ์*</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="defectiveQuantity"
+                        class="input input-bordered text-center font-bold w-full"
+                        min="0"
+                      />
+                    </div>
+                  }
+
+                  <!-- กรณีผิดพลาดมีเงินคืน -->
+                  @if (
+                    item.get('receiptStatus')?.value === 'WrongItem' ||
+                    item.get('receiptStatus')?.value === 'Incomplete'
+                  ) {
+                    <div class="form-control lg:col-span-2 lg:col-start-4">
+                      <label class="label-text text-sm font-semibold mb-1.5 text-info"
+                        >ยอดเงินคืน (ถ้ามี) สำหรับลงบัญชี</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="refundAmount"
+                        class="input input-bordered text-right w-full"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00 บาท"
+                        (blur)="formatFinancial('refundAmount', i)"
+                      />
+                    </div>
+                  }
+                </div>
+
+                @if (item.get('receiptStatus')?.value === 'WrongItem') {
+                  <div class="mt-2 text-xs text-info">
+                    *กรณีสินค้าไม่ตรง จะไม่ถูกนำเข้าสต็อก
+                    หากมีการคืนเงินให้ระบุยอดเพื่อนำไปลงเป็นรายรับ
+                  </div>
+                }
+              </div>
+            } @empty {
+              <div class="text-center py-4 text-base-content/50">
+                ยังไม่ได้เลือกรายการสินค้าที่จะรับเข้า
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- หมายเหตุ และ Force Close -->
+      <div class="card bg-base-100 shadow-xl border border-base-200 mt-4">
+        <div class="card-body">
+          <div class="form-control mb-4">
+            <label class="label"
+              ><span class="label-text font-medium">หมายเหตุการรับสินค้า</span></label
+            >
+            <textarea
+              formControlName="notes"
+              class="textarea textarea-bordered focus:textarea-primary"
+              placeholder="ข้อมูลเพิ่มเติม..."
+            ></textarea>
+          </div>
+
+          <div class="form-control bg-base-200/50 p-4 rounded-lg border border-base-300">
+            <label class="cursor-pointer label justify-start gap-4">
+              <input type="checkbox" formControlName="isForceCloseOrder" class="checkbox checkbox-primary" />
+              <div>
+                <span class="label-text font-bold text-base-content block">ปิดออเดอร์ทั้งหมดในบิลขนส่งนี้ทันที (Force Close Orders)</span>
+                <span class="label-text-alt text-base-content/60">ติ๊กเมื่อสินค้าที่เหลือในออเดอร์เหล่านี้จะไม่มีการจัดส่งมาอีกแล้ว (หากยอดไม่ครบ ต้องใส่หมายเหตุหรือยอดคืนเงิน)</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="flex justify-end gap-4 mt-4">
+        <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting">
+          @if (isSubmitting) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          บันทึกใบรับสินค้า
+        </button>
+      </div>
+    }
+  </form>
+</div>

@@ -1,0 +1,222 @@
+<div class="container mx-auto p-6 max-w-6xl">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-orange-600 dark:text-orange-400">🚚 บริหารรถขนส่ง VCANBUY</h1>
+      <p class="text-base-content/60 mt-1">จัดการรายการใบส่งสินค้าจาก VCANBUY ถึงลูกค้า</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-primary" routerLink="/procurement/vcb-deliveries/create">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-5"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        สร้างใบส่งสินค้าใหม่
+      </button>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-xl border border-base-200">
+    <div class="card-body p-0">
+      <div
+        class="p-4 border-b border-base-200 flex flex-col md:flex-row gap-4 justify-between items-center bg-base-50/50"
+        [formGroup]="filterForm"
+      >
+        <div class="flex-1 w-full relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-5 text-base-content/50"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+              />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="ค้นหาเลขที่ใบส่งสินค้า..."
+            class="input input-bordered w-full pl-10 focus:input-primary transition-colors"
+            formControlName="searchTerm"
+          />
+        </div>
+
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <select
+            class="select select-bordered w-full md:w-auto focus:select-primary"
+            formControlName="status"
+          >
+            <option value="">สถานะทั้งหมด</option>
+            <option value="Pending">รอดำเนินการ</option>
+            <option value="Shipping">กำลังจัดส่ง</option>
+            <option value="Completed">เสร็จสิ้น</option>
+            <option value="Cancelled">ยกเลิก</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto min-h-100 relative">
+        <!-- Loading overlay -->
+        @if (isLoading) {
+          <div
+            class="absolute inset-0 bg-base-100/50 backdrop-blur-sm flex items-center justify-center z-10"
+          >
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+          </div>
+        }
+
+        <table class="table table-zebra w-full">
+          <thead>
+            <tr class="bg-base-200/50 text-base-content/70">
+              <th class="w-16 text-center">ID</th>
+              <th>เลขที่ใบส่งสินค้า</th>
+              <th>บริษัทขนส่ง</th>
+              <th class="text-right">ยอดรวม (บาท)</th>
+              <th class="text-center">สลิปโอนเงิน</th>
+              <th class="text-center">สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of deliveries; track item.id) {
+              <tr class="hover:bg-base-200/30 transition-colors">
+                <td class="text-center font-medium">{{ item.id }}</td>
+                <td>
+                  <div class="font-bold text-primary">{{ item.deliveryNo }}</div>
+                  <div class="text-xs opacity-70">
+                    วันที่สั่ง: {{ item.orderDate | date: 'dd/MM/yyyy' }}
+                  </div>
+                  @if (item.orderNumbers) {
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      @for (ord of getSplitOrderNumbers(item.orderNumbers); track ord) {
+                        <span class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[10px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm">{{ ord }}</span>
+                      }
+                    </div>
+                  }
+                </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    @if (getShippingLogo(item.domesticShippingCompany)) {
+                      <img [src]="getShippingLogo(item.domesticShippingCompany)" alt="Logo" class="w-8 h-8 rounded-full object-cover border border-base-200" />
+                    }
+                    <div class="font-medium">{{ item.domesticShippingCompany }}</div>
+                  </div>
+                </td>
+                <td class="text-right font-semibold text-info">{{ item.totalAmount | number: '1.2-2' }}</td>
+                <td class="text-center">
+                  @if (item.transferSlipUrl) {
+                    <div class="w-10 h-10 mx-auto">
+                      <app-image-hover-preview
+                        [imageUrl]="apiOrigin + item.transferSlipUrl"
+                        altText="Slip Image"
+                      ></app-image-hover-preview>
+                    </div>
+                  } @else {
+                    <span class="text-xs text-base-content/30">-</span>
+                  }
+                </td>
+                <td class="text-center">
+                  <span class="badge badge-sm" [ngClass]="getStatusBadgeClass(item.status)">
+                    {{ getStatusText(item.status) }}
+                  </span>
+                </td>
+                <td>
+                  <div class="join">
+                    <button
+                      class="btn btn-ghost btn-xs text-info join-item"
+                      title="ดูรายละเอียด"
+                      (click)="viewDetails(item.id, item.deliveryNo)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                        />
+                      </svg>
+                    </button>
+                      <a
+                        class="btn btn-ghost btn-xs text-warning join-item"
+                        title="แก้ไข"
+                        [routerLink]="['/procurement/vcb-deliveries', item.id]"
+                        [queryParams]="{ mode: 'edit' }"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-4"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                          />
+                        </svg>
+                      </a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              @if (!isLoading) {
+                <tr>
+                  <td colspan="6" class="text-center py-8 text-base-content/50">
+                    ไม่พบข้อมูลใบส่งสินค้า
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 border-t border-base-200 bg-base-50 flex justify-between items-center">
+        <div class="text-sm text-base-content/70">
+          แสดงรายการที่
+          <span class="font-bold">{{
+            totalCount === 0 ? 0 : (searchParams.page - 1) * searchParams.pageSize + 1
+          }}</span>
+          ถึง
+          <span class="font-bold">{{
+            searchParams.page * searchParams.pageSize > totalCount
+              ? totalCount
+              : searchParams.page * searchParams.pageSize
+          }}</span>
+          จากทั้งหมด <span class="font-bold">{{ totalCount }}</span>
+        </div>
+        <app-pagination
+          [page]="searchParams.page"
+          [pageSize]="searchParams.pageSize"
+          [totalCount]="totalCount"
+          (pageChange)="onPageChange($event)"
+        >
+        </app-pagination>
+      </div>
+    </div>
+  </div>
+</div>

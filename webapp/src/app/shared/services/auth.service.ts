@@ -11,14 +11,34 @@ import { LoginCredentials, User } from '../models/user.models';
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
-  private readonly apiUrl = `${environment.apiUrl}/auth`;
 
   currentUser = signal<User | null>(null);
   isInitialized = signal<boolean>(false);
-  private csrfTokenFetched = false;
 
-  isLoggedIn(): boolean {
-    return this.currentUser() !== null;
+  private csrfTokenFetched = false;
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
+
+  checkAuthStatus(): Observable<boolean> {
+    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
+      map((user) => {
+        this.currentUser.set(user);
+        this.isInitialized.set(true);
+        return true;
+      }),
+      catchError(() => {
+        this.currentUser.set(null);
+        this.isInitialized.set(true);
+        return of(false);
+      }),
+    );
+  }
+
+  ensureCsrfToken(): Observable<void> {
+    if (this.csrfTokenFetched) return of(void 0);
+    return this.http.get<void>(`${this.apiUrl}/csrf-token`).pipe(
+      tap(() => (this.csrfTokenFetched = true)),
+      map(() => void 0),
+    );
   }
 
   hasPermission(permission: string): boolean {
@@ -38,12 +58,8 @@ export class AuthService {
     );
   }
 
-  ensureCsrfToken(): Observable<void> {
-    if (this.csrfTokenFetched) return of(void 0);
-    return this.http.get<void>(`${this.apiUrl}/csrf-token`).pipe(
-      tap(() => (this.csrfTokenFetched = true)),
-      map(() => void 0),
-    );
+  isLoggedIn(): boolean {
+    return this.currentUser() !== null;
   }
 
   login(credentials: LoginCredentials): Observable<User> {
@@ -57,21 +73,6 @@ export class AuthService {
       tap((user) => {
         this.currentUser.set(user);
         this.isInitialized.set(true);
-      }),
-    );
-  }
-
-  checkAuthStatus(): Observable<boolean> {
-    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
-      map((user) => {
-        this.currentUser.set(user);
-        this.isInitialized.set(true);
-        return true;
-      }),
-      catchError(() => {
-        this.currentUser.set(null);
-        this.isInitialized.set(true);
-        return of(false);
       }),
     );
   }

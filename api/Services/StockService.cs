@@ -9,25 +9,25 @@ namespace PCS_API.Services;
 public class StockService : IStockService
 {
     private readonly IStockRepository _repo;
-    private readonly string _connectionString;
+    private readonly ISqlConnectionFactory _connectionFactory;
 
-    public StockService(IStockRepository repo, IConfiguration config)
+    public StockService(IStockRepository repo, ISqlConnectionFactory connectionFactory)
     {
         _repo = repo;
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
+        _connectionFactory = connectionFactory;
     }
 
-    public async Task<PagedResultDto<StockDto>> GetStockStatusAsync(StockSearchDto search)
+    public async Task<PagedResultDto<StockDto>> GetStockStatusAsync(StockSearchDto search, CancellationToken cancellationToken = default)
     {
-        return await _repo.GetStocksPagedAsync(search);
+        return await _repo.GetStocksPagedAsync(search, cancellationToken);
     }
 
-    public async Task<PagedResultDto<StockTransactionHistoryDto>> GetTransactionsAsync(string? transactionType, PaginationParamsDto @params)
+    public async Task<PagedResultDto<StockTransactionHistoryDto>> GetTransactionsAsync(string? transactionType, PaginationParamsDto @params, CancellationToken cancellationToken = default)
     {
-        return await _repo.GetTransactionsAsync(transactionType, @params);
+        return await _repo.GetTransactionsAsync(transactionType, @params, cancellationToken);
     }
 
-    public async Task<bool> ProcessStockTransactionAsync(CreateStockTransactionDto dto, int userId)
+    public async Task<bool> ProcessStockTransactionAsync(CreateStockTransactionDto dto, int userId, CancellationToken cancellationToken = default)
     {
         int qtyChange = dto.TransactionType.ToUpper() switch
         {
@@ -51,13 +51,14 @@ public class StockService : IStockService
             Notes = dto.Notes,
             CreatedBy = userId,
             RequestId = dto.RequestId,
-            BranchId = dto.BranchId // ผูกข้อมูลรหัสสาขาที่ส่งมาจากฟอร์ม
+            BranchId = dto.BranchId
         };
 
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync();
+        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
+        await conn.OpenAsync(cancellationToken);
 
-        await using var dbTransaction = await conn.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        using var dbTransaction = await conn.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         try
         {
             bool alreadyProcessed = await _repo.TransactionExistsByRequestIdAsync(dto.RequestId, dbTransaction);
@@ -69,25 +70,21 @@ public class StockService : IStockService
                 throw new KeyNotFoundException("ไม่พบข้อมูลสินค้า (Product Variant) ที่ระบุ");
             }
 
-            // อัปเดตสต็อกพร้อมรับค่าก่อน-หลังกลับมา
             var (before, after) = await _repo.UpdateStockQuantityAsync(dto.VariantId, dto.TransactionType, qtyChange, dbTransaction);
 
-            // นำยอดสต็อกก่อนและหลังเปลี่ยนผูกเข้ากับ Model Transaction ตัวหลักเพื่อเตรียมเซฟข้อมูลลงประวัติ
             tx.QuantityBefore = before;
             tx.QuantityAfter = after;
             
-            // สำหรับ ADJUST ให้บันทึกเฉพาะส่วนต่างลงประวัติ 
-            // หรือในทุกกรณี บันทึกส่วนต่างคือวิธีที่ชัวร์ที่สุดว่ายอดเคลื่อนไหวเท่าไหร่
             tx.Quantity = after - before;
 
             await _repo.CreateTransactionAsync(tx, dbTransaction);
-            await dbTransaction.CommitAsync();
+            await dbTransaction.CommitAsync(cancellationToken);
 
             return true;
         }
         catch (Exception)
         {
-            await dbTransaction.RollbackAsync();
+            await dbTransaction.RollbackAsync(cancellationToken);
             throw;
         }
     }

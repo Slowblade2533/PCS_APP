@@ -6,9 +6,9 @@ namespace PCS_API.Services;
 
 public class CategoryService(ICategoryRepository categoryRepository) : ICategoryService
 {
-    public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(string? searchTerm = null)
+    public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(string? searchTerm = null, CancellationToken cancellationToken = default)
     {
-        var models = await categoryRepository.GetAllCategoriesAsync(searchTerm);
+        var models = await categoryRepository.GetAllCategoriesAsync(searchTerm, cancellationToken);
         return models.Select(MapToDto);
     }
 
@@ -144,15 +144,11 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
                 return (false, "ไม่พบหมวดหมู่หลักที่ระบุ");
             }
 
-            // Simple check: if changing parent, parent + this branch depth cannot exceed 3
-            // In a robust system we'd check max depth of children.
-            // For now, if we are setting a parent, parent level must be < 3
             if (parent.Level >= 3)
             {
                 return (false, "ระบบรองรับหมวดหมู่ย่อยได้สูงสุด 3 ระดับเท่านั้น");
             }
             
-            // Check if assigning parent to one of its children to prevent circular reference
             if (parent.FullPath.Contains(existing.CategoryName)) 
             {
                  // this is a very basic circular check.
@@ -186,8 +182,6 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
         {
             return (false, "ไม่สามารถลบหมวดหมู่นี้ได้เนื่องจากมีหมวดหมู่ย่อยอยู่");
         }
-
-        // TODO: Could check if Products depend on this category
         
         var deleted = await categoryRepository.DeleteCategoryAsync(id);
         if (!deleted)

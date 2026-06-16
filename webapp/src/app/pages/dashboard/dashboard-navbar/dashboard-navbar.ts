@@ -5,7 +5,6 @@ import { AuthService } from '../../../shared/services/auth.service';
   selector: 'app-dashboard-navbar',
   imports: [],
   templateUrl: './dashboard-navbar.html',
-  styleUrl: './dashboard-navbar.css',
 })
 export class DashboardNavbar {
   private authService = inject(AuthService);

@@ -2,18 +2,24 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { SweetAlertService } from '../services/sweet-alert.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
+  const swal = inject(SweetAlertService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 403) {
-        window.alert('คุณไม่มีสิทธิ์การเข้าถึงข้อมูลส่วนนี้ หรือไม่ได้รับสิทธิ์ในการทำรายการ');
-        // Optionally redirect to dashboard if they are on a forbidden page
-        router.navigate(['/dashboard']);
+      if (error.status === 0) {
+        swal.error('ไม่สามารถเชื่อมต่อ server ได้ กรุณาลองใหม่อีกครั้ง หรือติดต่อฝ่าย IT');
+      } else if (error.status === 403) {
+        swal
+          .error('คุณไม่มีสิทธิ์การเข้าถึงข้อมูลส่วนนี้ หรือไม่ได้รับสิทธิ์ในการทำรายการ')
+          .then(() => {
+            router.navigate(['/dashboard']);
+          });
       }
       return throwError(() => error);
-    })
+    }),
   );
 };

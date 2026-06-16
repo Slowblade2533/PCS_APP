@@ -4,17 +4,18 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { LoginCredentials } from '../../shared/models/user.models';
 import { AuthService } from '../../shared/services/auth.service';
+import { SweetAlertService } from '../../shared/services/sweet-alert.service';
 
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule],
   templateUrl: './login.html',
-  styleUrl: './login.css',
 })
 export class Login implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private swal = inject(SweetAlertService);
   private destroyRef = inject(DestroyRef);
 
   loginForm: FormGroup;
@@ -58,7 +59,7 @@ export class Login implements OnInit {
           },
           error: (err) => {
             this.isLoading.set(false);
-            alert(err.error?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+            this.swal.error(err.error?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
           },
         });
     }

@@ -1,16 +1,17 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, forkJoin, Observable } from 'rxjs';
+import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import {
   Branch,
-  Role,
   Permission,
+  Role,
   UserCreateRequest,
   UserDetail,
-  UserUpdateRequest,
   UserPermissionAssignmentRequest,
+  UserUpdateRequest,
 } from '../../../shared/models/user.models';
 import { UserManagementService } from '../../../shared/services/user-management.service';
 
@@ -24,30 +25,36 @@ interface PermissionGroup {
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './user-create.html',
-  styleUrl: './user-create.css',
 })
-export class UserCreate implements OnInit {
+export class UserCreate implements OnInit, HasUnsavedChanges {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
-  private readonly userService = inject(UserManagementService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly userService = inject(UserManagementService);
 
-  initLoading = signal(true);
-  submitting = signal(false);
-  isEditMode = signal(false);
   errorMsg = signal('');
+  initLoading = signal(true);
+  isEditMode = signal(false);
+  submitting = signal(false);
 
-  roles = signal<Role[]>([]);
   branches = signal<Branch[]>([]);
-  permissions = signal<Permission[]>([]);
   permissionGroups = signal<PermissionGroup[]>([]);
+  permissions = signal<Permission[]>([]);
+  roles = signal<Role[]>([]);
 
   form!: FormGroup;
   private userId: number | null = null;
 
   get permissionIds(): FormArray {
     return this.form.get('permissionIds') as FormArray;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.hasUnsavedChanges()) {
+      $event.returnValue = true;
+    }
   }
 
   ngOnInit(): void {
@@ -57,6 +64,85 @@ export class UserCreate implements OnInit {
 
     this.buildForm();
     this.loadMasterData();
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty && !this.submitting();
+  }
+
+  isInvalid(controlName: string): boolean {
+    const ctrl = this.form.get(controlName);
+    return !!(ctrl?.invalid && ctrl?.touched);
+  }
+
+  isPermissionChecked(permissionId: number): boolean {
+    const pIds = this.form.get('permissionIds')?.value as number[];
+    return pIds ? pIds.includes(permissionId) : false;
+  }
+
+  onSubmit(): void {
+    if (this.form.invalid) {
+      return;
+    }
+
+    const { firstName, lastName, username, email, password, isActive, roleId, permissionIds } =
+      this.form.value;
+
+    const permissionPayload: UserPermissionAssignmentRequest[] = (permissionIds as number[]).map(
+      (pId) => ({
+        permissionId: pId,
+      }),
+    );
+
+    this.submitting.set(true);
+    this.errorMsg.set('');
+
+    const request$: Observable<any> = this.isEditMode()
+      ? this.userService.updateUser(this.userId!, {
+          email,
+          firstName,
+          lastName,
+          isActive,
+          roleId,
+          permissionAssignments: permissionPayload,
+        } as UserUpdateRequest)
+      : this.userService.createUser({
+          username,
+          email,
+          password,
+          firstName,
+          lastName,
+          isActive,
+          roleId,
+          permissionAssignments: permissionPayload,
+        } as UserCreateRequest);
+
+    request$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.submitting.set(false);
+        }),
+      )
+      .subscribe({
+        next: () => this.router.navigate(['/users']),
+        error: (err) => {
+          this.errorMsg.set(err.error?.message ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+        },
+      });
+  }
+
+  togglePermission(permissionId: number): void {
+    const ctrl = this.form.get('permissionIds');
+    let pIds = [...((ctrl?.value as number[]) || [])];
+
+    if (pIds.includes(permissionId)) {
+      pIds = pIds.filter((id) => id !== permissionId);
+    } else {
+      pIds.push(permissionId);
+    }
+
+    ctrl?.setValue(pIds);
   }
 
   private buildForm(): void {
@@ -70,6 +156,24 @@ export class UserCreate implements OnInit {
       roleId: [null, Validators.required],
       permissionIds: [[]],
     });
+  }
+
+  private groupPermissions(perms: Permission[]): void {
+    const groups: Record<string, Permission[]> = {};
+    for (const p of perms) {
+      const moduleName = p.permissionCode.split(':')[0].toUpperCase();
+      if (!groups[moduleName]) {
+        groups[moduleName] = [];
+      }
+      groups[moduleName].push(p);
+    }
+
+    const result: PermissionGroup[] = Object.keys(groups).map((key) => ({
+      moduleName: key,
+      permissions: groups[key],
+    }));
+
+    this.permissionGroups.set(result);
   }
 
   private loadMasterData(): void {
@@ -112,24 +216,6 @@ export class UserCreate implements OnInit {
       });
   }
 
-  private groupPermissions(perms: Permission[]): void {
-    const groups: Record<string, Permission[]> = {};
-    for (const p of perms) {
-      const moduleName = p.permissionCode.split(':')[0].toUpperCase();
-      if (!groups[moduleName]) {
-        groups[moduleName] = [];
-      }
-      groups[moduleName].push(p);
-    }
-    
-    const result: PermissionGroup[] = Object.keys(groups).map(key => ({
-      moduleName: key,
-      permissions: groups[key]
-    }));
-    
-    this.permissionGroups.set(result);
-  }
-
   private patchForm(user: UserDetail): void {
     this.form.patchValue({
       firstName: user.firstName,
@@ -138,80 +224,7 @@ export class UserCreate implements OnInit {
       email: user.email,
       isActive: user.isActive,
       roleId: user.roleId,
-      permissionIds: user.permissions?.map(p => p.permissionId) || []
+      permissionIds: user.permissions?.map((p) => p.permissionId) || [],
     });
-  }
-
-  isInvalid(controlName: string): boolean {
-    const ctrl = this.form.get(controlName);
-    return !!(ctrl?.invalid && ctrl?.touched);
-  }
-
-  isPermissionChecked(permissionId: number): boolean {
-      const pIds = this.form.get('permissionIds')?.value as number[];
-      return pIds ? pIds.includes(permissionId) : false;
-  }
-
-  togglePermission(permissionId: number): void {
-      const ctrl = this.form.get('permissionIds');
-      let pIds = [...(ctrl?.value as number[] || [])];
-      
-      if (pIds.includes(permissionId)) {
-          pIds = pIds.filter(id => id !== permissionId);
-      } else {
-          pIds.push(permissionId);
-      }
-      
-      ctrl?.setValue(pIds);
-  }
-
-  onSubmit(): void {
-    if (this.form.invalid) {
-      return;
-    }
-
-    const { firstName, lastName, username, email, password, isActive, roleId, permissionIds } =
-      this.form.value;
-
-    const permissionPayload: UserPermissionAssignmentRequest[] = (permissionIds as number[]).map(pId => ({
-        permissionId: pId
-    }));
-
-    this.submitting.set(true);
-    this.errorMsg.set('');
-
-    const request$: Observable<any> = this.isEditMode()
-      ? this.userService.updateUser(this.userId!, {
-          email,
-          firstName,
-          lastName,
-          isActive,
-          roleId,
-          permissionAssignments: permissionPayload
-        } as UserUpdateRequest)
-      : this.userService.createUser({
-          username,
-          email,
-          password,
-          firstName,
-          lastName,
-          isActive,
-          roleId,
-          permissionAssignments: permissionPayload
-        } as UserCreateRequest);
-
-    request$
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.submitting.set(false);
-        }),
-      )
-      .subscribe({
-        next: () => this.router.navigate(['/users']),
-        error: (err) => {
-          this.errorMsg.set(err.error?.message ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่');
-        },
-      });
   }
 }

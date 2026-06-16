@@ -2,7 +2,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-2xl font-bold">จัดการผู้ใช้งาน</h1>
+      <h1 class="text-2xl font-bold text-rose-600 dark:text-rose-400">👥 จัดการผู้ใช้งาน</h1>
       <p class="text-base-content/60 text-sm mt-0.5">กำหนดสิทธิ์ RBAC ตามบทบาท</p>
     </div>
     <a routerLink="/users/create" class="btn btn-primary btn-sm gap-2">
@@ -20,7 +20,7 @@
   </div>
 
   <!-- Filters -->
-  <div class="flex flex-wrap gap-3">
+  <div class="flex flex-wrap gap-3" [formGroup]="filterForm">
     <label class="input input-bordered input-sm flex items-center gap-2 w-72">
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -39,17 +39,12 @@
       <input
         type="text"
         placeholder="ค้นหาชื่อ, อีเมล..."
-        [(ngModel)]="searchText"
-        (ngModelChange)="onSearchChange($event)"
+        formControlName="searchText"
         class="grow"
       />
     </label>
 
-    <select
-      class="select select-bordered select-sm"
-      [(ngModel)]="selectedIsActive"
-      (ngModelChange)="onStatusChange($event)"
-    >
+    <select class="select select-bordered select-sm" formControlName="selectedIsActive">
       <option [ngValue]="undefined">ทุกสถานะ</option>
       <option [ngValue]="true">ใช้งานอยู่</option>
       <option [ngValue]="false">ปิดใช้งาน</option>

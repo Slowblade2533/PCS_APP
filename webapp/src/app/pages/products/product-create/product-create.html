@@ -1,6 +1,6 @@
 <div class="container mx-auto p-6 max-w-5xl">
   <div class="mb-4">
-    <h1 class="text-2xl font-bold">
+    <h1 class="text-2xl font-bold text-sky-600 dark:text-sky-400">
       @if (currentMode() === 'view') {
         👁️ รายละเอียดข้อมูลสินค้า
       } @else if (currentMode() === 'edit') {
@@ -52,10 +52,16 @@
           </div>
 
           <div class="form-control w-full">
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">หมวดหมู่สินค้า <span class="text-error">*</span></legend>
-              <app-category-search formControlName="categoryId" placeholder="ค้นหาหมวดหมู่ (เช่น เตาปิ้งย่าง)" [restrictLevel]="3"></app-category-search>
-            </fieldset>
+            <label class="label"
+              ><span class="label-text font-medium"
+                >หมวดหมู่สินค้า <span class="text-error">*</span></span
+              ></label
+            >
+            <app-category-search
+              formControlName="categoryId"
+              placeholder="ค้นหาหมวดหมู่ (เช่น เตาปิ้งย่าง)"
+              [restrictLevel]="3"
+            ></app-category-search>
           </div>
 
           <div class="form-control w-full">
@@ -76,7 +82,11 @@
                 class="toggle toggle-primary"
               />
               <span class="ml-3 text-sm">
-                {{ productForm.get('isStockTracked')?.value ? 'นับสต็อก (สร้างความเคลื่อนไหวสต็อก)' : 'ไม่นับสต็อก (บันทึกค่าใช้จ่ายทันที)' }}
+                {{
+                  productForm.get('isStockTracked')?.value
+                    ? 'นับสต็อก (สร้างความเคลื่อนไหวสต็อก)'
+                    : 'ไม่นับสต็อก (บันทึกค่าใช้จ่ายทันที)'
+                }}
               </span>
             </div>
           </div>
@@ -173,11 +183,11 @@
                   <label class="label-text text-xs font-semibold mb-2">รูปภาพประกอบ SKU</label>
                   <div class="flex items-center gap-4">
                     @if (variant.get('imageUrl')?.value) {
-                      <div
-                        class="relative flex-shrink-0"
-                      >
-                        <app-image-hover-preview 
-                          [imageUrl]="apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value)"
+                      <div class="relative flex-shrink-0">
+                        <app-image-hover-preview
+                          [imageUrl]="
+                            apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value)
+                          "
                           altText="Preview"
                           imageClass="w-24 h-24 border rounded-md object-cover bg-base-200 cursor-pointer"
                         ></app-image-hover-preview>
@@ -216,139 +226,168 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div
+                  class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-4"
+                >
+                  <!-- Row 1 -->
                   <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">รหัส SKU *</label>
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >รหัส SKU <span class="text-error">*</span></label
+                    >
                     <input
                       type="text"
                       formControlName="sku"
                       placeholder="เช่น PROD-XL-001"
-                      class="input input-bordered input-sm"
+                      class="input input-bordered w-full"
                     />
                   </div>
 
                   <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">บาร์โค้ด</label>
+                    <label class="label-text text-sm font-semibold mb-1.5">บาร์โค้ด</label>
                     <input
                       type="text"
                       formControlName="barcode"
                       placeholder="Barcode"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control md:col-span-2">
-                    <label class="label-text text-xs font-semibold mb-1">ชื่อตัวเลือก (ไทย)</label>
-                    <input
-                      type="text"
-                      formControlName="variantNameTh"
-                      placeholder="เช่น เตาหมูกระทะมินิ ขนาด 17x13cm"
-                      class="input input-bordered input-sm w-full"
-                    />
-                  </div>
-
-                  <div class="form-control md:col-span-2">
-                    <label class="label-text text-xs font-semibold mb-1">ชื่อตัวเลือก (Eng)</label>
-                    <input
-                      type="text"
-                      formControlName="variantNameEn"
-                      placeholder="เช่น Mini BBQ Grill 17x13cm"
-                      class="input input-bordered input-sm w-full"
+                      class="input input-bordered w-full"
                     />
                   </div>
 
                   <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">สี (Color)</label>
-                    <input
-                      type="text"
-                      formControlName="color"
-                      placeholder="เช่น แดง, น้ำเงิน"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">ขนาด (Size)</label>
-                    <input
-                      type="text"
-                      formControlName="sizeLabel"
-                      placeholder="เช่น S, M, L, XL"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">ลวดลาย (Style)</label>
-                    <input
-                      type="text"
-                      formControlName="stylePattern"
-                      placeholder="เช่น ลายทาง, ลายจุด"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">หน่วยนับ *</label>
-                    <input
-                      type="text"
-                      formControlName="unitOfMeasure"
-                      class="input input-bordered input-sm"
-                    />
-                  </div>
-
-                  <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1">ราคาขาย (บาท) *</label>
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >ราคาขาย (บาท) <span class="text-error">*</span></label
+                    >
                     <input
                       type="number"
                       formControlName="basePrice"
-                      class="input input-bordered input-sm"
+                      (blur)="formatFinancial($index, 'basePrice')"
+                      class="input input-bordered w-full font-medium text-primary"
                     />
                   </div>
 
                   <div class="form-control">
-                    <label class="label-text text-xs font-semibold mb-1"
-                      >จุดเตือนสต็อกต่ำ (Reorder)*</label
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >จุดเตือนสต็อก <span class="text-error">*</span></label
                     >
                     <input
                       type="number"
                       formControlName="reorderPoint"
-                      class="input input-bordered input-sm"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <!-- Row 2 -->
+                  <div class="form-control md:col-span-2">
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >ชื่อตัวเลือก (ไทย)</label
+                    >
+                    <input
+                      type="text"
+                      formControlName="variantNameTh"
+                      placeholder="เช่น เตาหมูกระทะมินิ ขนาด 17x13cm"
+                      class="input input-bordered w-full"
                     />
                   </div>
 
                   <div class="form-control md:col-span-2">
-                    <label class="label-text text-xs font-semibold mb-1"
-                      >ขนาด (กว้าง x ยาว x สูง ซม.) / น้ำหนัก (กรัม)</label
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >ชื่อตัวเลือก (Eng)</label
                     >
-                    <div class="join w-full">
-                      <input
-                        type="number"
-                        formControlName="width"
-                        placeholder="ก"
-                        class="input input-bordered input-sm join-item w-1/4"
-                        title="กว้าง"
-                      />
-                      <input
-                        type="number"
-                        formControlName="length"
-                        placeholder="ย"
-                        class="input input-bordered input-sm join-item w-1/4"
-                        title="ยาว"
-                      />
-                      <input
-                        type="number"
-                        formControlName="height"
-                        placeholder="ส"
-                        class="input input-bordered input-sm join-item w-1/4"
-                        title="สูง"
-                      />
-                      <input
-                        type="number"
-                        formControlName="weight"
-                        placeholder="น้ำหนัก"
-                        class="input input-bordered input-sm join-item w-1/4"
-                        title="น้ำหนัก"
-                      />
+                    <input
+                      type="text"
+                      formControlName="variantNameEn"
+                      placeholder="เช่น Mini BBQ Grill 17x13cm"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <!-- Row 3: Attributes -->
+                  <div class="form-control">
+                    <label class="label-text text-sm font-semibold mb-1.5">สี (Color)</label>
+                    <input
+                      type="text"
+                      formControlName="color"
+                      placeholder="เช่น แดง, น้ำเงิน"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-sm font-semibold mb-1.5">ขนาด (Size)</label>
+                    <input
+                      type="text"
+                      formControlName="sizeLabel"
+                      placeholder="เช่น S, M, L, XL"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-sm font-semibold mb-1.5">ลวดลาย (Style)</label>
+                    <input
+                      type="text"
+                      formControlName="stylePattern"
+                      placeholder="เช่น ลายทาง, ลายจุด"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >หน่วยนับ <span class="text-error">*</span></label
+                    >
+                    <input
+                      type="text"
+                      formControlName="unitOfMeasure"
+                      placeholder="เช่น ชิ้น, เครื่อง"
+                      class="input input-bordered w-full"
+                    />
+                  </div>
+
+                  <!-- Row 4: Dimensions -->
+                  <div class="form-control md:col-span-2 lg:col-span-3 xl:col-span-4 mt-2">
+                    <label class="label-text text-sm font-semibold mb-2"
+                      >ขนาดพัสดุ (กว้าง x ยาว x สูง ซม.) และ น้ำหนัก (กิโลกรัม)</label
+                    >
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium w-8 text-base-content/70">กว้าง</span>
+                        <input
+                          type="number"
+                          formControlName="width"
+                          min="1"
+                          step="1"
+                          class="input input-bordered w-full"
+                        />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium w-8 text-base-content/70">ยาว</span>
+                        <input
+                          type="number"
+                          formControlName="length"
+                          min="1"
+                          step="1"
+                          class="input input-bordered w-full"
+                        />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium w-8 text-base-content/70">สูง</span>
+                        <input
+                          type="number"
+                          formControlName="height"
+                          min="1"
+                          step="1"
+                          class="input input-bordered w-full"
+                        />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium w-12 text-base-content/70">น้ำหนัก</span>
+                        <input
+                          type="number"
+                          formControlName="weight"
+                          (blur)="formatWeight($index)"
+                          class="input input-bordered w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -366,7 +405,7 @@
     }
 
     <div class="flex justify-end gap-3">
-      <button type="button" class="btn btn-ghost" routerLink="/products">
+      <button type="button" class="btn btn-ghost min-w-[120px]" routerLink="/products">
         {{ currentMode() === 'view' ? 'กลับหน้าหลัก' : 'ยกเลิก' }}
       </button>
 
@@ -374,7 +413,7 @@
         <button
           type="submit"
           [disabled]="productForm.invalid || isSubmitting()"
-          class="btn btn-primary px-8 transition-colors duration-150 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300"
+          class="btn btn-primary min-w-[120px] transition-colors duration-150 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300"
         >
           @if (isSubmitting()) {
             <span class="loading loading-spinner loading-xs"></span>
@@ -388,203 +427,12 @@
   </form>
 </div>
 
-<div class="modal" [class.modal-open]="showReviewModal()">
-  <div class="modal-box max-w-3xl border border-base-200 shadow-2xl">
-    <h3 class="font-bold text-lg text-warning flex items-center gap-2 mb-4">
-      ⚠️ กรุณาตรวจสอบข้อมูลเปรียบเทียบก่อนทำการบันทึก
-    </h3>
-
-    <div class="space-y-6 text-sm border-b pb-4 max-h-[60vh] overflow-y-auto pr-2">
-      <div>
-        <h4 class="font-bold text-primary mb-2 flex items-center gap-1">📦 ข้อมูลหลักของสินค้า</h4>
-        <div class="border border-base-200 rounded-xl overflow-hidden bg-base-100 shadow-sm">
-          <table class="table table-sm w-full">
-            <thead class="bg-base-200/60 text-base-content">
-              <tr>
-                <th class="w-1/4">หัวข้อ</th>
-                <th class="w-3/8">ข้อมูลเดิม (ก่อนแก้ไข)</th>
-                <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of comparisonReport(); track item.label) {
-                <tr
-                  [class.bg-warning/5]="item.isChanged"
-                  class="transition-colors border-b border-base-100"
-                >
-                  <td class="font-semibold text-neutral">{{ item.label }}</td>
-
-                  <td
-                    [class.text-base-content/50]="item.isChanged"
-                    [class.text-base-content]="!item.isChanged"
-                  >
-                    {{ item.old }}
-                  </td>
-
-                  <td>
-                    @if (item.isChanged) {
-                      <span class="text-warning font-bold">
-                        {{ item.new }}
-                      </span>
-                    } @else {
-                      <span class="text-base-content/30 italic text-xs">
-                        (ไม่มีการเปลี่ยนแปลง)
-                      </span>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div>
-        <h4 class="font-bold text-secondary mb-2 flex items-center gap-1">
-          🔍 ตรวจสอบรายละเอียดรายการ SKU ย่อย
-        </h4>
-
-        <div class="space-y-4">
-          @for (skuGroup of variantsComparison(); track $index) {
-            <div class="border border-base-200 rounded-xl bg-base-100 shadow-sm overflow-hidden">
-              <div
-                class="bg-base-200/40 px-4 py-2 flex justify-between items-center border-b border-base-200"
-              >
-                <span class="font-mono font-bold text-sm text-neutral">
-                  📦 รหัสสินค้า: {{ skuGroup.skuName }}
-                </span>
-                <div>
-                  @if (skuGroup.isNew) {
-                    <span class="badge badge-success text-white badge-sm">✨ เพิ่ม SKU ใหม่</span>
-                  } @else if (skuGroup.isChanged) {
-                    <span class="badge badge-warning text-white badge-sm"
-                      >✏️ มีการแก้ไขข้อมูลภายใน</span
-                    >
-                  } @else {
-                    <span class="badge badge-ghost text-base-content/40 badge-sm"
-                      >➖ ไม่มีการเปลี่ยนแปลง</span
-                    >
-                  }
-                </div>
-              </div>
-
-              <table class="table table-xs w-full">
-                <thead class="bg-base-50 text-base-content/80">
-                  <tr>
-                    <th class="w-1/4">คุณลักษณะย่อย</th>
-                    <th class="w-3/8">ข้อมูลเดิม</th>
-                    <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (detail of skuGroup.details; track detail.field) {
-                    <tr
-                      [class.bg-warning/5]="detail.isChanged"
-                      class="transition-colors border-b border-base-50"
-                    >
-                      <td class="font-medium text-base-content/70 pl-4">{{ detail.field }}</td>
-
-                      <td
-                        [class.text-base-content/50]="detail.isChanged"
-                        [class.text-base-content]="!detail.isChanged"
-                      >
-                        @if (detail.isImage) {
-                          @if (detail.old) {
-                            <div
-                              class="w-12 h-12 border rounded-md overflow-hidden bg-base-100 shadow-sm"
-                            >
-                              <img
-                                [src]="apiOrigin + detail.old"
-                                class="object-cover w-full h-full"
-                              />
-                            </div>
-                          } @else {
-                            <span class="text-base-content/40 text-xs">ไม่มีรูปภาพ</span>
-                          }
-                        } @else {
-                          @if (detail.field.includes('ราคา')) {
-                            {{ detail.old !== '-' ? '฿' + (detail.old | number: '1.2-2') : '-' }}
-                          } @else if (
-                            detail.field.includes('สต็อก') ||
-                            detail.field.includes('จุดเตือน') ||
-                            detail.field.includes('น้ำหนัก')
-                          ) {
-                            {{ detail.old !== '-' ? (detail.old | number) : '-' }}
-                          } @else {
-                            {{ detail.old }}
-                          }
-                        }
-                      </td>
-
-                      <td>
-                        @if (detail.isChanged) {
-                          @if (detail.isImage) {
-                            @if (detail.new) {
-                              <div
-                                class="w-12 h-12 border border-warning rounded-md overflow-hidden bg-base-100 shadow-sm"
-                              >
-                                <img
-                                  [src]="apiOrigin + detail.new"
-                                  class="object-cover w-full h-full"
-                                />
-                              </div>
-                            } @else {
-                              <span class="text-error font-bold text-xs">🔴 ลบรูปภาพออก</span>
-                            }
-                          } @else {
-                            <span class="text-warning font-bold">
-                              @if (
-                                detail.field.includes('ProductPrice') ||
-                                detail.field.includes('ราคา')
-                              ) {
-                                ฿{{ detail.new | number: '1.2-2' }}
-                              } @else if (
-                                detail.field.includes('สต็อก') ||
-                                detail.field.includes('จุดเตือน') ||
-                                detail.field.includes('น้ำหนัก')
-                              ) {
-                                {{ detail.new | number }}
-                              } @else {
-                                {{ detail.new }}
-                              }
-                            </span>
-                          }
-                        } @else {
-                          <span class="text-base-content/30 italic text-xs"
-                            >(ไม่มีการเปลี่ยนแปลง)</span
-                          >
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @empty {
-            <div class="text-center py-4 text-base-content/40 italic">
-              ไม่มีข้อมูล SKU ย่อยในสินค้านี้
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" (click)="showReviewModal.set(false)">
-          ย้อนกลับไปแก้ไข
-        </button>
-        <button
-          type="button"
-          class="btn btn-success text-white px-6"
-          [disabled]="isSubmitting()"
-          (click)="executeSubmit()"
-        >
-          @if (isSubmitting()) {
-            <span class="loading loading-spinner loading-xs"></span> กำลังประมวลผล...
-          } @else {
-            ยืนยันการบันทึกข้อมูลด่วน
-          }
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+<app-product-review-modal
+  [showModal]="showReviewModal()"
+  [comparisonReport]="comparisonReport()"
+  [variantsComparison]="variantsComparison()"
+  [isSubmitting]="isSubmitting()"
+  [apiOrigin]="apiOrigin"
+  (onCancel)="showReviewModal.set(false)"
+  (onConfirm)="executeSubmit()"
+></app-product-review-modal>

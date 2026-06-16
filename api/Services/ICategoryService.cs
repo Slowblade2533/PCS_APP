@@ -4,7 +4,7 @@ namespace PCS_API.Services;
 
 public interface ICategoryService
 {
-    Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(string? searchTerm = null);
+    Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync(string? searchTerm = null, CancellationToken cancellationToken = default);
     Task<CategoryDto?> GetCategoryByIdAsync(int id);
     Task<(bool IsSuccess, int? CategoryId, string? ErrorMessage)> CreateCategoryAsync(CategoryCreateDto dto);
     Task<(bool IsSuccess, int? CategoryId, string? ErrorMessage)> CreateCategoryBatchAsync(CategoryBatchCreateDto dto);

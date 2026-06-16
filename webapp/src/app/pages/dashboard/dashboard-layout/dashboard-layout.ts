@@ -6,6 +6,5 @@ import { DashboardSidebar } from '../dashboard-sidebar/dashboard-sidebar';
   selector: 'app-dashboard-layout',
   imports: [DashboardSidebar, RouterOutlet],
   templateUrl: './dashboard-layout.html',
-  styleUrl: './dashboard-layout.css',
 })
 export class DashboardLayout {}

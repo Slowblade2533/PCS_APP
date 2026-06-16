@@ -14,7 +14,16 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private http = inject(HttpClient);
+
   private readonly apiUrl = `${environment.apiUrl}/products`;
+
+  createProduct(payload: ProductCreatePayload): Observable<ProductCreateResponse> {
+    return this.http.post<ProductCreateResponse>(this.apiUrl, payload);
+  }
+
+  getProductById(id: number): Observable<ProductDetail> {
+    return this.http.get<ProductDetail>(`${this.apiUrl}/${id}`);
+  }
 
   getProducts(params: ProductSearchParams): Observable<PagedResult<ProductListItem>> {
     let httpParams = new HttpParams();
@@ -45,14 +54,6 @@ export class ProductService {
     return this.http.get<PagedResult<ProductListItem>>(this.apiUrl, {
       params: httpParams,
     });
-  }
-
-  createProduct(payload: ProductCreatePayload): Observable<ProductCreateResponse> {
-    return this.http.post<ProductCreateResponse>(this.apiUrl, payload);
-  }
-
-  getProductById(id: number): Observable<ProductDetail> {
-    return this.http.get<ProductDetail>(`${this.apiUrl}/${id}`);
   }
 
   updateProduct(id: number, payload: any): Observable<any> {

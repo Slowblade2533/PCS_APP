@@ -8,33 +8,26 @@ namespace PCS_API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "CanViewUsers")]
-public class UsersController : ControllerBase
+public class UsersController(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-
-    public UsersController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
     [HttpGet]
-    public async Task<IActionResult> GetUsers([FromQuery] UserSearchDto queryParams)
+    public async Task<IActionResult> GetUsers([FromQuery] UserSearchDto queryParams, CancellationToken cancellationToken)
     {
-        var result = await _userService.GetUsersAsync(queryParams);
+        var result = await userService.GetUsersAsync(queryParams, cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("permissions")]
     public async Task<IActionResult> GetPermissions()
     {
-        var permissions = await _userService.GetPermissionsAsync();
+        var permissions = await userService.GetPermissionsAsync();
         return Ok(permissions);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserById(int id)
     {
-        var user = await _userService.GetUserByIdAsync(id);
+        var user = await userService.GetUserByIdAsync(id);
         if (user == null) return NotFound();
         
         return Ok(user);
@@ -46,7 +39,7 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var user = await _userService.CreateUserAsync(request);
+            var user = await userService.CreateUserAsync(request);
             return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
         }
         catch (Exception ex)
@@ -61,7 +54,7 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var user = await _userService.UpdateUserAsync(id, request);
+            var user = await userService.UpdateUserAsync(id, request);
             return Ok(user);
         }
         catch (Exception ex)
@@ -74,7 +67,7 @@ public class UsersController : ControllerBase
     [Authorize(Policy = "CanManageUsers")]
     public async Task<IActionResult> ToggleActive(int id, [FromBody] ToggleActiveRequest request)
     {
-        await _userService.ToggleActiveAsync(id, request.IsActive);
+        await userService.ToggleActiveAsync(id, request.IsActive);
         return NoContent();
     }
 }

@@ -3,87 +3,74 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
-import { PagedResult } from '../../../shared/models/pagination.models';
-import { StockItem, StockListQuery } from '../../../shared/models/stock.models';
-import { Branch } from '../../../shared/models/user.models';
-import { StockService } from '../../../shared/services/stock.service';
+import { BehaviorSubject, of, Subject } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { environment } from '../../../../environments/environment';
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ProductSearchFilter } from '../../../shared/components/product-search-filter/product-search-filter';
+import { PagedResult } from '../../../shared/models/pagination.models';
+import { StockItem, StockListQuery } from '../../../shared/models/stock.models';
+import { StockService } from '../../../shared/services/stock.service';
 
 @Component({
   selector: 'app-stock-list',
   standalone: true,
-  imports: [FormsModule, RouterLink, DecimalPipe, DatePipe, PaginationComponent, ProductSearchFilter],
+  imports: [
+    FormsModule,
+    RouterLink,
+    DecimalPipe,
+    DatePipe,
+    PaginationComponent,
+    ProductSearchFilter,
+    ImageHoverPreview,
+  ],
   templateUrl: './stock-list.html',
-  styleUrl: './stock-list.css',
 })
 export class StockList implements OnInit {
-  private readonly stockService = inject(StockService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly stockService = inject(StockService);
 
+  apiOrigin = environment.apiUrl.replace('/api', '');
+
+  private readonly refresh$ = new BehaviorSubject<void>(undefined);
   private readonly search$ = new Subject<string>();
 
   loading = signal(false);
   result = signal<PagedResult<StockItem> | null>(null);
-  branches = signal<Branch[]>([]);
 
-  selectedBranchId: number | null = null;
-  
-  query: StockListQuery = { page: 1, pageSize: 20 };
-
-  private currentReq?: import('rxjs').Subscription;
+  query: StockListQuery = { page: 1, pageSize: 20, inventoryGroup: 'ForSale' };
 
   ngOnInit(): void {
-    this.loadBranches();
-    this.loadStock();
-
     this.search$
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => {
         this.query = { ...this.query, search: search || undefined, page: 1 };
-        this.loadStock();
+        this.refresh$.next();
       });
-  }
 
-  loadBranches(): void {
-    this.stockService
-      .getBranches()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((branches) => {
-        this.branches.set(branches);
-      });
-  }
-
-  loadStock(): void {
-    if (this.currentReq) {
-      this.currentReq.unsubscribe();
-    }
-    
-    this.loading.set(true);
-    this.currentReq = this.stockService
-      .getStocks(this.query)
+    this.refresh$
       .pipe(
-        finalize(() => {
-          this.loading.set(false);
+        tap(() => this.loading.set(true)),
+        switchMap(() => {
+          const s = this.query.search?.trim() || '';
+          if (s.length > 0 && s.length < 3) {
+            return of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 });
+          }
+          return this.stockService
+            .getStocks(this.query)
+            .pipe(
+              catchError(() =>
+                of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 }),
+              ),
+            );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((res) => this.result.set(res));
-  }
-
-  onSearchChange(value: string): void {
-    this.search$.next(value);
-  }
-
-  onFilterChange(): void {
-    this.query = { ...this.query, page: 1 };
-    this.loadStock();
-  }
-
-  onBranchChange(branchId: number | null): void {
-    this.query = { ...this.query, branchId: branchId ?? undefined, page: 1 };
-    this.loadStock();
+      .subscribe((res) => {
+        this.result.set(res);
+        this.loading.set(false);
+      });
   }
 
   changePage(page: number): void {
@@ -94,5 +81,18 @@ export class StockList implements OnInit {
   hasNextPage(): boolean {
     const total = this.result()?.totalCount ?? 0;
     return this.query.page * this.query.pageSize < total;
+  }
+
+  loadStock(): void {
+    this.refresh$.next();
+  }
+
+  onFilterChange(): void {
+    this.query = { ...this.query, page: 1 };
+    this.loadStock();
+  }
+
+  onSearchChange(value: string): void {
+    this.search$.next(value);
   }
 }

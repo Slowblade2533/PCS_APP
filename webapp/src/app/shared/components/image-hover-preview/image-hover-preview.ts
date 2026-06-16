@@ -4,15 +4,16 @@ import { Component, Input, signal } from '@angular/core';
   selector: 'app-image-hover-preview',
   standalone: true,
   templateUrl: './image-hover-preview.html',
-  styles: []
+  styles: [],
 })
 export class ImageHoverPreview {
-  @Input({ required: true }) imageUrl!: string;
   @Input() altText: string = 'Image Preview';
-  @Input() imageClass: string = 'w-12 h-12 object-cover rounded-md border border-base-200 cursor-pointer';
+  @Input() imageClass: string =
+    'w-12 h-12 object-cover rounded-md border border-base-200 cursor-pointer';
+  @Input({ required: true }) imageUrl!: string;
 
-  showPreview = signal<boolean>(false);
   previewStyle = signal<any>({});
+  showPreview = signal<boolean>(false);
 
   onMouseEnter(event: MouseEvent) {
     this.showPreview.set(true);
@@ -29,24 +30,23 @@ export class ImageHoverPreview {
 
   private updatePreviewPosition(event: MouseEvent) {
     if (!this.showPreview()) return;
-    
+
     const x = event.clientX;
     const y = event.clientY;
     const w = window.innerWidth;
     const h = window.innerHeight;
 
     let left = x + 20;
-    let top = y - 250; // default center around cursor
+    let top = y - 250;
 
-    // Bounds checking
     if (top < 10) top = 10;
     else if (top + 500 > h - 10) top = h - 510;
-    
-    if (left + 500 > w - 10) left = x - 520; // Flip to left of cursor if too close to right edge
+
+    if (left + 500 > w - 10) left = x - 520;
 
     this.previewStyle.set({
       left: `${left}px`,
-      top: `${top}px`
+      top: `${top}px`,
     });
   }
 }

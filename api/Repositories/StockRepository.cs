@@ -8,10 +8,10 @@ namespace PCS_API.Repositories;
 
 public class StockRepository : IStockRepository
 {
-    private readonly string _connectionString;
-    public StockRepository(IConfiguration config)
+    private readonly ISqlConnectionFactory _connectionFactory;
+    public StockRepository(ISqlConnectionFactory connectionFactory)
     {
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<int> CreateTransactionAsync(StockTransactionModel tx, IDbTransaction transaction)
@@ -25,9 +25,9 @@ public class StockRepository : IStockRepository
         return await conn.ExecuteScalarAsync<int>(sql, tx, transaction: transaction);
     }
 
-    public async Task<PagedResultDto<StockDto>> GetStocksPagedAsync(StockSearchDto search)
+    public async Task<PagedResultDto<StockDto>> GetStocksPagedAsync(StockSearchDto search, CancellationToken cancellationToken = default)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
 
         string whereClause = "WHERE 1=1";
         var parameters = new DynamicParameters();
@@ -53,11 +53,6 @@ public class StockRepository : IStockRepository
             parameters.Add("InventoryGroup", search.InventoryGroup);
         }
 
-        // TODO: Handle actual branch filtering. Right now it just shows stock from Stocks table,
-        // but currently Stocks table doesn't have BranchId, it gets it from subquery.
-        // If Branches logic requires filtering by BranchId on the Stocks or Transactions level, 
-        // it needs to be added here. Assuming Stocks is global or BranchId is added later.
-
         string sql = $@"
             SELECT COUNT(*)
             FROM dbo.Stocks s
@@ -70,7 +65,8 @@ public class StockRepository : IStockRepository
                    s.CurrentQuantity, s.ReservedQuantity, s.AvailableQuantity, 
                    s.ReorderPoint, s.UpdatedAt, 
                    (SELECT TOP 1 Id FROM dbo.Branches WHERE IsActive = 1) AS BranchId,
-                   (SELECT TOP 1 BranchName FROM dbo.Branches WHERE IsActive = 1) AS BranchName
+                   (SELECT TOP 1 BranchName FROM dbo.Branches WHERE IsActive = 1) AS BranchName,
+                   v.ImageUrl, p.BrandName
             FROM dbo.Stocks s
             INNER JOIN dbo.ProductVariants v ON s.VariantId = v.VariantId
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
@@ -81,7 +77,8 @@ public class StockRepository : IStockRepository
         parameters.Add("Offset", search.GetSafeOffset());
         parameters.Add("PageSize", search.PageSize);
 
-        using var multi = await conn.QueryMultipleAsync(sql, parameters);
+        var command = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+        using var multi = await conn.QueryMultipleAsync(command);
         int totalCount = await multi.ReadSingleAsync<int>();
         var items = await multi.ReadAsync<StockDto>();
 
@@ -94,9 +91,9 @@ public class StockRepository : IStockRepository
         };
     }
 
-    public async Task<PagedResultDto<StockTransactionHistoryDto>> GetTransactionsAsync(string? transactionType, PaginationParamsDto @params)
+    public async Task<PagedResultDto<StockTransactionHistoryDto>> GetTransactionsAsync(string? transactionType, PaginationParamsDto @params, CancellationToken cancellationToken = default)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
         var parameters = new DynamicParameters();
 
         parameters.Add("Offset", @params.GetSafeOffset());
@@ -105,11 +102,10 @@ public class StockRepository : IStockRepository
         string whereClause = "";
         if (!string.IsNullOrEmpty(transactionType))
         {
-            whereClause = "WHERE UPPER(t.TransactionType) = @TransactionType";
+            whereClause = "WHERE t.TransactionType = @TransactionType";
             parameters.Add("TransactionType", transactionType.ToUpper());
         }
 
-        // ใช้ QueryMultipleAsync ส่ง COUNT + DATA ในรอบเดียว
         string sql = $@"
             SELECT COUNT(*) FROM dbo.StockTransactions t {whereClause};
 
@@ -124,7 +120,8 @@ public class StockRepository : IStockRepository
             ORDER BY t.CreatedAt DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
 
-        using var multi = await conn.QueryMultipleAsync(sql, parameters);
+        var command = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+        using var multi = await conn.QueryMultipleAsync(command);
         int totalCount = await multi.ReadSingleAsync<int>();
         var items = await multi.ReadAsync<StockTransactionHistoryDto>();
 
@@ -181,8 +178,6 @@ public class StockRepository : IStockRepository
             {
                 beforeQuantity = stock.CurrentQuantity;
                 
-                // สำหรับ ADJUST, qtyChange คือยอดที่ต้องการจะปรับให้เป็น (Absolute)
-                // ดังนั้นเราต้องคำนวณส่วนต่างจริงๆ เพื่อ return และเพื่อ check logic
                 int actualChange = type == "ADJUST" ? (qtyChange - stock.CurrentQuantity) : qtyChange;
                 newQuantity = stock.CurrentQuantity + actualChange;
 
@@ -210,7 +205,6 @@ public class StockRepository : IStockRepository
 
             if (affectedRows > 0)
             {
-                // ส่งคืน (ยอดก่อน, ยอดหลัง)
                 return (beforeQuantity, newQuantity);
             }
         }

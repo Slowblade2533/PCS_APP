@@ -15,7 +15,16 @@ import { Branch } from '../models/user.models';
 @Injectable({ providedIn: 'root' })
 export class StockService {
   private readonly http = inject(HttpClient);
+
   private readonly apiUrl = `${environment.apiUrl}/stock`;
+
+  createTransaction(payload: StockTransactionRequest): Observable<StockTransaction> {
+    return this.http.post<StockTransaction>(`${this.apiUrl}/transaction`, payload);
+  }
+
+  getBranches(): Observable<Branch[]> {
+    return this.http.get<Branch[]>(`${environment.apiUrl}/branches`);
+  }
 
   getStocks(query: StockListQuery): Observable<PagedResult<StockItem>> {
     let params = new HttpParams().set('pageNumber', query.page).set('pageSize', query.pageSize);
@@ -35,13 +44,5 @@ export class StockService {
     if (query.dateFrom) params = params.set('dateFrom', query.dateFrom);
     if (query.dateTo) params = params.set('dateTo', query.dateTo);
     return this.http.get<PagedResult<StockTransaction>>(`${this.apiUrl}/transactions`, { params });
-  }
-
-  createTransaction(payload: StockTransactionRequest): Observable<StockTransaction> {
-    return this.http.post<StockTransaction>(`${this.apiUrl}/transaction`, payload);
-  }
-
-  getBranches(): Observable<Branch[]> {
-    return this.http.get<Branch[]>(`${environment.apiUrl}/branches`);
   }
 }

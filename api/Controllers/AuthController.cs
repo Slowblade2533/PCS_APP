@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PCS_API.DTOs;
 using PCS_API.Services;
 using System.Security.Claims;
@@ -41,6 +42,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting("LoginLimiter")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
         var user = await authService.AuthenticateAsync(model.Email, model.Password);
@@ -102,10 +104,16 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
+        // SignOutAsync will correctly delete the AuthCookie using the registered CookieOptions
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        Response.Cookies.Delete("AuthCookie");
-        Response.Cookies.Delete("XSRF-TOKEN");
+        // Delete XSRF-TOKEN with the exact same options used to create it
+        Response.Cookies.Delete("XSRF-TOKEN", new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = true,
+            SameSite = SameSiteMode.None
+        });
 
         return Ok(new
         {

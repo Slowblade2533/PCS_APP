@@ -8,20 +8,20 @@ namespace PCS_API.Repositories;
 
 public class ProductRepository : IProductRepository
 {
-    private readonly string _connectionString;
+    private readonly ISqlConnectionFactory _connectionFactory;
     private readonly ImageCleanupChannel _imageCleanup;
-    public ProductRepository(IConfiguration configuration, ImageCleanupChannel imageCleanup)
+    public ProductRepository(ISqlConnectionFactory connectionFactory, ImageCleanupChannel imageCleanup)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new ArgumentNullException(nameof(configuration));
+        _connectionFactory = connectionFactory;
         _imageCleanup = imageCleanup;
     }
 
     public async Task<ResultDto<int>> CreateProductWithVariantsAsync(ProductCreateDto dto)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        using var connection = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        if (connection == null) throw new InvalidOperationException("Could not create DbConnection.");
         await connection.OpenAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
+        using var transaction = await connection.BeginTransactionAsync();
 
         try
         {
@@ -76,7 +76,6 @@ public class ProductRepository : IProductRepository
 
             int productId = await connection.QuerySingleAsync<int>(productSql, dto, transaction);
 
-            // Batch INSERT: สร้าง SQL เดียวสำหรับทุก variant
             var batchSql = new StringBuilder();
             var batchParams = new DynamicParameters();
             batchParams.Add("ProductId", productId);
@@ -136,9 +135,9 @@ public class ProductRepository : IProductRepository
         }
     }
 
-    public async Task<PagedResultDto<ProductListDto>> GetPagedProductsAsync(ProductSearchParamsDto search)
+    public async Task<PagedResultDto<ProductListDto>> GetPagedProductsAsync(ProductSearchParamsDto search, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        using var connection = _connectionFactory.CreateConnection();
 
         var parameters = new DynamicParameters();
         parameters.Add("SearchTerm", string.IsNullOrEmpty(search.SearchTerm) ? null : $"%{search.SearchTerm}%");
@@ -149,7 +148,6 @@ public class ProductRepository : IProductRepository
         parameters.Add("PageSize", search.PageSize);
         parameters.Add("Offset", search.GetSafeOffset());
 
-        // แยก COUNT ออกจาก data query — เบากว่า COUNT(*) OVER() มากเพราะไม่ต้อง JOIN ทุกตาราง
         string sql = @"
                 SELECT COUNT(*)
                 FROM Products p
@@ -190,22 +188,39 @@ public class ProductRepository : IProductRepository
                 ORDER BY p.ProductId DESC
                 OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
 
-        using var multi = await connection.QueryMultipleAsync(sql, parameters);
-        int totalCount = await multi.ReadSingleAsync<int>();
-        var items = await multi.ReadAsync<ProductListDto>();
-
-        return new PagedResultDto<ProductListDto>
+        var command = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+        
+        try
         {
-            Items = items,
-            TotalCount = totalCount,
-            PageNumber = search.PageNumber,
-            PageSize = search.PageSize
-        };
+            using var multi = await connection.QueryMultipleAsync(command);
+            int totalCount = await multi.ReadSingleAsync<int>();
+            var items = await multi.ReadAsync<ProductListDto>();
+
+            return new PagedResultDto<ProductListDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = search.PageNumber,
+                PageSize = search.PageSize
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            // Handle cases where the client cancels the request (e.g. typing in search box too fast)
+            // This prevents unhandled TaskCanceledException errors in the application.
+            return new PagedResultDto<ProductListDto>
+            {
+                Items = new List<ProductListDto>(),
+                TotalCount = 0,
+                PageNumber = search.PageNumber,
+                PageSize = search.PageSize
+            };
+        }
     }
 
     public async Task<ProductDetailDto?> GetProductDetailAsync(int productId)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        using var connection = _connectionFactory.CreateConnection();
 
         string sql = @"
                 SELECT ProductId, ProductNameTh, ProductNameEn, Description, BrandName, CategoryId, ProductType, ProductStatus, IsStockTracked, InventoryGroup 
@@ -231,9 +246,10 @@ public class ProductRepository : IProductRepository
 
     public async Task<ResultDto<bool>> UpdateProductWithVariantsAsync(int productId, ProductCreateDto dto)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        using var connection = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        if (connection == null) throw new InvalidOperationException("Could not create DbConnection.");
         await connection.OpenAsync();
-        await using var transaction = await connection.BeginTransactionAsync();
+        using var transaction = await connection.BeginTransactionAsync();
 
         try
         {
@@ -327,7 +343,6 @@ public class ProductRepository : IProductRepository
                 return ResultDto<bool>.Failure("ไม่พบสินค้าที่ต้องการแก้ไข");
             }
 
-            // ดึง old ImageUrl ทั้งหมดในรอบเดียว แทน SELECT ทีละ variant
             var existingVarIdsForUpdate = dto.Variants
                 .Where(v => v.VariantId != null && v.VariantId > 0)
                 .Select(v => v.VariantId!.Value)
@@ -342,7 +357,6 @@ public class ProductRepository : IProductRepository
                 oldImageMap = oldImages.ToDictionary(x => x.VariantId, x => x.ImageUrl);
             }
 
-            // ดึง RowVersion ทั้งหมดสำหรับ optimistic concurrency check
             Dictionary<int, byte[]> rowVersionMap = new();
             if (existingVarIdsForUpdate.Any())
             {
@@ -352,7 +366,6 @@ public class ProductRepository : IProductRepository
                 rowVersionMap = stockSnapshots.ToDictionary(x => x.VariantId, x => x.RowVersion);
             }
 
-            // Batch INSERT สำหรับ variants ใหม่
             var newVariants = dto.Variants.Where(v => v.VariantId == null || v.VariantId == 0).ToList();
             if (newVariants.Any())
             {
@@ -403,7 +416,6 @@ public class ProductRepository : IProductRepository
                 await connection.ExecuteAsync(batchSql.ToString(), batchParams, transaction);
             }
 
-            // Batch UPDATE สำหรับ variants ที่มีอยู่แล้ว
             var existingVariants = dto.Variants.Where(v => v.VariantId != null && v.VariantId > 0).ToList();
             if (existingVariants.Any())
             {
@@ -415,7 +427,6 @@ public class ProductRepository : IProductRepository
                     var v = existingVariants[i];
                     int variantId = v.VariantId!.Value;
 
-                    // ตรวจสอบรูปเก่าเพื่อลบ
                     if (oldImageMap.TryGetValue(variantId, out var oldImageUrl))
                     {
                         if (!string.Equals(oldImageUrl, v.ImageUrl, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(oldImageUrl))
@@ -465,7 +476,6 @@ public class ProductRepository : IProductRepository
 
             await transaction.CommitAsync();
 
-            // ส่งรายการรูปที่ต้องตรวจสอบไปยัง Background Service แทนการลบ inline
             if (filesToCheckForDeletion.Any())
             {
                 _imageCleanup.Writer.TryWrite(filesToCheckForDeletion.Distinct().ToList());

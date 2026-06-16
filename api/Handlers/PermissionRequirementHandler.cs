@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace PCS_API.Handlers;
 
@@ -28,7 +27,6 @@ public class PermissionHandler(IHttpContextAccessor httpContextAccessor) : Autho
         }
         else
         {
-            // Fallback for endpoints that don't pass branch context
             if (context.User.HasClaim("permission", requirement.Permission))
             {
                 context.Succeed(requirement);

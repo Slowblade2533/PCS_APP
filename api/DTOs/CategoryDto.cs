@@ -9,8 +9,6 @@ public class CategoryDto
     public string? ParentName { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; }
-    
-    // Computed properties
     public string FullPath { get; set; } = string.Empty;
     public int Level { get; set; }
 }

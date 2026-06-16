@@ -2,13 +2,42 @@
 
 @import 'tailwindcss';
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+  themes:
+    light --default,
+    dark --prefersdark;
 }
 
 @layer base {
+  /* 🖥️ Desktop / 1080p standard monitors (logical width >= 1400px) */
   html {
-    /* ใช้ font-size: 18px (แทนเปอร์เซ็นต์ทศนิยม) เพื่อป้องกันปัญหา Chromium Browser Crash (STATUS_BREAKPOINT) 
-       เนื่องจากการคำนวณ Sub-pixel Layout แบบอนันต์ในบางกรณี */
-    font-size: 18px;
+    font-size: 16px;
+  }
+
+  /* 💻 12" Notebooks / Laptops with high DPI scaling (logical width 1024px to 1399px) */
+  @media (max-width: 1399px) {
+    html {
+      font-size: 14.5px;
+    }
+  }
+
+  /* 📱 Tablet 8" landscape / iPad (logical width 900px to 1023px) */
+  @media (max-width: 1023px) {
+    html {
+      font-size: 13.5px;
+    }
+  }
+
+  /* 📱 Tablet 8" portrait / Small viewports (logical width 768px to 899px) */
+  @media (max-width: 899px) {
+    html {
+      font-size: 13px;
+    }
+  }
+
+  /* 📱 Mobile / Very small devices (< 768px) */
+  @media (max-width: 767px) {
+    html {
+      font-size: 12.5px;
+    }
   }
 }

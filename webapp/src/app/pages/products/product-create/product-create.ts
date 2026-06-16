@@ -1,42 +1,48 @@
-import { DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
+import { CategorySearchComponent } from '../../../shared/components/category-search/category-search';
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
+import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { AuthService } from '../../../shared/services/auth.service';
 import { ProductService } from '../../../shared/services/product.service';
-
-import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
-import { CategorySearchComponent } from '../../../shared/components/category-search/category-search';
+import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
+import { ProductReviewModalComponent } from './product-review-modal/product-review-modal.component';
 
 @Component({
   selector: 'app-product-create',
-  imports: [ReactiveFormsModule, RouterLink, DecimalPipe, ImageHoverPreview, CategorySearchComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    ImageHoverPreview,
+    CategorySearchComponent,
+    ProductReviewModalComponent,
+  ],
   templateUrl: './product-create.html',
-  styleUrl: './product-create.css',
 })
-export class ProductCreate implements OnInit {
+export class ProductCreate implements OnInit, HasUnsavedChanges {
+  private authService = inject(AuthService);
+  private destroyRef = inject(DestroyRef);
   private fb = inject(FormBuilder);
   private productService = inject(ProductService);
-  private authService = inject(AuthService);
-  private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private destroyRef = inject(DestroyRef);
+  private router = inject(Router);
+  private swal = inject(SweetAlertService);
 
-  isFormReady = signal<boolean>(false);
-  isSubmitting = signal<boolean>(false);
-  submitError = signal<string | null>(null);
-  isUploadingImage = signal<boolean>(false);
-
-  productId = signal<number | null>(null);
-  currentMode = signal<'create' | 'edit' | 'view'>('create');
-  showReviewModal = signal<boolean>(false);
-
-  isModified = signal<boolean>(false);
   comparisonReport = signal<any[]>([]);
+  currentMode = signal<'create' | 'edit' | 'view'>('create');
+  isFormReady = signal<boolean>(false);
+  isModified = signal<boolean>(false);
+  isSubmitting = signal<boolean>(false);
+  isUploadingImage = signal<boolean>(false);
+  productId = signal<number | null>(null);
+  showReviewModal = signal<boolean>(false);
+  submitError = signal<string | null>(null);
   variantsComparison = signal<any[]>([]);
+
   private originalFormValue: any = null;
 
   readonly apiOrigin = environment.apiUrl;
@@ -53,6 +59,13 @@ export class ProductCreate implements OnInit {
     inventoryGroup: ['ForSale', [Validators.required]],
     variants: this.fb.array([]),
   });
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.hasUnsavedChanges()) {
+      $event.returnValue = true;
+    }
+  }
 
   get variants(): FormArray {
     return this.productForm.get('variants') as FormArray;
@@ -72,6 +85,12 @@ export class ProductCreate implements OnInit {
       this.isModified.set(false);
       this.trackFormChanges();
     }
+  }
+
+  hasUnsavedChanges(): boolean {
+    // Only check if we are in create or edit mode
+    if (this.currentMode() === 'view') return false;
+    return this.productForm.dirty && !this.isSubmitting();
   }
 
   loadProductDetail(id: number) {
@@ -152,7 +171,7 @@ export class ProductCreate implements OnInit {
   getComparisonReport() {
     const current = this.productForm.getRawValue();
     const old = this.originalFormValue || {};
-    const getCatName = (id: any) => id ? `รหัสหมวดหมู่: ${id}` : '-';
+    const getCatName = (id: any) => (id ? `รหัสหมวดหมู่: ${id}` : '-');
     const oldNameTh = (old.productNameTh || '').trim();
     const newNameTh = (current.productNameTh || '').trim();
     const oldNameEn = (old.productNameEn || '').trim();
@@ -255,7 +274,7 @@ export class ProductCreate implements OnInit {
             },
             { field: 'หน่วยนับ', old: '-', new: v.unitOfMeasure || 'อัน', isChanged: true },
             { field: 'ขนาด (กว้างxยาวxสูง)', old: '-', new: getDimText(v), isChanged: true },
-            { field: 'น้ำหนัก (กรัม)', old: '-', new: v.weight ?? 0, isChanged: true },
+            { field: 'น้ำหนัก (กก.)', old: '-', new: v.weight ?? 0, isChanged: true },
             { field: 'ราคาขาย (บาท)', old: '-', new: v.basePrice ?? 0, isChanged: true },
             { field: 'สต็อกเริ่มต้น', old: '-', new: v.currentQuantity ?? 0, isChanged: true },
             { field: 'จุดเตือนสต็อกต่ำ', old: '-', new: v.reorderPoint ?? 0, isChanged: true },
@@ -331,7 +350,7 @@ export class ProductCreate implements OnInit {
           isChanged: isDimChanged,
         },
         {
-          field: 'น้ำหนัก (กรัม)',
+          field: 'น้ำหนัก (กก.)',
           old: oldV.weight ?? 0,
           new: v.weight ?? 0,
           isChanged: Number(oldV.weight) !== Number(v.weight),
@@ -379,12 +398,12 @@ export class ProductCreate implements OnInit {
       stylePattern: [v.stylePattern],
       imageUrl: [v.imageUrl ?? null],
       unitOfMeasure: [v.unitOfMeasure ?? 'อัน', [Validators.required]],
-      width: [v.width ?? 0.01, [Validators.required, Validators.min(0)]],
-      length: [v.length ?? 0.01, [Validators.required, Validators.min(0)]],
-      height: [v.height ?? 0.01, [Validators.required, Validators.min(0)]],
-      weight: [v.weight ?? 0.01, [Validators.required, Validators.min(0)]],
-      basePrice: [v.basePrice ?? 0.0, [Validators.required, Validators.min(0)]],
-      discountPrice: [v.discountPrice ?? 0.0, [Validators.min(0)]],
+      width: [v.width != null && Math.round(Number(v.width)) >= 1 ? Math.round(Number(v.width)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      length: [v.length != null && Math.round(Number(v.length)) >= 1 ? Math.round(Number(v.length)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      height: [v.height != null && Math.round(Number(v.height)) >= 1 ? Math.round(Number(v.height)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      weight: [v.weight ? Number(v.weight).toFixed(2) : '0.00', [Validators.required, Validators.min(0)]],
+      basePrice: [v.basePrice ? Number(v.basePrice).toFixed(2) : '0.00', [Validators.required, Validators.min(0)]],
+      discountPrice: [v.discountPrice ? Number(v.discountPrice).toFixed(2) : '0.00', [Validators.min(0)]],
       currentQuantity: [v.currentQuantity ?? 0, [Validators.required, Validators.min(0)]],
       reorderPoint: [v.reorderPoint ?? 0, [Validators.required, Validators.min(0)]],
     });
@@ -407,16 +426,52 @@ export class ProductCreate implements OnInit {
       stylePattern: [''],
       imageUrl: [null],
       unitOfMeasure: ['อัน', [Validators.required]],
-      width: [0.01, [Validators.required, Validators.min(0)]],
-      length: [0.01, [Validators.required, Validators.min(0)]],
-      height: [0.01, [Validators.required, Validators.min(0)]],
-      weight: [0.01, [Validators.required, Validators.min(0)]],
-      basePrice: [0.0, [Validators.required, Validators.min(0)]],
-      discountPrice: [0.0, [Validators.min(0)]],
+      width: [1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      length: [1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      height: [1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
+      weight: ['0.00', [Validators.required, Validators.min(0)]],
+      basePrice: ['0.00', [Validators.required, Validators.min(0)]],
+      discountPrice: ['0.00', [Validators.min(0)]],
       currentQuantity: [0, [Validators.required, Validators.min(0)]],
       reorderPoint: [0, [Validators.required, Validators.min(0)]],
     });
     this.variants.push(variantForm);
+  }
+
+  formatFinancial(index: number, controlName: string): void {
+    const variantForm = this.variants.at(index) as FormGroup;
+    const control = variantForm.get(controlName);
+    if (control) {
+      const val = control.value;
+      if (val !== null && val !== undefined && val !== '') {
+        const num = parseFloat(val);
+        if (!isNaN(num)) {
+          control.setValue(num.toFixed(2), { emitEvent: false });
+        } else {
+          control.setValue('0.00', { emitEvent: false });
+        }
+      } else {
+        control.setValue('0.00', { emitEvent: false });
+      }
+    }
+  }
+
+  formatWeight(index: number): void {
+    const variantForm = this.variants.at(index) as FormGroup;
+    const control = variantForm.get('weight');
+    if (control) {
+      const val = control.value;
+      if (val !== null && val !== undefined && val !== '') {
+        const num = parseFloat(val);
+        if (!isNaN(num)) {
+          control.setValue(num.toFixed(2), { emitEvent: false });
+        } else {
+          control.setValue('0.00', { emitEvent: false });
+        }
+      } else {
+        control.setValue('0.00', { emitEvent: false });
+      }
+    }
   }
 
   removeVariant(index: number): void {
@@ -509,12 +564,16 @@ export class ProductCreate implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            this.isSubmitting.set(false);
-            this.router.navigate(['/products']);
+            this.productForm.markAsPristine();
+            this.swal.success('แก้ไขข้อมูลสินค้าสำเร็จ').then(() => {
+              this.router.navigate(['/products']);
+            });
           },
           error: (err) => {
             this.isSubmitting.set(false);
-            this.submitError.set(err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้');
+            const errMsg = err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้';
+            this.submitError.set(errMsg);
+            this.swal.error(errMsg);
           },
         });
     } else {
@@ -523,12 +582,16 @@ export class ProductCreate implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: () => {
-            this.isSubmitting.set(false);
-            this.router.navigate(['/products']);
+            this.productForm.markAsPristine();
+            this.swal.success('บันทึกข้อมูลสินค้าสำเร็จ').then(() => {
+              this.router.navigate(['/products']);
+            });
           },
           error: (err) => {
             this.isSubmitting.set(false);
-            this.submitError.set(err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้');
+            const errMsg = err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้';
+            this.submitError.set(errMsg);
+            this.swal.error(errMsg);
           },
         });
     }
@@ -565,12 +628,12 @@ export class ProductCreate implements OnInit {
         stylePattern: String(variant.stylePattern ?? '').trim() || undefined,
         imageUrl: variant.imageUrl || undefined,
         unitOfMeasure: String(variant.unitOfMeasure ?? 'อัน'),
-        width: Number(variant.width ?? 0),
-        length: Number(variant.length ?? 0),
-        height: Number(variant.height ?? 0),
-        weight: Number(variant.weight ?? 0),
-        basePrice: Number(variant.basePrice ?? 0),
-        discountPrice: Number(variant.discountPrice ?? 0),
+        width: Math.round(Number(variant.width ?? 1)),
+        length: Math.round(Number(variant.length ?? 1)),
+        height: Math.round(Number(variant.height ?? 1)),
+        weight: Number(variant.weight ?? 0).toFixed(2),
+        basePrice: Number(variant.basePrice ?? 0).toFixed(2),
+        discountPrice: Number(variant.discountPrice ?? 0).toFixed(2),
         currentQuantity: Number(variant.currentQuantity ?? 0),
         reorderPoint: Number(variant.reorderPoint ?? 0),
       })),

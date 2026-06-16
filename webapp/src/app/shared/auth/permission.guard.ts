@@ -1,23 +1,23 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { SweetAlertService } from '../services/sweet-alert.service';
 
 export const permissionGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
+  const swal = inject(SweetAlertService);
 
-  // Get the required permission from the route data
   const requiredPermission = route.data?.['permission'];
 
   if (!requiredPermission) {
-    return true; // No permission required
+    return true;
   }
 
   if (authService.hasPermission(requiredPermission)) {
     return true;
   }
 
-  // Not authorized
-  window.alert('คุณไม่มีสิทธิ์การเข้าถึงข้อมูลส่วนนี้');
+  swal.error('คุณไม่มีสิทธิ์การเข้าถึงข้อมูลส่วนนี้');
   return router.createUrlTree(['/dashboard']);
 };

@@ -13,25 +13,26 @@ public class StockController(IStockService stockService) : ControllerBase
 {
     [HttpGet]
     [Authorize(Policy = "CanViewStock")]
-    public async Task<IActionResult> Get([FromQuery] StockSearchDto search)
+    public async Task<IActionResult> Get([FromQuery] StockSearchDto search, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        return Ok(await stockService.GetStockStatusAsync(search));
+        return Ok(await stockService.GetStockStatusAsync(search, cancellationToken));
     }
 
     [HttpGet("transactions")]
-    [Authorize(Policy = "CanViewStock")] // ปรับสิทธิ์สอดคล้องตามที่ระบบคุณต้องการล็อกความปลอดภัยไว้
+    [Authorize(Policy = "CanViewStock")]
     public async Task<IActionResult> GetTransactions(
         [FromQuery] string? transactionType,
-        [FromQuery] PaginationParamsDto @params)
+        [FromQuery] PaginationParamsDto @params,
+        CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        var result = await stockService.GetTransactionsAsync(transactionType, @params);
+        var result = await stockService.GetTransactionsAsync(transactionType, @params, cancellationToken);
         return Ok(result);
     }
 
     [HttpPost("transaction")]
-    public async Task<IActionResult> Post([FromBody] CreateStockTransactionDto dto)
+    public async Task<IActionResult> Post([FromBody] CreateStockTransactionDto dto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -62,7 +63,7 @@ public class StockController(IStockService stockService) : ControllerBase
         }
 
         int currentUserId = int.Parse(userIdClaim.Value);
-        var result = await stockService.ProcessStockTransactionAsync(dto, currentUserId);
+        var result = await stockService.ProcessStockTransactionAsync(dto, currentUserId, cancellationToken);
 
         return result
             ? Ok(new { message = "Transaction complete" })

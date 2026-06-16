@@ -16,9 +16,9 @@ public class UserService : IUserService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<PagedResultDto<UserListItemDto>> GetUsersAsync(UserSearchDto search)
+    public async Task<PagedResultDto<UserListItemDto>> GetUsersAsync(UserSearchDto search, CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await _userRepository.GetUsersAsync(search);
+        var (items, totalCount) = await _userRepository.GetUsersAsync(search, cancellationToken);
         return new PagedResultDto<UserListItemDto> 
         { 
             Items = items, 

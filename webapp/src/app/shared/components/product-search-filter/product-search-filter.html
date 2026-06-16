@@ -2,11 +2,13 @@
   <div class="card-body p-4">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
       <div class="form-control">
-        <label class="label py-1"><span class="label-text text-xs">ค้นหาชื่อ/แบรนด์/รหัส</span></label>
+        <label class="label py-1"
+          ><span class="label-text text-xs">ค้นหาชื่อ/แบรนด์/รหัส</span></label
+        >
         <input
           type="text"
-          [ngModel]="searchTerm"
-          (ngModelChange)="onSearchTextChange($event)"
+          [value]="searchTerm"
+          (input)="onSearchTextChange($any($event.target).value)"
           placeholder="ค้นหาสินค้า..."
           class="input input-bordered input-md w-full"
         />
@@ -15,8 +17,8 @@
       <div class="form-control">
         <label class="label py-1"><span class="label-text text-xs">สถานะการจำหน่าย</span></label>
         <select
-          [ngModel]="selectedStatus"
-          (ngModelChange)="selectedStatusChange.emit($event); onSelectChange()"
+          [value]="selectedStatus"
+          (change)="selectedStatusChange.emit($any($event.target).value); onSelectChange()"
           class="select select-bordered select-md w-full"
         >
           <option value="">ทั้งหมด</option>
@@ -29,8 +31,8 @@
       <div class="form-control">
         <label class="label py-1"><span class="label-text text-xs">ประเภทสินค้า</span></label>
         <select
-          [ngModel]="selectedType"
-          (ngModelChange)="selectedTypeChange.emit($event); onSelectChange()"
+          [value]="selectedType"
+          (change)="selectedTypeChange.emit($any($event.target).value); onSelectChange()"
           class="select select-bordered select-md w-full"
         >
           <option value="">ทั้งหมด</option>
@@ -43,8 +45,8 @@
       <div class="form-control">
         <label class="label py-1"><span class="label-text text-xs">กลุ่มคลังสินค้า</span></label>
         <select
-          [ngModel]="selectedInventoryGroup"
-          (ngModelChange)="selectedInventoryGroupChange.emit($event); onSelectChange()"
+          [value]="selectedInventoryGroup"
+          (change)="selectedInventoryGroupChange.emit($any($event.target).value); onSelectChange()"
           class="select select-bordered select-md w-full"
         >
           <option value="">ทั้งหมด</option>
@@ -53,7 +55,6 @@
         </select>
       </div>
 
-      <!-- Slot for extra filters like Branch -->
       <ng-content></ng-content>
     </div>
   </div>

@@ -1,8 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
+import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
 @Component({
   selector: 'app-company-profile',
@@ -11,18 +13,22 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './company-profile.html',
 })
 export class CompanyProfile implements OnInit {
-  private http = inject(HttpClient);
+  private destroyRef = inject(DestroyRef);
   private fb = inject(FormBuilder);
-  
-  form: FormGroup;
+  private http = inject(HttpClient);
+  private swal = inject(SweetAlertService);
+
   isLoading = signal(false);
   isSaving = signal(false);
   isUploadingLogo = signal(false);
   isUploadingVatDoc = signal(false);
-  
+
+  apiOrigin = environment.apiUrl;
+
+  form: FormGroup;
+
   // We will assume branch ID = 1 is the main branch for now
   branchId = 1;
-  apiOrigin = environment.apiUrl;
 
   constructor() {
     this.form = this.fb.group({
@@ -47,29 +53,32 @@ export class CompanyProfile implements OnInit {
 
   loadProfile() {
     this.isLoading.set(true);
-    this.http.get<any>(`${environment.apiUrl}/branches/${this.branchId}`).subscribe({
-      next: (res) => {
-        this.form.patchValue({
-          branchCode: res.branchCode || '00000',
-          branchName: res.branchName,
-          registrationName: res.registrationName,
-          entityType: res.entityType || 'Individual',
-          companyType: res.companyType || 'บุคคลธรรมดา',
-          isVatRegistered: res.isVatRegistered || false,
-          vatDocumentUrl: res.vatDocumentUrl || null,
-          taxId: res.taxId,
-          address: res.address,
-          phone: res.phone,
-          email: res.email,
-          logoUrl: res.logoUrl,
-        });
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load company profile', err);
-        this.isLoading.set(false);
-      }
-    });
+    this.http
+      .get<any>(`${environment.apiUrl}/branches/${this.branchId}`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.form.patchValue({
+            branchCode: res.branchCode || '00000',
+            branchName: res.branchName,
+            registrationName: res.registrationName,
+            entityType: res.entityType || 'Individual',
+            companyType: res.companyType || 'บุคคลธรรมดา',
+            isVatRegistered: res.isVatRegistered || false,
+            vatDocumentUrl: res.vatDocumentUrl || null,
+            taxId: res.taxId,
+            address: res.address,
+            phone: res.phone,
+            email: res.email,
+            logoUrl: res.logoUrl,
+          });
+          this.isLoading.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to load company profile', err);
+          this.isLoading.set(false);
+        },
+      });
   }
 
   onFileSelected(event: Event) {
@@ -77,19 +86,22 @@ export class CompanyProfile implements OnInit {
     if (file) {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       this.isUploadingLogo.set(true);
-      this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, formData).subscribe({
-        next: (res) => {
-          this.form.patchValue({ logoUrl: res.imageUrl });
-          this.isUploadingLogo.set(false);
-        },
-        error: (err) => {
-          console.error('Upload failed', err);
-          alert('อัปโหลดรูปล้มเหลว');
-          this.isUploadingLogo.set(false);
-        }
-      });
+      this.http
+        .post<any>(`${environment.apiUrl}/upload/company-logo`, formData)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.form.patchValue({ logoUrl: res.imageUrl });
+            this.isUploadingLogo.set(false);
+          },
+          error: (err) => {
+            console.error('Upload failed', err);
+            this.swal.error('อัปโหลดรูปล้มเหลว');
+            this.isUploadingLogo.set(false);
+          },
+        });
     }
   }
 
@@ -98,19 +110,22 @@ export class CompanyProfile implements OnInit {
     if (file) {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       this.isUploadingVatDoc.set(true);
-      this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, formData).subscribe({
-        next: (res) => {
-          this.form.patchValue({ vatDocumentUrl: res.imageUrl });
-          this.isUploadingVatDoc.set(false);
-        },
-        error: (err) => {
-          console.error('Upload failed', err);
-          alert('อัปโหลดเอกสารล้มเหลว');
-          this.isUploadingVatDoc.set(false);
-        }
-      });
+      this.http
+        .post<any>(`${environment.apiUrl}/upload/company-logo`, formData)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.form.patchValue({ vatDocumentUrl: res.imageUrl });
+            this.isUploadingVatDoc.set(false);
+          },
+          error: (err) => {
+            console.error('Upload failed', err);
+            this.swal.error('อัปโหลดเอกสารล้มเหลว');
+            this.isUploadingVatDoc.set(false);
+          },
+        });
     }
   }
 
@@ -131,16 +146,19 @@ export class CompanyProfile implements OnInit {
     this.isSaving.set(true);
     const payload = this.form.value;
 
-    this.http.put(`${environment.apiUrl}/branches/${this.branchId}`, payload).subscribe({
-      next: () => {
-        alert('บันทึกข้อมูลสำเร็จ');
-        this.isSaving.set(false);
-      },
-      error: (err) => {
-        console.error('Save failed', err);
-        alert('บันทึกข้อมูลล้มเหลว');
-        this.isSaving.set(false);
-      }
-    });
+    this.http
+      .put(`${environment.apiUrl}/branches/${this.branchId}`, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.swal.success('บันทึกข้อมูลสำเร็จ');
+          this.isSaving.set(false);
+        },
+        error: (err) => {
+          console.error('Save failed', err);
+          this.swal.error('บันทึกข้อมูลล้มเหลว');
+          this.isSaving.set(false);
+        },
+      });
   }
 }

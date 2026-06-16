@@ -1,0 +1,200 @@
+<div class="modal" [class.modal-open]="showModal()">
+  <div class="modal-box max-w-3xl border border-base-200 shadow-2xl">
+    <h3 class="font-bold text-lg text-warning flex items-center gap-2 mb-4">
+      ⚠️ กรุณาตรวจสอบข้อมูลเปรียบเทียบก่อนทำการบันทึก
+    </h3>
+
+    <div class="space-y-6 text-sm border-b pb-4 max-h-[60vh] overflow-y-auto pr-2">
+      <div>
+        <h4 class="font-bold text-primary mb-2 flex items-center gap-1">📦 ข้อมูลหลักของสินค้า</h4>
+        <div class="border border-base-200 rounded-xl overflow-hidden bg-base-100 shadow-sm">
+          <table class="table table-sm w-full">
+            <thead class="bg-base-200/60 text-base-content">
+              <tr>
+                <th class="w-1/4">หัวข้อ</th>
+                <th class="w-3/8">ข้อมูลเดิม (ก่อนแก้ไข)</th>
+                <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of comparisonReport(); track item.label) {
+                <tr
+                  [class.bg-warning/5]="item.isChanged"
+                  class="transition-colors border-b border-base-100"
+                >
+                  <td class="font-semibold text-neutral">{{ item.label }}</td>
+
+                  <td
+                    [class.text-base-content/50]="item.isChanged"
+                    [class.text-base-content]="!item.isChanged"
+                  >
+                    {{ item.old }}
+                  </td>
+
+                  <td>
+                    @if (item.isChanged) {
+                      <span class="text-warning font-bold">
+                        {{ item.new }}
+                      </span>
+                    } @else {
+                      <span class="text-base-content/30 italic text-xs">
+                        (ไม่มีการเปลี่ยนแปลง)
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-bold text-secondary mb-2 flex items-center gap-1">
+          🔍 ตรวจสอบรายละเอียดรายการ SKU ย่อย
+        </h4>
+
+        <div class="space-y-4">
+          @for (skuGroup of variantsComparison(); track $index) {
+            <div class="border border-base-200 rounded-xl bg-base-100 shadow-sm overflow-hidden">
+              <div
+                class="bg-base-200/40 px-4 py-2 flex justify-between items-center border-b border-base-200"
+              >
+                <span class="font-mono font-bold text-sm text-neutral">
+                  📦 รหัสสินค้า: {{ skuGroup.skuName }}
+                </span>
+                <div>
+                  @if (skuGroup.isNew) {
+                    <span class="badge badge-success text-white badge-sm">✨ เพิ่ม SKU ใหม่</span>
+                  } @else if (skuGroup.isChanged) {
+                    <span class="badge badge-warning text-white badge-sm"
+                      >✏️ มีการแก้ไขข้อมูลภายใน</span
+                    >
+                  } @else {
+                    <span class="badge badge-ghost text-base-content/40 badge-sm"
+                      >➖ ไม่มีการเปลี่ยนแปลง</span
+                    >
+                  }
+                </div>
+              </div>
+
+              <table class="table table-xs w-full">
+                <thead class="bg-base-50 text-base-content/80">
+                  <tr>
+                    <th class="w-1/4">คุณลักษณะย่อย</th>
+                    <th class="w-3/8">ข้อมูลเดิม</th>
+                    <th class="w-3/8">ข้อมูลใหม่ (ที่แก้ไข)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detail of skuGroup.details; track detail.field) {
+                    <tr
+                      [class.bg-warning/5]="detail.isChanged"
+                      class="transition-colors border-b border-base-50"
+                    >
+                      <td class="font-medium text-base-content/70 pl-4">{{ detail.field }}</td>
+
+                      <td
+                        [class.text-base-content/50]="detail.isChanged"
+                        [class.text-base-content]="!detail.isChanged"
+                      >
+                        @if (detail.isImage) {
+                          @if (detail.old) {
+                            <div
+                              class="w-12 h-12 border rounded-md overflow-hidden bg-base-100 shadow-sm"
+                            >
+                              <img
+                                [src]="apiOrigin() + detail.old"
+                                class="object-cover w-full h-full"
+                              />
+                            </div>
+                          } @else {
+                            <span class="text-base-content/40 text-xs">ไม่มีรูปภาพ</span>
+                          }
+                        } @else {
+                          @if (detail.field.includes('ราคา')) {
+                            {{ detail.old !== '-' ? '฿' + (detail.old | number: '1.2-2') : '-' }}
+                          } @else if (
+                            detail.field.includes('สต็อก') ||
+                            detail.field.includes('จุดเตือน') ||
+                            detail.field.includes('น้ำหนัก')
+                          ) {
+                            {{ detail.old !== '-' ? (detail.old | number) : '-' }}
+                          } @else {
+                            {{ detail.old }}
+                          }
+                        }
+                      </td>
+
+                      <td>
+                        @if (detail.isChanged) {
+                          @if (detail.isImage) {
+                            @if (detail.new) {
+                              <div
+                                class="w-12 h-12 border border-warning rounded-md overflow-hidden bg-base-100 shadow-sm"
+                              >
+                                <img
+                                  [src]="apiOrigin() + detail.new"
+                                  class="object-cover w-full h-full"
+                                />
+                              </div>
+                            } @else {
+                              <span class="text-error font-bold text-xs">🔴 ลบรูปภาพออก</span>
+                            }
+                          } @else {
+                            <span class="text-warning font-bold">
+                              @if (
+                                detail.field.includes('ProductPrice') ||
+                                detail.field.includes('ราคา')
+                              ) {
+                                ฿{{ detail.new | number: '1.2-2' }}
+                              } @else if (
+                                detail.field.includes('สต็อก') ||
+                                detail.field.includes('จุดเตือน') ||
+                                detail.field.includes('น้ำหนัก')
+                              ) {
+                                {{ detail.new | number }}
+                              } @else {
+                                {{ detail.new }}
+                              }
+                            </span>
+                          }
+                        } @else {
+                          <span class="text-base-content/30 italic text-xs"
+                            >(ไม่มีการเปลี่ยนแปลง)</span
+                          >
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @empty {
+            <div class="text-center py-4 text-base-content/40 italic">
+              ไม่มีข้อมูล SKU ย่อยในสินค้านี้
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" (click)="onCancel.emit()">
+          ย้อนกลับไปแก้ไข
+        </button>
+        <button
+          type="button"
+          class="btn btn-success text-white px-6"
+          [disabled]="isSubmitting()"
+          (click)="onConfirm.emit()"
+        >
+          @if (isSubmitting()) {
+            <span class="loading loading-spinner loading-xs"></span> กำลังประมวลผล...
+          } @else {
+            ยืนยันการบันทึกข้อมูลด่วน
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

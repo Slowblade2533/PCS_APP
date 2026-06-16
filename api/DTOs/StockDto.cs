@@ -18,6 +18,8 @@ public class StockDto
     
     public int? BranchId { get; set; }
     public string? BranchName { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? BrandName { get; set; }
 }
 
 public class StockSearchDto : PaginationParamsDto

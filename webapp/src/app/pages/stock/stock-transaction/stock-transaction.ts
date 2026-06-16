@@ -3,13 +3,14 @@ import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
+  FormControl,
   FormGroup,
-  FormsModule,
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import {
   StockTransaction,
@@ -19,27 +20,25 @@ import {
 } from '../../../shared/models/stock.models';
 import { Branch } from '../../../shared/models/user.models';
 import { StockService } from '../../../shared/services/stock.service';
-import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-stock-transaction',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, DecimalPipe, NgClass, FormsModule, PaginationComponent],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, DecimalPipe, NgClass, PaginationComponent],
   templateUrl: './stock-transaction.html',
-  styleUrl: './stock-transaction.css',
 })
 export class StockTransactionList implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly stockService = inject(StockService);
-  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly stockService = inject(StockService);
 
+  branches = signal<Branch[]>([]);
+  errorMsg = signal('');
   loading = signal(false);
   submitting = signal(false);
-  txLoading = signal(false);
-  errorMsg = signal('');
   successMsg = signal('');
-  branches = signal<Branch[]>([]);
+  txLoading = signal(false);
   txResult = signal<PagedResult<StockTransaction> | null>(null);
 
   txQuery: StockTransactionQuery = { page: 1, pageSize: 15 };
@@ -49,14 +48,31 @@ export class StockTransactionList implements OnInit {
   transactionTypes = [
     { value: 'IN' as TransactionType, label: 'รับเข้า (IN)', class: 'peer-checked:btn-success' },
     { value: 'OUT' as TransactionType, label: 'เบิกออก (OUT)', class: 'peer-checked:btn-error' },
-    { value: 'ADJUST' as TransactionType, label: 'ปรับ (ADJUST)', class: 'peer-checked:btn-warning' },
+    {
+      value: 'ADJUST' as TransactionType,
+      label: 'ปรับ (ADJUST)',
+      class: 'peer-checked:btn-warning',
+    },
     { value: 'RESERVE' as TransactionType, label: 'จอง (RESERVE)', class: 'peer-checked:btn-info' },
-    { value: 'UNRESERVE' as TransactionType, label: 'ยกเลิกจอง (UNRESERVE)', class: 'peer-checked:btn-neutral' },
-    { value: 'DAMAGE' as TransactionType, label: 'ชำรุด (DAMAGE)', class: 'peer-checked:bg-orange-600 peer-checked:text-white' },
-    { value: 'LOST' as TransactionType, label: 'สูญหาย (LOST)', class: 'peer-checked:bg-purple-600 peer-checked:text-white' },
+    {
+      value: 'UNRESERVE' as TransactionType,
+      label: 'ยกเลิกจอง (UNRESERVE)',
+      class: 'peer-checked:btn-neutral',
+    },
+    {
+      value: 'DAMAGE' as TransactionType,
+      label: 'ชำรุด (DAMAGE)',
+      class: 'peer-checked:bg-orange-600 peer-checked:text-white',
+    },
+    {
+      value: 'LOST' as TransactionType,
+      label: 'สูญหาย (LOST)',
+      class: 'peer-checked:bg-purple-600 peer-checked:text-white',
+    },
   ];
 
   form!: FormGroup;
+  filterType = new FormControl<TransactionType | undefined>(undefined);
 
   get selectedType(): TransactionType {
     return this.form.get('transactionType')?.value ?? 'IN';
@@ -82,7 +98,23 @@ export class StockTransactionList implements OnInit {
         this.branches.set(branches);
       });
 
+    this.filterType.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((val) => {
+      this.txQuery.transactionType = val ?? undefined;
+      this.txQuery.page = 1;
+      this.loadTransactions();
+    });
+
     this.loadTransactions();
+  }
+
+  changeTxPage(page: number): void {
+    this.txQuery = { ...this.txQuery, page };
+    this.loadTransactions();
+  }
+
+  hasTxNextPage(): boolean {
+    const total = this.txResult()?.totalCount ?? 0;
+    return this.txQuery.page * this.txQuery.pageSize < total;
   }
 
   loadTransactions(): void {
@@ -141,15 +173,5 @@ export class StockTransactionList implements OnInit {
           this.errorMsg.set(err.error?.message ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         },
       });
-  }
-
-  changeTxPage(page: number): void {
-    this.txQuery = { ...this.txQuery, page };
-    this.loadTransactions();
-  }
-
-  hasTxNextPage(): boolean {
-    const total = this.txResult()?.totalCount ?? 0;
-    return this.txQuery.page * this.txQuery.pageSize < total;
   }
 }

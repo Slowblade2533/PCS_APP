@@ -31,6 +31,14 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 2;
     });
+
+    options.AddFixedWindowLimiter("LoginLimiter", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -82,19 +90,35 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.AddSingleton<ISqlConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IPasswordHasher<UserTableModel>, PasswordHasher<UserTableModel>>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IBranchRepository, BranchRepository>();
+builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<IVcbOrderRepository, VcbOrderRepository>();
+builder.Services.AddScoped<IVcbShipmentRepository, VcbShipmentRepository>();
+builder.Services.AddScoped<IVcbDeliveryRepository, VcbDeliveryRepository>();
+builder.Services.AddScoped<IAccountTransactionRepository, AccountTransactionRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IVcbOrderService, VcbOrderService>();
+builder.Services.AddScoped<IVcbShipmentService, VcbShipmentService>();
+builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddSingleton<ImageCleanupChannel>();
 builder.Services.AddHostedService<ImageCleanupBackgroundService>();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString;
+    });
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 

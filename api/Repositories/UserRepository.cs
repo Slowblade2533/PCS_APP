@@ -1,22 +1,26 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
 using PCS_API.Models;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PCS_API.Repositories;
 
 public class UserRepository : IUserRepository
 {
-    private readonly string _connectionString;
-    public UserRepository(IConfiguration configuration)
+    private readonly ISqlConnectionFactory _connectionFactory;
+    public UserRepository(ISqlConnectionFactory connectionFactory)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new ArgumentNullException(nameof(configuration));
+        _connectionFactory = connectionFactory;
     }
 
     public async Task<UserTableModel?> GetActiveUserByEmailAsync(string email)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        using var connection = _connectionFactory.CreateConnection();
         const string sql = "SELECT Id, Email, Username, PasswordHash, FullName FROM Users WHERE Email = @Email AND IsActive = 1";
 
         return await connection.QuerySingleOrDefaultAsync<UserTableModel>(sql, new { Email = email });
@@ -24,7 +28,7 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<UserPermissionInfoModel>> GetUserPermissionsAsync(int userId)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
         const string sql = @"
             SELECT r.RoleName, p.PermissionCode, 'Global' as ScopeType, NULL as ScopeId
             FROM dbo.Users u
@@ -41,9 +45,9 @@ public class UserRepository : IUserRepository
         return await conn.QueryAsync<UserPermissionInfoModel>(sql, new { UserId = userId });
     }
 
-    public async Task<(IEnumerable<UserListItemDto> Items, int TotalCount)> GetUsersAsync(UserSearchDto search)
+    public async Task<(IEnumerable<UserListItemDto> Items, int TotalCount)> GetUsersAsync(UserSearchDto search, CancellationToken cancellationToken = default)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
 
         var whereClause = "WHERE 1=1";
         if (!string.IsNullOrWhiteSpace(search.Search))
@@ -56,7 +60,8 @@ public class UserRepository : IUserRepository
         }
 
         var countSql = $"SELECT COUNT(1) FROM dbo.Users u {whereClause}";
-        var totalCount = await conn.ExecuteScalarAsync<int>(countSql, search);
+        var countCommand = new CommandDefinition(countSql, search, cancellationToken: cancellationToken);
+        var totalCount = await conn.ExecuteScalarAsync<int>(countCommand);
 
         var dataSql = $@"
             SELECT u.Id, u.Username, u.Email, u.FullName, u.IsActive, u.CreatedAt, u.RoleId, r.RoleName
@@ -70,7 +75,8 @@ public class UserRepository : IUserRepository
         var p = new DynamicParameters(search);
         p.Add("@Offset", search.GetSafeOffset());
         
-        var users = await conn.QueryAsync<dynamic>(dataSql, p);
+        var dataCommand = new CommandDefinition(dataSql, p, cancellationToken: cancellationToken);
+        var users = await conn.QueryAsync<dynamic>(dataCommand);
         
         if (!users.Any())
         {
@@ -84,7 +90,9 @@ public class UserRepository : IUserRepository
             FROM dbo.UserPermissions up
             INNER JOIN dbo.Permissions p ON up.PermissionId = p.Id
             WHERE up.UserId IN @UserIds";
-        var userPerms = await conn.QueryAsync<dynamic>(permsSql, new { UserIds = userIds });
+            
+        var permsCommand = new CommandDefinition(permsSql, new { UserIds = userIds }, cancellationToken: cancellationToken);
+        var userPerms = await conn.QueryAsync<dynamic>(permsCommand);
 
         var items = users.Select(u => 
         {
@@ -119,7 +127,7 @@ public class UserRepository : IUserRepository
 
     public async Task<UserDetailDto?> GetUserByIdAsync(int id)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
 
         var dataSql = @"
             SELECT u.Id, u.Username, u.Email, u.FullName, u.IsActive, u.CreatedAt, u.RoleId, r.RoleName 
@@ -158,8 +166,8 @@ public class UserRepository : IUserRepository
 
     public async Task<int> CreateUserAsync(UserTableModel user, IEnumerable<UserPermissionAssignmentRequestDto> permissions)
     {
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync();
+        using var conn = _connectionFactory.CreateConnection();
+        if (conn.State != ConnectionState.Open) conn.Open();
         using var tx = conn.BeginTransaction();
 
         try
@@ -197,8 +205,8 @@ public class UserRepository : IUserRepository
 
     public async Task UpdateUserAsync(int id, UserTableModel user, IEnumerable<UserPermissionAssignmentRequestDto> permissions)
     {
-        await using var conn = new SqlConnection(_connectionString);
-        await conn.OpenAsync();
+        using var conn = _connectionFactory.CreateConnection();
+        if (conn.State != ConnectionState.Open) conn.Open();
         using var tx = conn.BeginTransaction();
 
         try
@@ -237,19 +245,19 @@ public class UserRepository : IUserRepository
 
     public async Task ToggleActiveAsync(int id, bool isActive)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
         await conn.ExecuteAsync("UPDATE dbo.Users SET IsActive = @IsActive WHERE Id = @Id", new { Id = id, IsActive = isActive });
     }
 
     public async Task<IEnumerable<RoleDto>> GetRolesAsync()
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
         return await conn.QueryAsync<RoleDto>("SELECT Id, RoleName, Description FROM dbo.Roles ORDER BY RoleName");
     }
 
     public async Task<IEnumerable<PermissionDto>> GetPermissionsAsync()
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = _connectionFactory.CreateConnection();
         return await conn.QueryAsync<PermissionDto>("SELECT Id, PermissionCode, Description FROM dbo.Permissions ORDER BY PermissionCode");
     }
 }

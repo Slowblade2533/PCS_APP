@@ -1,9 +1,21 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  WritableSignal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CategoryService } from '../../../../shared/services/category.service';
+import { of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { CategorySearchComponent } from '../../../../shared/components/category-search/category-search';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HasUnsavedChanges } from '../../../../shared/guards/has-unsaved-changes.interface';
+import { CategoryDto } from '../../../../shared/models/category.models';
+import { CategoryService } from '../../../../shared/services/category.service';
 
 @Component({
   selector: 'app-category-create',
@@ -11,31 +23,39 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
   imports: [ReactiveFormsModule, RouterLink, CategorySearchComponent],
   templateUrl: './category-create.html',
 })
-export class CategoryCreate implements OnInit {
-  private fb = inject(FormBuilder);
+export class CategoryCreate implements OnInit, HasUnsavedChanges {
   private categoryService = inject(CategoryService);
-  private router = inject(Router);
-  private route = inject(ActivatedRoute);
   private destroyRef = inject(DestroyRef);
+  private fb = inject(FormBuilder);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   categoryId = signal<number | null>(null);
+  errorMsg = signal<string>('');
   isEditMode = signal<boolean>(false);
   submitting = signal<boolean>(false);
-  errorMsg = signal<string>('');
+
+  level1Suggestions = signal<CategoryDto[]>([]);
+  level2Suggestions = signal<CategoryDto[]>([]);
+  level3Suggestions = signal<CategoryDto[]>([]);
 
   form: FormGroup = this.fb.group({
-    // Standard edit fields
     categoryName: ['', [Validators.maxLength(200)]],
     parentId: [null],
-    // Batch create fields
     level1Name: ['', [Validators.maxLength(200)]],
     level2Name: ['', [Validators.maxLength(200)]],
     level3Name: ['', [Validators.maxLength(200)]],
-    
     description: ['', [Validators.maxLength(1000)]],
     sortOrder: [0, [Validators.required, Validators.min(0)]],
-    isActive: [true]
+    isActive: [true],
   });
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any): void {
+    if (this.hasUnsavedChanges()) {
+      $event.returnValue = true;
+    }
+  }
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -44,10 +64,28 @@ export class CategoryCreate implements OnInit {
       this.isEditMode.set(true);
       this.loadCategory(this.categoryId()!);
     }
+
+    this.setupAutocomplete('level1Name', this.level1Suggestions);
+    this.setupAutocomplete('level2Name', this.level2Suggestions);
+    this.setupAutocomplete('level3Name', this.level3Suggestions);
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty && !this.submitting();
+  }
+
+  hideSuggestions(targetSignal: WritableSignal<CategoryDto[]>): void {
+    targetSignal.set([]);
+  }
+
+  isInvalid(controlName: string): boolean {
+    const ctrl = this.form.get(controlName);
+    return !!(ctrl?.invalid && ctrl?.touched);
   }
 
   loadCategory(id: number): void {
-    this.categoryService.getCategoryById(id)
+    this.categoryService
+      .getCategoryById(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (cat) => {
@@ -56,19 +94,14 @@ export class CategoryCreate implements OnInit {
             description: cat.description,
             parentId: cat.parentId,
             sortOrder: cat.sortOrder,
-            isActive: cat.isActive
+            isActive: cat.isActive,
           });
         },
         error: (err) => {
           this.errorMsg.set('ไม่พบข้อมูลหมวดหมู่ที่ระบุ');
           console.error(err);
-        }
+        },
       });
-  }
-
-  isInvalid(controlName: string): boolean {
-    const ctrl = this.form.get(controlName);
-    return !!(ctrl?.invalid && ctrl?.touched);
   }
 
   onSubmit(): void {
@@ -89,35 +122,65 @@ export class CategoryCreate implements OnInit {
 
     let req$;
     if (this.isEditMode()) {
-        const updateData = {
-           categoryName: this.form.value.categoryName,
-           description: this.form.value.description,
-           parentId: this.form.value.parentId,
-           sortOrder: this.form.value.sortOrder,
-           isActive: this.form.value.isActive
-        };
-        req$ = this.categoryService.updateCategory(this.categoryId()!, updateData);
+      const updateData = {
+        categoryName: this.form.value.categoryName,
+        description: this.form.value.description,
+        parentId: this.form.value.parentId,
+        sortOrder: this.form.value.sortOrder,
+        isActive: this.form.value.isActive,
+      };
+      req$ = this.categoryService.updateCategory(this.categoryId()!, updateData);
     } else {
-        const batchData = {
-           level1Name: this.form.value.level1Name,
-           level2Name: this.form.value.level2Name,
-           level3Name: this.form.value.level3Name,
-           description: this.form.value.description,
-           sortOrder: this.form.value.sortOrder,
-           isActive: this.form.value.isActive
-        };
-        req$ = this.categoryService.createCategoryBatch(batchData);
+      const batchData = {
+        level1Name: this.form.value.level1Name,
+        level2Name: this.form.value.level2Name,
+        level3Name: this.form.value.level3Name,
+        description: this.form.value.description,
+        sortOrder: this.form.value.sortOrder,
+        isActive: this.form.value.isActive,
+      };
+      req$ = this.categoryService.createCategoryBatch(batchData);
     }
 
-    req$.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.router.navigate(['/settings/categories']);
-        },
-        error: (err) => {
-          this.errorMsg.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-          this.submitting.set(false);
-        }
+    req$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.router.navigate(['/settings/categories']);
+      },
+      error: (err) => {
+        this.errorMsg.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        this.submitting.set(false);
+      },
+    });
+  }
+
+  selectSuggestion(
+    controlName: string,
+    value: string,
+    targetSignal: WritableSignal<CategoryDto[]>,
+  ): void {
+    this.form.get(controlName)?.setValue(value);
+    targetSignal.set([]);
+  }
+
+  private setupAutocomplete(
+    controlName: string,
+    targetSignal: WritableSignal<CategoryDto[]>,
+  ): void {
+    this.form
+      .get(controlName)
+      ?.valueChanges.pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((val: string) => {
+          if (!val || val.length < 2) {
+            return of([]);
+          }
+          return this.categoryService.searchCategories(val).pipe(catchError(() => of([])));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        targetSignal.set(res);
       });
   }
 }

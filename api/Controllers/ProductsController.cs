@@ -37,11 +37,11 @@ public class ProductsController(IProductService productService) : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "CanViewProduct")]
-    public async Task<IActionResult> GetProducts([FromQuery] ProductSearchParamsDto searchParams)
+    public async Task<IActionResult> GetProducts([FromQuery] ProductSearchParamsDto searchParams, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var result = await productService.GetProductsAsync(searchParams);
+        var result = await productService.GetProductsAsync(searchParams, cancellationToken);
 
         return Ok(result);
     }

@@ -1,10 +1,10 @@
 <div class="container mx-auto p-6 max-w-6xl">
   <div class="flex justify-between items-center mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-base-content">📦 รายการจัดการสินค้าทั้งหมด</h1>
+      <h1 class="text-2xl font-bold text-sky-600 dark:text-sky-400">📦 รายการจัดการสินค้าทั้งหมด</h1>
       <p class="text-sm text-base-content/60">ค้นหาและจัดการข้อมูลรายการสินค้าหลัก (Master Data)</p>
     </div>
-    <button class="btn btn-primary btn-md" routerLink="/products/create">➕ เพิ่มสินค้าใหม่</button>
+    <button class="btn btn-primary" routerLink="/products/create">➕ เพิ่มสินค้าใหม่</button>
   </div>
 
   <app-product-search-filter
@@ -35,82 +35,158 @@
           </tr>
         </thead>
         <tbody>
-          @for (prod of products(); track prod.productId) {
-            <tr class="hover:bg-base-50/50 transition-colors">
-              <td>
-                @if (prod.imageUrl) {
-                  <div class="w-12 h-12">
-                    <app-image-hover-preview 
-                      [imageUrl]="apiOrigin + prod.imageUrl"
-                      altText="Product Image"
-                    ></app-image-hover-preview>
-                  </div>
-                } @else {
-                  <div class="w-12 h-12 bg-base-200 rounded-md flex items-center justify-center text-base-content/30 border border-base-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                    </svg>
-                  </div>
-                }
-              </td>
-              <td>
-                <div class="font-semibold text-primary">{{ prod.productNameTh }}</div>
-                @if (prod.productNameEn) {
-                  <div class="text-xs text-base-content/50">{{ prod.productNameEn }}</div>
-                }
-              </td>
-              <td>
-                <div class="badge badge-sm badge-outline">{{ prod.categoryName }}</div>
-                <div class="text-xs mt-1 text-base-content/70">{{ prod.brandName || '-' }}</div>
-              </td>
-              <td class="text-center font-medium">{{ prod.totalVariants }} รายการ</td>
-              <td class="text-center text-sm">
-                @if (prod.productType === 'Product') { สินค้าทั่วไป }
-                @else if (prod.productType === 'Service') { บริการ }
-                @else if (prod.productType === 'Consumable') { วัสดุสิ้นเปลือง }
-              </td>
-              <td class="text-center text-sm">
-                @if (prod.inventoryGroup === 'ForSale') {
-                  <span class="badge badge-ghost badge-sm">สินค้าจำหน่าย</span>
-                } @else if (prod.inventoryGroup === 'Internal') {
-                  <span class="badge badge-ghost badge-sm">ใช้ภายในองค์กร</span>
-                }
-              </td>
-              <td class="text-center">
-                @if (prod.productStatus === 'Available') {
-                  <span
-                    class="badge badge-success text-white badge-sm h-auto py-1 px-2 leading-tight"
-                    >พร้อมขาย</span
-                  >
-                } @else if (prod.productStatus === 'Unavailable') {
-                  <span
-                    class="badge badge-warning text-white badge-sm h-auto py-1 px-2 leading-tight"
-                    >ปิดชั่วคราว</span
-                  >
-                } @else {
-                  <span class="badge badge-error text-white badge-sm h-auto py-1 px-2 leading-tight"
-                    >เลิกขาย</span
-                  >
-                }
-              </td>
-              <td class="text-center">
-                <div class="join">
-                  <a
-                    class="btn btn-ghost btn-sm join-item text-info"
-                    [routerLink]="['/products', prod.productId]"
-                    [queryParams]="{ mode: 'edit' }"
-                  >
-                    ✏️ แก้ไข
-                  </a>
-                </div>
-              </td>
-            </tr>
-          } @empty {
+          @if (isLoading()) {
             <tr>
-              <td colspan="8" class="text-center py-12 text-base-content/50">
-                ❌ ไม่พบข้อมูลรายการสินค้าที่ตรงตามเงื่อนไข
+              <td colspan="8" class="text-center py-12">
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+                <p class="mt-4 text-base-content/60">กำลังโหลดข้อมูล...</p>
               </td>
             </tr>
+          } @else {
+            @for (prod of products(); track prod.productId) {
+              <tr class="hover:bg-base-50/50 transition-colors">
+                <td>
+                  @if (prod.imageUrl) {
+                    <div class="w-12 h-12">
+                      <app-image-hover-preview
+                        [imageUrl]="apiOrigin + prod.imageUrl"
+                        altText="Product Image"
+                      ></app-image-hover-preview>
+                    </div>
+                  } @else {
+                    <div
+                      class="w-12 h-12 bg-base-200 rounded-md flex items-center justify-center text-base-content/30 border border-base-200"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-6"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                        />
+                      </svg>
+                    </div>
+                  }
+                </td>
+                <td>
+                  <div class="font-semibold text-primary">{{ prod.productNameTh }}</div>
+                  @if (prod.productNameEn) {
+                    <div class="text-xs text-base-content/50">{{ prod.productNameEn }}</div>
+                  }
+                </td>
+                <td>
+                  <div class="badge badge-sm badge-outline">{{ prod.categoryName }}</div>
+                  <div class="text-xs mt-1 text-base-content/70 flex items-center gap-1">
+                    @if (prod.brandName) {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3 text-base-content/50 flex-shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.181 0l5.159-5.159a2.25 2.25 0 0 0 0-3.181l-9.58-9.581A2.25 2.25 0 0 0 9.568 3Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+                      </svg>
+                      <span>{{ prod.brandName }}</span>
+                    } @else {
+                      <span>-</span>
+                    }
+                  </div>
+                </td>
+                <td class="text-center font-medium">{{ prod.totalVariants }} รายการ</td>
+                <td class="text-center text-sm">
+                  @if (prod.productType === 'Product') {
+                    สินค้าทั่วไป
+                  } @else if (prod.productType === 'Service') {
+                    บริการ
+                  } @else if (prod.productType === 'Consumable') {
+                    วัสดุสิ้นเปลือง
+                  }
+                </td>
+                <td class="text-center text-sm">
+                  @if (prod.inventoryGroup === 'ForSale') {
+                    <span class="badge badge-ghost badge-sm">สินค้าจำหน่าย</span>
+                  } @else if (prod.inventoryGroup === 'Internal') {
+                    <span class="badge badge-ghost badge-sm">ใช้ภายในองค์กร</span>
+                  }
+                </td>
+                <td class="text-center">
+                  @if (prod.productStatus === 'Available') {
+                    <span
+                      class="badge badge-success text-white badge-sm h-auto py-1 px-2 leading-tight"
+                      >พร้อมขาย</span
+                    >
+                  } @else if (prod.productStatus === 'Unavailable') {
+                    <span
+                      class="badge badge-warning text-white badge-sm h-auto py-1 px-2 leading-tight"
+                      >งดจำหน่าย</span
+                    >
+                  } @else {
+                    <span
+                      class="badge badge-error text-white badge-sm h-auto py-1 px-2 leading-tight"
+                      >เลิกขาย</span
+                    >
+                  }
+                </td>
+                <td class="text-center">
+                  <div class="join">
+                    <button
+                      class="btn btn-ghost btn-sm join-item text-info"
+                      title="ดูรายละเอียด SKU"
+                      (click)="viewDetails(prod.productId, prod.productNameTh)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                        />
+                      </svg>
+                    </button>
+                    <a
+                      class="btn btn-ghost btn-sm join-item text-warning"
+                      title="แก้ไข"
+                      [routerLink]="['/products', prod.productId]"
+                      [queryParams]="{ mode: 'edit' }"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="8" class="text-center py-12 text-base-content/50">
+                  ❌ ไม่พบข้อมูลรายการสินค้าที่ตรงตามเงื่อนไข
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>
@@ -124,5 +200,3 @@
     ></app-pagination>
   </div>
 </div>
-
-

@@ -1,16 +1,13 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
 using PCS_API.Models;
 
 namespace PCS_API.Repositories;
 
-public class CategoryRepository(IConfiguration config) : ICategoryRepository
+public class CategoryRepository(ISqlConnectionFactory connectionFactory) : ICategoryRepository
 {
-    private readonly string _connectionString = config.GetConnectionString("DefaultConnection")!;
-
-    public async Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync(string? searchTerm = null)
+    public async Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync(string? searchTerm = null, CancellationToken cancellationToken = default)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = @"
             WITH CategoryCTE AS (
                 SELECT 
@@ -38,12 +35,13 @@ public class CategoryRepository(IConfiguration config) : ICategoryRepository
             ORDER BY FullPath, SortOrder, CategoryName;
         ";
         
-        return await conn.QueryAsync<CategoryModel>(query, new { SearchTerm = searchTerm });
+        var command = new CommandDefinition(query, new { SearchTerm = searchTerm }, cancellationToken: cancellationToken);
+        return await conn.QueryAsync<CategoryModel>(command);
     }
 
     public async Task<CategoryModel?> GetCategoryByIdAsync(int id)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = @"
             WITH CategoryCTE AS (
                 SELECT 
@@ -72,7 +70,7 @@ public class CategoryRepository(IConfiguration config) : ICategoryRepository
 
     public async Task<int> CreateCategoryAsync(CategoryModel category)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = @"
             INSERT INTO dbo.Categories (CategoryName, Description, ParentId, SortOrder, IsActive)
             OUTPUT INSERTED.CategoryId
@@ -84,7 +82,7 @@ public class CategoryRepository(IConfiguration config) : ICategoryRepository
 
     public async Task<bool> UpdateCategoryAsync(CategoryModel category)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = @"
             UPDATE dbo.Categories
             SET CategoryName = @CategoryName,
@@ -101,7 +99,7 @@ public class CategoryRepository(IConfiguration config) : ICategoryRepository
 
     public async Task<bool> DeleteCategoryAsync(int id)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = "DELETE FROM dbo.Categories WHERE CategoryId = @Id;";
         var rows = await conn.ExecuteAsync(query, new { Id = id });
         return rows > 0;
@@ -109,7 +107,7 @@ public class CategoryRepository(IConfiguration config) : ICategoryRepository
 
     public async Task<bool> HasChildrenAsync(int id)
     {
-        await using var conn = new SqlConnection(_connectionString);
+        using var conn = connectionFactory.CreateConnection();
         var query = "SELECT TOP 1 1 FROM dbo.Categories WHERE ParentId = @Id;";
         var result = await conn.ExecuteScalarAsync<int?>(query, new { Id = id });
         return result.HasValue;

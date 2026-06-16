@@ -13,7 +13,7 @@
       </svg>
     </a>
     <div>
-      <h1 class="text-2xl font-bold">บันทึกการเคลื่อนไหวสต็อก</h1>
+      <h1 class="text-2xl font-bold text-teal-600 dark:text-teal-400">🔄 บันทึกการเคลื่อนไหวสต็อก</h1>
       <p class="text-base-content/60 text-sm">IN / OUT / ADJUST</p>
     </div>
   </div>
@@ -27,10 +27,10 @@
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
             <!-- Transaction Type -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5">
                 ประเภทรายการ <span class="text-error">*</span>
-              </legend>
+              </label>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 @for (type of transactionTypes; track type.value) {
                   <label class="w-full">
@@ -48,11 +48,13 @@
                   </label>
                 }
               </div>
-            </fieldset>
+            </div>
 
             <!-- Branch -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">สาขา <span class="text-error">*</span></legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >สาขา <span class="text-error">*</span></label
+              >
               <select class="select select-bordered w-full" formControlName="branchId">
                 <option [ngValue]="null" disabled>เลือกสาขา</option>
                 @for (branch of branches(); track branch.id) {
@@ -60,15 +62,15 @@
                 }
               </select>
               @if (form.get('branchId')?.invalid && form.get('branchId')?.touched) {
-                <p class="fieldset-label text-error">กรุณาเลือกสาขา</p>
+                <p class="text-xs text-error mt-1.5">กรุณาเลือกสาขา</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Variant ID -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5">
                 Variant ID (SKU) <span class="text-error">*</span>
-              </legend>
+              </label>
               <input
                 type="number"
                 class="input input-bordered w-full"
@@ -76,18 +78,20 @@
                 formControlName="variantId"
               />
               @if (form.get('variantId')?.invalid && form.get('variantId')?.touched) {
-                <p class="fieldset-label text-error">กรุณาระบุ Variant ID</p>
+                <p class="text-xs text-error mt-1.5">กรุณาระบุ Variant ID</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Quantity -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5">
                 จำนวน <span class="text-error">*</span>
                 @if (selectedType === 'ADJUST') {
-                  <span class="text-xs text-base-content/50 ml-1">(ระบุค่าที่ต้องการปรับเป็น)</span>
+                  <span class="text-xs text-base-content/50 ml-1 font-normal"
+                    >(ระบุค่าที่ต้องการปรับเป็น)</span
+                  >
                 }
-              </legend>
+              </label>
               <input
                 type="number"
                 class="input input-bordered w-full"
@@ -96,13 +100,13 @@
                 min="1"
               />
               @if (form.get('quantity')?.invalid && form.get('quantity')?.touched) {
-                <p class="fieldset-label text-error">จำนวนต้องมากกว่า 0</p>
+                <p class="text-xs text-error mt-1.5">จำนวนต้องมากกว่า 0</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Reference No -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">เลขที่อ้างอิง</legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5">เลขที่อ้างอิง</label>
               <input
                 type="text"
                 class="input input-bordered w-full"
@@ -110,11 +114,11 @@
                 formControlName="referenceNo"
                 maxlength="100"
               />
-            </fieldset>
+            </div>
 
             <!-- Note -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">หมายเหตุ</legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5">หมายเหตุ</label>
               <textarea
                 class="textarea textarea-bordered w-full"
                 placeholder="รายละเอียดเพิ่มเติม..."
@@ -122,7 +126,7 @@
                 rows="3"
                 maxlength="500"
               ></textarea>
-            </fieldset>
+            </div>
 
             <!-- Error Alert -->
             @if (errorMsg()) {
@@ -188,11 +192,7 @@
             <h2 class="font-semibold">ประวัติการเคลื่อนไหว</h2>
             <!-- Filter -->
             <div class="flex gap-2">
-              <select
-                class="select select-bordered select-xs"
-                [(ngModel)]="txQuery.transactionType"
-                (change)="loadTransactions()"
-              >
+              <select class="select select-bordered select-xs" [formControl]="filterType">
                 <option [ngValue]="undefined">ทุกประเภท</option>
                 <option value="IN">IN</option>
                 <option value="OUT">OUT</option>
@@ -227,7 +227,7 @@
                       'badge-info': tx.transactionType === 'RESERVE',
                       'badge-neutral': tx.transactionType === 'UNRESERVE',
                       'bg-orange-600 text-white border-none': tx.transactionType === 'DAMAGE',
-                      'bg-purple-600 text-white border-none': tx.transactionType === 'LOST'
+                      'bg-purple-600 text-white border-none': tx.transactionType === 'LOST',
                     }"
                     >{{ tx.transactionType }}</span
                   >
@@ -240,7 +240,18 @@
                       <span class="badge badge-ghost badge-xs font-mono">{{ tx.sku }}</span>
                       @if (tx.barcode) {
                         <span class="badge badge-ghost badge-xs font-mono">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="size-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/></svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="size-3 mr-1"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14" />
+                          </svg>
                           {{ tx.barcode }}
                         </span>
                       }

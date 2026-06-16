@@ -4,7 +4,7 @@ namespace PCS_API.Repositories;
 
 public interface ICategoryRepository
 {
-    Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync(string? searchTerm = null);
+    Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync(string? searchTerm = null, CancellationToken cancellationToken = default);
     Task<CategoryModel?> GetCategoryByIdAsync(int id);
     Task<int> CreateCategoryAsync(CategoryModel category);
     Task<bool> UpdateCategoryAsync(CategoryModel category);

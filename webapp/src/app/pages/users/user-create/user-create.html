@@ -13,10 +13,12 @@
       </svg>
     </a>
     <div>
-      <h1 class="text-2xl font-bold">
-        {{ isEditMode() ? 'แก้ไขผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่' }}
+      <h1 class="text-2xl font-bold text-rose-600 dark:text-rose-400">
+        👥 {{ isEditMode() ? 'แก้ไขผู้ใช้งาน' : 'เพิ่มผู้ใช้งานใหม่' }}
       </h1>
-      <p class="text-base-content/60 text-sm">กำหนดข้อมูลและสิทธิ์ RBAC / Fine-Grained Permissions</p>
+      <p class="text-base-content/60 text-sm">
+        กำหนดข้อมูลและสิทธิ์ RBAC / Fine-Grained Permissions
+      </p>
     </div>
   </div>
 
@@ -31,10 +33,12 @@
         <div class="card-body gap-4">
           <h2 class="card-title text-base">ข้อมูลพื้นฐาน</h2>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
             <!-- First Name -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">ชื่อ <span class="text-error">*</span></legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >ชื่อ <span class="text-error">*</span></label
+              >
               <input
                 type="text"
                 class="input input-bordered w-full"
@@ -44,13 +48,15 @@
                 maxlength="100"
               />
               @if (isInvalid('firstName')) {
-                <p class="fieldset-label text-error">กรุณาระบุชื่อ</p>
+                <p class="text-xs text-error mt-1.5">กรุณาระบุชื่อ</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Last Name -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">นามสกุล <span class="text-error">*</span></legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >นามสกุล <span class="text-error">*</span></label
+              >
               <input
                 type="text"
                 class="input input-bordered w-full"
@@ -60,13 +66,15 @@
                 maxlength="100"
               />
               @if (isInvalid('lastName')) {
-                <p class="fieldset-label text-error">กรุณาระบุนามสกุล</p>
+                <p class="text-xs text-error mt-1.5">กรุณาระบุนามสกุล</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Username -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">Username <span class="text-error">*</span></legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >Username <span class="text-error">*</span></label
+              >
               <input
                 type="text"
                 class="input input-bordered w-full"
@@ -78,16 +86,18 @@
                 [class.input-disabled]="isEditMode()"
               />
               @if (isInvalid('username')) {
-                <p class="fieldset-label text-error">กรุณาระบุ Username</p>
+                <p class="text-xs text-error mt-1.5">กรุณาระบุ Username</p>
               }
               @if (isEditMode()) {
-                <p class="fieldset-label">ไม่สามารถเปลี่ยน Username ได้</p>
+                <p class="text-xs text-base-content/60 mt-1.5">ไม่สามารถเปลี่ยน Username ได้</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Email -->
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">อีเมล <span class="text-error">*</span></legend>
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >อีเมล <span class="text-error">*</span></label
+              >
               <input
                 type="email"
                 class="input input-bordered w-full"
@@ -97,14 +107,16 @@
                 maxlength="200"
               />
               @if (isInvalid('email')) {
-                <p class="fieldset-label text-error">อีเมลไม่ถูกต้อง</p>
+                <p class="text-xs text-error mt-1.5">อีเมลไม่ถูกต้อง</p>
               }
-            </fieldset>
+            </div>
 
             <!-- Password (create only) -->
             @if (!isEditMode()) {
-              <fieldset class="fieldset">
-                <legend class="fieldset-legend">รหัสผ่าน <span class="text-error">*</span></legend>
+              <div class="form-control">
+                <label class="label-text text-sm font-semibold mb-1.5"
+                  >รหัสผ่าน <span class="text-error">*</span></label
+                >
                 <input
                   type="password"
                   class="input input-bordered w-full"
@@ -114,24 +126,30 @@
                   maxlength="200"
                 />
                 @if (isInvalid('password')) {
-                  <p class="fieldset-label text-error">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</p>
+                  <p class="text-xs text-error mt-1.5">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</p>
                 }
-              </fieldset>
+              </div>
             }
 
             <!-- RoleId -->
-            <fieldset class="fieldset" [class.sm:col-span-2]="isEditMode()">
-              <legend class="fieldset-legend">ตำแหน่ง (Role) <span class="text-error">*</span></legend>
-              <select class="select select-bordered w-full" formControlName="roleId" [class.select-error]="isInvalid('roleId')">
+            <div class="form-control" [class.md:col-span-2]="isEditMode()">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >ตำแหน่ง (Role) <span class="text-error">*</span></label
+              >
+              <select
+                class="select select-bordered w-full"
+                formControlName="roleId"
+                [class.select-error]="isInvalid('roleId')"
+              >
                 <option [ngValue]="null" disabled>-- เลือกตำแหน่ง --</option>
                 @for (role of roles(); track role.id) {
                   <option [ngValue]="role.id">{{ role.roleName }}</option>
                 }
               </select>
               @if (isInvalid('roleId')) {
-                <p class="fieldset-label text-error">กรุณาระบุตำแหน่ง</p>
+                <p class="text-xs text-error mt-1.5">กรุณาระบุตำแหน่ง</p>
               }
-            </fieldset>
+            </div>
           </div>
 
           <!-- IsActive toggle -->
@@ -149,7 +167,9 @@
         <div class="card-body gap-4">
           <div>
             <h2 class="card-title text-base">สิทธิ์พิเศษรายบุคคล (Custom Permissions)</h2>
-            <p class="text-sm text-base-content/60">ระบุสิทธิ์เพิ่มเติมสำหรับผู้ใช้นี้ นอกเหนือจากสิทธิ์พื้นฐานตามตำแหน่ง</p>
+            <p class="text-sm text-base-content/60">
+              ระบุสิทธิ์เพิ่มเติมสำหรับผู้ใช้นี้ นอกเหนือจากสิทธิ์พื้นฐานตามตำแหน่ง
+            </p>
           </div>
 
           <!-- Checkboxes Grouped by Module -->
@@ -157,19 +177,25 @@
             @for (group of permissionGroups(); track group.moduleName) {
               <div class="card bg-base-100 shadow-sm border border-base-200">
                 <div class="card-body p-4 gap-2">
-                  <h3 class="font-semibold text-primary uppercase text-sm border-b border-base-200 pb-1 mb-2">{{ group.moduleName }} GROUP</h3>
+                  <h3
+                    class="font-semibold text-primary uppercase text-sm border-b border-base-200 pb-1 mb-2"
+                  >
+                    {{ group.moduleName }} GROUP
+                  </h3>
                   <div class="flex flex-col gap-2">
                     @for (p of group.permissions; track p.id) {
                       <label class="label cursor-pointer justify-start gap-3 py-1">
-                        <input 
-                          type="checkbox" 
-                          class="checkbox checkbox-sm checkbox-primary rounded-md" 
-                          [checked]="isPermissionChecked(p.id)" 
-                          (change)="togglePermission(p.id)" 
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-sm checkbox-primary rounded-md"
+                          [checked]="isPermissionChecked(p.id)"
+                          (change)="togglePermission(p.id)"
                         />
                         <span class="label-text">
                           {{ p.description || p.permissionCode }}
-                          <span class="text-xs text-base-content/50 ml-1 block">{{ p.permissionCode }}</span>
+                          <span class="text-xs text-base-content/50 ml-1 block">{{
+                            p.permissionCode
+                          }}</span>
                         </span>
                       </label>
                     }
@@ -184,14 +210,31 @@
       <!-- ── Error / Submit ── -->
       @if (errorMsg()) {
         <div role="alert" class="alert alert-error">
-          <svg xmlns="http://www.w3.org/2000/svg" class="size-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="size-5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
           <span>{{ errorMsg() }}</span>
         </div>
       }
 
       <div class="flex justify-end gap-3 pt-4">
-        <a routerLink="/users" class="btn btn-ghost">ยกเลิก</a>
-        <button type="submit" class="btn btn-primary px-8" [disabled]="submitting() || form.invalid">
+        <a routerLink="/users" class="btn btn-ghost min-w-[120px]">ยกเลิก</a>
+        <button
+          type="submit"
+          class="btn btn-primary min-w-[120px]"
+          [disabled]="submitting() || form.invalid"
+        >
           @if (submitting()) {
             <span class="loading loading-spinner loading-sm"></span>
           }

@@ -7,19 +7,12 @@ namespace PCS_API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "CanViewUsers")]
-public class RolesController : ControllerBase
+public class RolesController(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-
-    public RolesController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetRoles()
     {
-        var roles = await _userService.GetRolesAsync();
+        var roles = await userService.GetRolesAsync();
         return Ok(roles);
     }
 }

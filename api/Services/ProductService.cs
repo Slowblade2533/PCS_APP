@@ -10,9 +10,9 @@ public class ProductService(IProductRepository productRepository) : IProductServ
         return await productRepository.CreateProductWithVariantsAsync(dto);
     }
 
-    public async Task<PagedResultDto<ProductListDto>> GetProductsAsync(ProductSearchParamsDto search)
+    public async Task<PagedResultDto<ProductListDto>> GetProductsAsync(ProductSearchParamsDto search, CancellationToken cancellationToken = default)
     {
-        return await productRepository.GetPagedProductsAsync(search);
+        return await productRepository.GetPagedProductsAsync(search, cancellationToken);
     }
 
     public async Task<ProductDetailDto?> GetProductByIdAsync(int id)

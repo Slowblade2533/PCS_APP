@@ -11,9 +11,10 @@ namespace PCS_API.Controllers;
 public class CategoriesController(ICategoryService categoryService) : ControllerBase
 {
     [HttpGet("search")]
-    public async Task<IActionResult> SearchCategories([FromQuery] string? q)
+    [ResponseCache(Duration = 60)]
+    public async Task<IActionResult> SearchCategories([FromQuery] string? q, CancellationToken cancellationToken)
     {
-        var categories = await categoryService.GetAllCategoriesAsync(q);
+        var categories = await categoryService.GetAllCategoriesAsync(q, cancellationToken);
         return Ok(categories);
     }
 

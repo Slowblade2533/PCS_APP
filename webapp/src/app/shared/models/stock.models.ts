@@ -1,7 +1,3 @@
-// ─── Stock Models ───────────────────────────────────────────────────────────
-
-export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'RESERVE' | 'UNRESERVE' | 'DAMAGE' | 'LOST';
-
 export interface StockItem {
   variantId: number;
   sku: string;
@@ -13,7 +9,19 @@ export interface StockItem {
   availableQuantity: number;
   branchId: number;
   branchName: string;
+  imageUrl?: string;
   updatedAt: string;
+  brandName?: string;
+}
+
+export interface StockListQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  branchId?: number;
+  productStatus?: string;
+  productType?: string;
+  inventoryGroup?: string;
 }
 
 export interface StockTransaction {
@@ -37,6 +45,16 @@ export interface StockTransaction {
   createdAt: string;
 }
 
+export interface StockTransactionQuery {
+  variantId?: number;
+  branchId?: number;
+  transactionType?: TransactionType;
+  dateFrom?: string;
+  dateTo?: string;
+  page: number;
+  pageSize: number;
+}
+
 export interface StockTransactionRequest {
   variantId: number;
   branchId: number;
@@ -47,22 +65,4 @@ export interface StockTransactionRequest {
   note?: string;
 }
 
-export interface StockListQuery {
-  page: number;
-  pageSize: number;
-  search?: string;
-  branchId?: number;
-  productStatus?: string;
-  productType?: string;
-  inventoryGroup?: string;
-}
-
-export interface StockTransactionQuery {
-  variantId?: number;
-  branchId?: number;
-  transactionType?: TransactionType;
-  dateFrom?: string;
-  dateTo?: string;
-  page: number;
-  pageSize: number;
-}
+export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'RESERVE' | 'UNRESERVE' | 'DAMAGE' | 'LOST';
