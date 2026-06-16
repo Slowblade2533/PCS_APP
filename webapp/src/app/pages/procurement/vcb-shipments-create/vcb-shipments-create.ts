@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, forkJoin } from 'rxjs';
 import { debounceTime, finalize } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
@@ -38,10 +38,13 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   private readonly fb = inject(FormBuilder);
   private readonly procurementService = inject(ProcurementService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly swal = inject(SweetAlertService);
   public readonly location = inject(Location);
   public readonly apiOrigin = environment.apiUrl.replace('/api', '');
 
+  isEditMode = false;
+  shipmentId: number | null = null;
   isSearching = false;
   isSubmitting = false;
   searchResults: VcbDelivery[] = [];
@@ -73,7 +76,166 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   ngOnInit(): void {
     this.initForm();
     this.setupOrderSearch();
-    this.loadDeliveries();
+    
+    this.route.paramMap.subscribe(params => {
+      const idStr = params.get('id');
+      if (idStr) {
+        const id = parseInt(idStr, 10);
+        if (!isNaN(id)) {
+          this.isEditMode = true;
+          this.shipmentId = id;
+          this.loadShipmentForEdit(id);
+        }
+      } else {
+        this.loadDeliveries();
+      }
+    });
+  }
+
+  loadShipmentForEdit(id: number): void {
+    this.isSearching = true;
+    this.procurementService.getVcbShipmentById(id).subscribe({
+      next: (res: any) => {
+        const shipment = res.value || res.data || res;
+        if (shipment) {
+          this.shipmentForm.patchValue({
+            deliveryId: shipment.deliveryId,
+            notes: shipment.notes,
+            isForceCloseOrder: shipment.isForceCloseOrder
+          });
+
+          this.procurementService.getVcbDeliveryById(shipment.deliveryId).subscribe({
+            next: (deliveryRes: any) => {
+              const fullDelivery = deliveryRes.value || deliveryRes.data || deliveryRes;
+              if (fullDelivery) {
+                this.selectedDelivery = fullDelivery;
+                
+                this.availableSubBoxes = [];
+                if (fullDelivery.items) {
+                  const receivedSet = new Set<string>(fullDelivery.receivedBoxNumbers || []);
+                  fullDelivery.items.forEach((dItem: any) => {
+                    if (dItem.containedBoxNumbers) {
+                      try {
+                        const subBoxes = JSON.parse(dItem.containedBoxNumbers);
+                        if (Array.isArray(subBoxes)) {
+                          subBoxes.forEach((sub: any) => {
+                            if (sub.boxNo && !this.availableSubBoxes.includes(sub.boxNo)) {
+                              const isRec = receivedSet.has(sub.boxNo);
+                              const isCurrentShipmentBox = shipment.items.some((si: any) => 
+                                si.boxNumbers && si.boxNumbers.split(',').map((b: string) => b.trim()).includes(sub.boxNo)
+                              );
+                              if (!isRec || isCurrentShipmentBox) {
+                                this.availableSubBoxes.push(sub.boxNo);
+                              }
+                            }
+                          });
+                        }
+                      } catch (e) {
+                        if (!this.availableSubBoxes.includes(dItem.containedBoxNumbers)) {
+                          const isRec = receivedSet.has(dItem.containedBoxNumbers);
+                          const isCurrentShipmentBox = shipment.items.some((si: any) => 
+                            si.boxNumbers && si.boxNumbers.split(',').map((b: string) => b.trim()).includes(dItem.containedBoxNumbers)
+                          );
+                          if (!isRec || isCurrentShipmentBox) {
+                            this.availableSubBoxes.push(dItem.containedBoxNumbers);
+                          }
+                        }
+                      }
+                    }
+                  });
+                }
+
+                if (fullDelivery.orders && fullDelivery.orders.length > 0) {
+                  const orderRequests = fullDelivery.orders.map((o: any) =>
+                    this.procurementService.getVcbOrderById(o.orderId)
+                  );
+                  forkJoin(orderRequests).subscribe({
+                    next: (orderResponses: any) => {
+                      this.availableOrderItems = [];
+                      orderResponses.forEach((orderRes: any) => {
+                        const order = orderRes.value || orderRes.data || orderRes;
+                        if (order && order.items) {
+                          order.items.forEach((item: any) => {
+                            this.availableOrderItems.push(item);
+                          });
+                        }
+                      });
+
+                      this.items.clear();
+                      shipment.items.forEach((sItem: any) => {
+                        const matchingOrderItem = this.availableOrderItems.find(aoi => aoi.id === sItem.orderItemId);
+                        const expectedQty = matchingOrderItem 
+                          ? (matchingOrderItem.remainingQuantity ?? matchingOrderItem.quantity)
+                          : sItem.expectedQuantity;
+
+                        const itemForm = this.fb.group({
+                          orderItemId: [sItem.orderItemId, Validators.required],
+                          variantId: [sItem.variantId, Validators.required],
+                          sku: [sItem.sku],
+                          productName: [sItem.productName],
+                          variantName: [sItem.variantName],
+                          imageUrl: [sItem.imageUrl],
+                          expectedQuantity: [expectedQty],
+                          boxNumbers: [sItem.boxNumbers, Validators.required],
+                          receiptStatus: [sItem.receiptStatus, Validators.required],
+                          goodQuantity: [sItem.goodQuantity, [Validators.required, Validators.min(0)]],
+                          defectiveQuantity: [sItem.defectiveQuantity, [Validators.required, Validators.min(0)]],
+                          refundAmount: [Number(sItem.refundAmount || 0).toFixed(2), [Validators.min(0)]],
+                        });
+
+                        if (sItem.receiptStatus === 'WrongItem') {
+                          itemForm.patchValue({ goodQuantity: 0, defectiveQuantity: 0 }, { emitEvent: false });
+                          itemForm.get('goodQuantity')?.disable();
+                          itemForm.get('defectiveQuantity')?.disable();
+                        }
+
+                        itemForm.get('receiptStatus')?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((status) => {
+                          if (status === 'WrongItem') {
+                            itemForm.patchValue({ goodQuantity: 0, defectiveQuantity: 0 }, { emitEvent: false });
+                            itemForm.get('goodQuantity')?.disable();
+                            itemForm.get('defectiveQuantity')?.disable();
+                          } else {
+                            itemForm.get('goodQuantity')?.enable();
+                            itemForm.get('defectiveQuantity')?.enable();
+                          }
+                        });
+
+                        this.items.push(itemForm);
+                      });
+
+                      this.isSearching = false;
+                      this.cdr.markForCheck();
+                    },
+                    error: () => {
+                      this.isSearching = false;
+                      this.cdr.markForCheck();
+                    }
+                  });
+                } else {
+                  this.isSearching = false;
+                  this.cdr.markForCheck();
+                }
+              } else {
+                this.isSearching = false;
+                this.cdr.markForCheck();
+              }
+            },
+            error: () => {
+              this.isSearching = false;
+              this.cdr.markForCheck();
+            }
+          });
+        } else {
+          this.isSearching = false;
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {
+        this.isSearching = false;
+        this.cdr.markForCheck();
+        this.swal.error('ไม่สามารถโหลดข้อมูลใบรับสินค้าได้');
+      }
+    });
   }
 
   addAllItems(): void {
@@ -199,16 +361,14 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       })),
     };
 
-    this.procurementService.createVcbShipment(dto).subscribe({
-      next: (res) => {
-        this.isSubmitting = false;
-        this.cdr.markForCheck();
-        if (res.isSuccess) {
-          this.shipmentForm.markAsPristine();
-          this.swal
-            .success('สร้างใบรับสินค้าสำเร็จ พร้อมนำส่งสถานะ Completed เพื่อตัดสต็อก')
-            .then(() => {
-              // Optionally ask if want to complete immediately
+    if (this.isEditMode && this.shipmentId) {
+      this.procurementService.updateVcbShipment(this.shipmentId, dto).subscribe({
+        next: (res: any) => {
+          this.isSubmitting = false;
+          this.cdr.markForCheck();
+          if (res.isSuccess) {
+            this.shipmentForm.markAsPristine();
+            this.swal.success('แก้ไขใบรับสินค้าสำเร็จ').then(() => {
               this.swal
                 .confirm(
                   'คุณต้องการกดยืนยันการรับสินค้าเข้าสต็อกทันทีเลยหรือไม่?',
@@ -217,9 +377,8 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                 )
                 .then((result) => {
                   if (result.isConfirmed) {
-                    const newId = (res.value || res.data)!;
                     this.procurementService
-                      .updateVcbShipmentStatus(newId, 'Completed')
+                      .updateVcbShipmentStatus(this.shipmentId!, 'Completed')
                       .subscribe(() => {
                         this.swal.success('รับเข้าสต็อกเรียบร้อย');
                         this.router.navigate(['/procurement/vcb-shipments']);
@@ -230,16 +389,58 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                   }
                 });
             });
-        } else {
-          this.swal.error(res.error || 'เกิดข้อผิดพลาด');
+          } else {
+            this.swal.error(res.error || 'เกิดข้อผิดพลาด');
+          }
+        },
+        error: (err) => {
+          this.isSubmitting = false;
+          this.cdr.markForCheck();
+          this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
-      },
-      error: (err) => {
-        this.isSubmitting = false;
-        this.cdr.markForCheck();
-        this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
-      },
-    });
+      });
+    } else {
+      this.procurementService.createVcbShipment(dto).subscribe({
+        next: (res) => {
+          this.isSubmitting = false;
+          this.cdr.markForCheck();
+          if (res.isSuccess) {
+            this.shipmentForm.markAsPristine();
+            this.swal
+              .success('สร้างใบรับสินค้าสำเร็จ พร้อมนำส่งสถานะ Completed เพื่อตัดสต็อก')
+              .then(() => {
+                this.swal
+                  .confirm(
+                    'คุณต้องการกดยืนยันการรับสินค้าเข้าสต็อกทันทีเลยหรือไม่?',
+                    'ใช่, ยืนยันรับเข้า',
+                    'เก็บไว้เป็นฉบับร่างก่อน',
+                  )
+                  .then((result) => {
+                    if (result.isConfirmed) {
+                      const newId = (res.value || res.data)!;
+                      this.procurementService
+                        .updateVcbShipmentStatus(newId, 'Completed')
+                        .subscribe(() => {
+                          this.swal.success('รับเข้าสต็อกเรียบร้อย');
+                          this.router.navigate(['/procurement/vcb-shipments']);
+                          this.cdr.markForCheck();
+                        });
+                    } else {
+                      this.router.navigate(['/procurement/vcb-shipments']);
+                    }
+                  });
+              });
+          } else {
+            this.swal.error(res.error || 'เกิดข้อผิดพลาด');
+          }
+        },
+        error: (err) => {
+          this.isSubmitting = false;
+          this.cdr.markForCheck();
+          this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        },
+      });
+    }
   }
 
   removeItem(index: number): void {

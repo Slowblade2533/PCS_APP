@@ -60,16 +60,16 @@ public class StockRepository : IStockRepository
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
             {whereClause};
 
-            SELECT s.VariantId, v.Sku, v.Barcode, p.ProductNameTh AS ProductName, 
+            SELECT s.VariantId, v.Sku, v.Barcode, p.ProductNameTh AS ProductName,
                    COALESCE(NULLIF(v.VariantNameTh, ''), NULLIF(LTRIM(RTRIM(CONCAT(v.Color, ' ', v.SizeLabel, ' ', v.StylePattern))), ''), '') AS VariantName,
-                   s.CurrentQuantity, s.ReservedQuantity, s.AvailableQuantity, 
-                   s.ReorderPoint, s.UpdatedAt, 
-                   (SELECT TOP 1 Id FROM dbo.Branches WHERE IsActive = 1) AS BranchId,
-                   (SELECT TOP 1 BranchName FROM dbo.Branches WHERE IsActive = 1) AS BranchName,
+                   s.CurrentQuantity, s.ReservedQuantity, s.AvailableQuantity,
+                   s.ReorderPoint, s.UpdatedAt,
+                   b.Id AS BranchId, b.BranchName,
                    v.ImageUrl, p.BrandName
             FROM dbo.Stocks s
             INNER JOIN dbo.ProductVariants v ON s.VariantId = v.VariantId
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
+            LEFT JOIN dbo.Branches b ON b.IsActive = 1
             {whereClause}
             ORDER BY v.Sku
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";

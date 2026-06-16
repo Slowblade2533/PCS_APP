@@ -17,14 +17,26 @@
       </svg>
     </button>
     <div>
-      <h1 class="text-2xl font-bold text-violet-600 dark:text-violet-400">📥 สร้างใบรับสินค้า VCANBUY</h1>
+      <h1 class="text-2xl font-bold text-violet-600 dark:text-violet-400">
+        {{ isEditMode ? '📥 แก้ไขใบรับสินค้า VCANBUY' : '📥 สร้างใบรับสินค้า VCANBUY' }}
+      </h1>
       <p class="text-base-content/60 mt-1">รับสินค้าจากจีน แจกแจงหมายเลขกล่อง และอัปเดตสต็อก</p>
     </div>
   </div>
 
   <form [formGroup]="shipmentForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-6">
+    <!-- โหลดข้อมูลในโหมดแก้ไข -->
+    @if (isSearching && isEditMode) {
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body flex items-center justify-center py-12">
+          <span class="loading loading-spinner loading-lg text-primary mb-2"></span>
+          <span class="text-sm text-base-content/60">กำลังโหลดข้อมูลใบรับสินค้า...</span>
+        </div>
+      </div>
+    }
+
     <!-- ค้นหาออเดอร์อ้างอิง -->
-    @if (!selectedDelivery) {
+    @if (!selectedDelivery && !isEditMode) {
       <div class="card bg-base-100 shadow-xl border border-base-200">
         <div class="card-body">
           <h2 class="card-title text-xl mb-4">1. เลือกบิลขนส่ง VCANBUY อ้างอิง</h2>
@@ -142,18 +154,20 @@
             <h3 class="font-bold">บิลขนส่งอ้างอิง: {{ selectedDelivery.deliveryNo }}</h3>
           </div>
         </div>
-        <button
-          type="button"
-          class="btn btn-sm btn-ghost"
-          (click)="
-            selectedDelivery = null;
-            shipmentForm.patchValue({ deliveryId: null });
-            searchResults = [];
-            items.clear()
-          "
-        >
-          เปลี่ยนบิลขนส่ง
-        </button>
+        @if (!isEditMode) {
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            (click)="
+              selectedDelivery = null;
+              shipmentForm.patchValue({ deliveryId: null });
+              searchResults = [];
+              items.clear()
+            "
+          >
+            เปลี่ยนบิลขนส่ง
+          </button>
+        }
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-4">

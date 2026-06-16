@@ -18,9 +18,13 @@ public class VcbOrderRepository : IVcbOrderRepository
     {
         using var conn = _connectionFactory.CreateConnection();
         string sql = @"
-            SELECT * FROM dbo.VcbOrders WHERE Id = @Id;
-            
-            SELECT i.*, v.Sku, v.ImageUrl, p.ProductNameTh AS ProductName, 
+            SELECT o.Id, o.OrderNo, o.OrderDate, o.TotalAmount, o.Status, o.BranchId,
+                   o.Notes, o.TransferSlipUrl, o.CreatedBy, o.CreatedAt, o.UpdatedAt
+            FROM dbo.VcbOrders o
+            WHERE o.Id = @Id;
+
+            SELECT i.Id, i.OrderId, i.VariantId, i.Quantity, i.TotalPrice,
+                   v.Sku, v.ImageUrl, p.ProductNameTh AS ProductName,
                    COALESCE(NULLIF(v.VariantNameTh, ''), NULLIF(LTRIM(RTRIM(CONCAT(v.Color, ' ', v.SizeLabel, ' ', v.StylePattern))), ''), '') AS VariantName,
                    ISNULL(r.Received, 0) AS ReceivedQuantity,
                    (i.Quantity - ISNULL(r.Received, 0)) AS RemainingQuantity
@@ -28,7 +32,7 @@ public class VcbOrderRepository : IVcbOrderRepository
             INNER JOIN dbo.ProductVariants v ON i.VariantId = v.VariantId
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
             LEFT JOIN (
-                SELECT si.OrderItemId, SUM(si.GoodQuantity + si.DefectiveQuantity) as Received
+                SELECT si.OrderItemId, SUM(si.GoodQuantity + si.DefectiveQuantity) AS Received
                 FROM dbo.VcbShipmentItems si
                 INNER JOIN dbo.VcbShipments s ON si.ShipmentId = s.Id
                 WHERE s.Status = 'Completed'
@@ -166,7 +170,7 @@ public class VcbOrderRepository : IVcbOrderRepository
                     TotalAmount = @TotalAmount,
                     BranchId = @BranchId,
                     Notes = @Notes,
-                    " + (transferSlipUrl != null ? "TransferSlipUrl = @TransferSlipUrl, " : "") + @"
+                    TransferSlipUrl = COALESCE(@TransferSlipUrl, TransferSlipUrl),
                     UpdatedAt = GETDATE()
                 WHERE Id = @Id AND Status = 'Pending';";
 

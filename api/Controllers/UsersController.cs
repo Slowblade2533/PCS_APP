@@ -37,30 +37,18 @@ public class UsersController(IUserService userService) : ControllerBase
     [Authorize(Policy = "CanManageUsers")]
     public async Task<IActionResult> CreateUser([FromBody] UserCreateRequestDto request)
     {
-        try
-        {
-            var user = await userService.CreateUserAsync(request);
-            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        // Typed exceptions (InvalidOperationException, KeyNotFoundException) are handled
+        // by GlobalExceptionHandler which maps them to the correct HTTP status codes.
+        var user = await userService.CreateUserAsync(request);
+        return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]
     [Authorize(Policy = "CanManageUsers")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserUpdateRequestDto request)
     {
-        try
-        {
-            var user = await userService.UpdateUserAsync(id, request);
-            return Ok(user);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var user = await userService.UpdateUserAsync(id, request);
+        return Ok(user);
     }
 
     [HttpPatch("{id}/active")]

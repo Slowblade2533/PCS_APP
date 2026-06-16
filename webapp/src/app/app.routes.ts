@@ -39,12 +39,16 @@ export const routes: Routes = [
         path: 'products/create',
         loadComponent: () =>
           import('./pages/products/product-create/product-create').then((m) => m.ProductCreate),
+        canActivate: [permissionGuard],
+        data: { permission: 'product:create' },
         canDeactivate: [pendingChangesGuard],
       },
       {
         path: 'products/:id',
         loadComponent: () =>
           import('./pages/products/product-create/product-create').then((m) => m.ProductCreate),
+        canActivate: [permissionGuard],
+        data: { permission: 'product:edit' },
         canDeactivate: [pendingChangesGuard],
       },
 
@@ -61,6 +65,8 @@ export const routes: Routes = [
           import('./pages/stock/stock-transaction/stock-transaction').then(
             (m) => m.StockTransactionList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'stock:view' },
       },
       {
         path: 'stock/adjust',
@@ -68,6 +74,8 @@ export const routes: Routes = [
           import('./pages/stock/stock-transaction/stock-transaction').then(
             (m) => m.StockTransactionList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'stock:adjust' },
       },
 
       // ── Users ─────────────────────────────────────────────────
@@ -123,6 +131,14 @@ export const routes: Routes = [
       },
       {
         path: 'procurement/vcb-shipments/create',
+        loadComponent: () =>
+          import('./pages/procurement/vcb-shipments-create/vcb-shipments-create').then(
+            (m) => m.VcbShipmentsCreateComponent,
+          ),
+        canDeactivate: [pendingChangesGuard],
+      },
+      {
+        path: 'procurement/vcb-shipments/:id',
         loadComponent: () =>
           import('./pages/procurement/vcb-shipments-create/vcb-shipments-create').then(
             (m) => m.VcbShipmentsCreateComponent,

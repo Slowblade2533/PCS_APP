@@ -353,4 +353,78 @@ public class VcbShipmentRepository : IVcbShipmentRepository
             throw;
         }
     }
+
+    public async Task<bool> UpdateAsync(int id, VcbShipmentCreateDto dto, CancellationToken cancellationToken = default)
+    {
+        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
+        await conn.OpenAsync(cancellationToken);
+        using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            // Verify existence and Draft status
+            string checkSql = "SELECT Status FROM dbo.VcbShipments WHERE Id = @Id;";
+            var status = await conn.QuerySingleOrDefaultAsync<string>(new CommandDefinition(checkSql, new { Id = id }, transaction: tx, cancellationToken: cancellationToken));
+            if (status == null || status != "Draft")
+            {
+                return false;
+            }
+
+            // Update parent
+            string updateParentSql = @"
+                UPDATE dbo.VcbShipments 
+                SET DeliveryId = @DeliveryId,
+                    Notes = @Notes,
+                    IsForceCloseOrder = @IsForceCloseOrder,
+                    UpdatedAt = GETDATE()
+                WHERE Id = @Id;";
+            await conn.ExecuteAsync(new CommandDefinition(updateParentSql, new
+            {
+                Id = id,
+                DeliveryId = dto.DeliveryId,
+                Notes = dto.Notes,
+                IsForceCloseOrder = dto.IsForceCloseOrder
+            }, transaction: tx, cancellationToken: cancellationToken));
+
+            // Delete old items
+            string deleteItemsSql = "DELETE FROM dbo.VcbShipmentItems WHERE ShipmentId = @Id;";
+            await conn.ExecuteAsync(new CommandDefinition(deleteItemsSql, new { Id = id }, transaction: tx, cancellationToken: cancellationToken));
+
+            // Insert new items
+            if (dto.Items.Any())
+            {
+                var batchSql = new StringBuilder();
+                var batchParams = new DynamicParameters();
+                batchParams.Add("ShipmentId", id);
+
+                for (int i = 0; i < dto.Items.Count; i++)
+                {
+                    var item = dto.Items[i];
+                    batchSql.AppendLine($@"
+                        INSERT INTO dbo.VcbShipmentItems (ShipmentId, OrderItemId, VariantId, BoxNumbers, ReceiptStatus, ExpectedQuantity, GoodQuantity, DefectiveQuantity, RefundAmount)
+                        VALUES (@ShipmentId, @OrderItemId{i}, @VariantId{i}, @BoxNumbers{i}, @ReceiptStatus{i}, @ExpectedQuantity{i}, @GoodQuantity{i}, @DefectiveQuantity{i}, @RefundAmount{i});");
+                    
+                    batchParams.Add($"OrderItemId{i}", item.OrderItemId);
+                    batchParams.Add($"VariantId{i}", item.VariantId);
+                    batchParams.Add($"BoxNumbers{i}", item.BoxNumbers);
+                    batchParams.Add($"ReceiptStatus{i}", item.ReceiptStatus);
+                    batchParams.Add($"ExpectedQuantity{i}", item.ExpectedQuantity);
+                    batchParams.Add($"GoodQuantity{i}", item.GoodQuantity);
+                    batchParams.Add($"DefectiveQuantity{i}", item.DefectiveQuantity);
+                    batchParams.Add($"RefundAmount{i}", item.RefundAmount);
+                }
+
+                await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: tx, cancellationToken: cancellationToken));
+            }
+
+            await tx.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
 }

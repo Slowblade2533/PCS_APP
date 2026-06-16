@@ -8,4 +8,5 @@ public interface IVcbShipmentRepository
     Task<PagedResultDto<VcbShipmentDto>> GetPagedAsync(VcbShipmentSearchDto search, CancellationToken cancellationToken = default);
     Task<int> CreateAsync(VcbShipmentCreateDto dto, int createdBy, CancellationToken cancellationToken = default);
     Task<bool> UpdateStatusAsync(int id, string status, int currentUserId, CancellationToken cancellationToken = default);
+    Task<bool> UpdateAsync(int id, VcbShipmentCreateDto dto, CancellationToken cancellationToken = default);
 }

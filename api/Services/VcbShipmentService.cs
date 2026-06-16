@@ -60,4 +60,28 @@ public class VcbShipmentService : IVcbShipmentService
 
         return ResultDto<bool>.Success(true);
     }
+
+    public async Task<ResultDto<bool>> UpdateAsync(int id, VcbShipmentCreateDto dto, CancellationToken cancellationToken = default)
+    {
+        if (dto.Items == null || dto.Items.Count == 0)
+            return ResultDto<bool>.Failure("กรุณาระบุรายการสินค้าอย่างน้อย 1 รายการ");
+
+        foreach (var item in dto.Items)
+        {
+            if (item.ReceiptStatus == "Complete" && (item.GoodQuantity + item.DefectiveQuantity) != item.ExpectedQuantity)
+                return ResultDto<bool>.Failure("สถานะรับครบ จำนวนรวมต้องเท่ากับจำนวนที่สั่ง");
+            
+            if (item.ReceiptStatus == "Incomplete" && (item.GoodQuantity + item.DefectiveQuantity) >= item.ExpectedQuantity)
+                return ResultDto<bool>.Failure("สถานะรับไม่ครบ จำนวนรวมต้องน้อยกว่าจำนวนที่สั่ง");
+
+            if (item.ReceiptStatus == "Over" && (item.GoodQuantity + item.DefectiveQuantity) <= item.ExpectedQuantity)
+                return ResultDto<bool>.Failure("สถานะรับเกิน จำนวนรวมต้องมากกว่าจำนวนที่สั่ง");
+        }
+
+        bool updated = await _shipmentRepository.UpdateAsync(id, dto, cancellationToken);
+        if (!updated)
+            return ResultDto<bool>.Failure("ไม่พบข้อมูลใบรับสินค้า VCANBUY หรือเอกสารไม่ได้อยู่ในสถานะ Draft");
+
+        return ResultDto<bool>.Success(true);
+    }
 }

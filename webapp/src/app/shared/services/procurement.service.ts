@@ -32,6 +32,10 @@ export class ProcurementService {
     return this.http.post<Result<number>>(`${this.apiUrl}/VcbShipments`, dto);
   }
 
+  updateVcbShipment(id: number, dto: VcbShipmentCreate): Observable<Result<boolean>> {
+    return this.http.put<Result<boolean>>(`${this.apiUrl}/VcbShipments/${id}`, dto);
+  }
+
   getVcbOrderById(id: number): Observable<Result<VcbOrder>> {
     return this.http.get<Result<VcbOrder>>(`${this.apiUrl}/VcbOrders/${id}`);
   }

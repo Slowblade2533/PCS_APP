@@ -59,7 +59,7 @@ export class SweetAlertService {
       title: 'สำเร็จ',
       text: message,
       showConfirmButton: false,
-      timer: 3000,
+      timer: 1000,
       timerProgressBar: true,
       allowOutsideClick: false,
       allowEscapeKey: false,

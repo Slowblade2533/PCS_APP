@@ -26,6 +26,14 @@ public class UserRepository : IUserRepository
         return await connection.QuerySingleOrDefaultAsync<UserTableModel>(sql, new { Email = email });
     }
 
+    public async Task<UserTableModel?> GetUserByEmailAsync(string email)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        const string sql = "SELECT Id, Email, Username, PasswordHash, FullName FROM Users WHERE Email = @Email";
+
+        return await connection.QuerySingleOrDefaultAsync<UserTableModel>(sql, new { Email = email });
+    }
+
     public async Task<IEnumerable<UserPermissionInfoModel>> GetUserPermissionsAsync(int userId)
     {
         using var conn = _connectionFactory.CreateConnection();

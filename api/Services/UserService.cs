@@ -35,10 +35,12 @@ public class UserService : IUserService
 
     public async Task<UserDetailDto> CreateUserAsync(UserCreateRequestDto request)
     {
-        var existingUser = await _userRepository.GetActiveUserByEmailAsync(request.Email);
+        // Check all users (active AND inactive) to prevent duplicate email accounts.
+        // Without this, a deactivated user's email could be silently re-used.
+        var existingUser = await _userRepository.GetUserByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            throw new Exception("Email is already in use.");
+            throw new InvalidOperationException("Email นี้ถูกใช้งานอยู่แล้วในระบบ");
         }
 
         var fullName = $"{request.FirstName} {request.LastName}".Trim();
@@ -56,12 +58,14 @@ public class UserService : IUserService
 
         var userId = await _userRepository.CreateUserAsync(newUser, request.PermissionAssignments);
 
-        return await _userRepository.GetUserByIdAsync(userId) ?? throw new Exception("Failed to retrieve created user.");
+        return await _userRepository.GetUserByIdAsync(userId) 
+            ?? throw new InvalidOperationException("ไม่สามารถดึงข้อมูลผู้ใช้ที่สร้างใหม่ได้");
     }
 
     public async Task<UserDetailDto> UpdateUserAsync(int id, UserUpdateRequestDto request)
     {
-        var user = await _userRepository.GetUserByIdAsync(id) ?? throw new Exception("User not found.");
+        var user = await _userRepository.GetUserByIdAsync(id) 
+            ?? throw new KeyNotFoundException("ไม่พบข้อมูลผู้ใช้");
 
         var fullName = $"{request.FirstName} {request.LastName}".Trim();
 
@@ -75,7 +79,8 @@ public class UserService : IUserService
 
         await _userRepository.UpdateUserAsync(id, updatedUser, request.PermissionAssignments);
 
-        return await _userRepository.GetUserByIdAsync(id) ?? throw new Exception("Failed to retrieve updated user.");
+        return await _userRepository.GetUserByIdAsync(id) 
+            ?? throw new InvalidOperationException("ไม่สามารถดึงข้อมูลผู้ใช้หลังแก้ไขได้");
     }
 
     public async Task ToggleActiveAsync(int id, bool isActive)

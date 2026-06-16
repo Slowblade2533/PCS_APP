@@ -54,4 +54,15 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
 
         return Ok(result);
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] VcbShipmentCreateDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var result = await shipmentService.UpdateAsync(id, dto, cancellationToken);
+        if (!result.IsSuccess) return BadRequest(result);
+
+        return Ok(result);
+    }
 }

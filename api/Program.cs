@@ -48,7 +48,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.None;
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+        // Sliding expiration: session is extended with each authenticated request.
+        // The absolute maximum lifetime is capped at 7 days from last activity.
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.SlidingExpiration = true;
         options.Cookie.MaxAge = options.ExpireTimeSpan;
 
         options.Events.OnRedirectToLogin = context =>
@@ -86,6 +90,9 @@ builder.Services.AddAuthorization(options =>
 
     // Report
     options.AddPolicy("CanViewReport", p => p.Requirements.Add(new PermissionRequirementHandler("report:view")));
+
+    // Policy for authenticated access to protected static files (uploaded images)
+    options.AddPolicy("AuthenticatedOnly", p => p.RequireAuthenticatedUser());
 });
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -132,23 +139,82 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// ── Security Headers ─────────────────────────────────────────────────────────
+// Applied early so every response carries them, including error responses.
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
+
 app.UseCors("AngularApp");
-app.UseRateLimiter(); // Add Rate Limiter
+app.UseRateLimiter();
 
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseStaticFiles(); // After Authorization so we can protect it if needed
+// ── Public static files (non-upload assets) ──────────────────────────────────
+app.UseStaticFiles();
 
-app.UseStaticFiles(new StaticFileOptions
+// ── Protected uploaded files ──────────────────────────────────────────────────
+// Requires authentication. The path /api/uploads/* is served only if the
+// request carries a valid AuthCookie. Unauthenticated callers receive 401.
+var uploadsPath = Path.Combine(
+    builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"),
+    "uploads");
+
+app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWebHostEnvironment env, IAuthorizationService authorizationService) =>
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"), "uploads")
-        ),
-    RequestPath = "/api/uploads"
+    // Enforce authentication
+    var authResult = await authorizationService.AuthorizeAsync(context.User, "AuthenticatedOnly");
+    if (!authResult.Succeeded)
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
+    // Path traversal guard: resolve and confirm the final path is inside uploads
+    var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+    var uploadsDir = Path.GetFullPath(Path.Combine(webRoot, "uploads"));
+    var requestedFile = Path.GetFullPath(Path.Combine(uploadsDir, path));
+
+    if (!requestedFile.StartsWith(uploadsDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        return;
+    }
+
+    if (!File.Exists(requestedFile))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    var ext = Path.GetExtension(requestedFile).ToLowerInvariant();
+    var contentType = ext switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        ".webp" => "image/webp",
+        ".gif" => "image/gif",
+        _ => "application/octet-stream"
+    };
+
+    context.Response.ContentType = contentType;
+    // Prevent caching of sensitive images across sessions
+    context.Response.Headers["Cache-Control"] = "private, max-age=3600";
+    await context.Response.SendFileAsync(requestedFile);
 });
 
+// ── Custom CSRF Validation Middleware ─────────────────────────────────────────
+// Validates the double-submit cookie pattern for all state-changing requests.
+// Exemptions: GET/HEAD/OPTIONS/TRACE (safe methods), login, and csrf-token endpoints.
 app.Use(async (context, next) =>
 {
     if (HttpMethods.IsGet(context.Request.Method)

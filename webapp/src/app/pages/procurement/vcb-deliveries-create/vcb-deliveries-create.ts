@@ -488,6 +488,8 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
       return '/logistics/thaipost_ems.jpg';
     } else if (cmp.includes('blue & white') || cmp.includes('blue &amp; white') || cmp.includes('blue and white') || cmp.includes('blue & white logistic')) {
       return '/logistics/blue_n_white.jpg';
+    } else if (cmp.includes('dhl')) {
+      return '/logistics/dhl.jpg';
     }
     return null;
   }

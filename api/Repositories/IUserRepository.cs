@@ -6,6 +6,8 @@ namespace PCS_API.Repositories;
 public interface IUserRepository
 {
     Task<UserTableModel?> GetActiveUserByEmailAsync(string email);
+    /// <summary>Checks ALL users (active and inactive) for email uniqueness.</summary>
+    Task<UserTableModel?> GetUserByEmailAsync(string email);
     Task<IEnumerable<UserPermissionInfoModel>> GetUserPermissionsAsync(int userId);
     
     Task<(IEnumerable<UserListItemDto> Items, int TotalCount)> GetUsersAsync(UserSearchDto search, CancellationToken cancellationToken = default);
