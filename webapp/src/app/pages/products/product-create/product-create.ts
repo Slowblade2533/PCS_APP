@@ -2,6 +2,7 @@ import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@an
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { forkJoin, Observable } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { CategorySearchComponent } from '../../../shared/components/category-search/category-search';
@@ -397,6 +398,8 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       sizeLabel: [v.sizeLabel],
       stylePattern: [v.stylePattern],
       imageUrl: [v.imageUrl ?? null],
+      stagedFile: [null],
+      stagedPreviewUrl: [null],
       unitOfMeasure: [v.unitOfMeasure ?? 'อัน', [Validators.required]],
       width: [v.width != null && Math.round(Number(v.width)) >= 1 ? Math.round(Number(v.width)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
       length: [v.length != null && Math.round(Number(v.length)) >= 1 ? Math.round(Number(v.length)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
@@ -425,6 +428,8 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       sizeLabel: [''],
       stylePattern: [''],
       imageUrl: [null],
+      stagedFile: [null],
+      stagedPreviewUrl: [null],
       unitOfMeasure: ['อัน', [Validators.required]],
       width: [1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
       length: [1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
@@ -486,31 +491,22 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       return;
     }
 
-    this.isUploadingImage.set(true);
-    this.submitError.set(null);
+    const variantForm = this.variants.at(variantIndex) as FormGroup;
+    variantForm.patchValue({ stagedFile: file });
 
-    this.productService
-      .uploadImage(file)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res: any) => {
-          const variantForm = this.variants.at(variantIndex) as FormGroup;
-          variantForm.patchValue({ imageUrl: res.imageUrl });
-          variantForm.markAsDirty();
-          this.isModified.set(true);
-          this.isUploadingImage.set(false);
-        },
-        error: (err: any) => {
-          console.error('Upload failed', err);
-          this.submitError.set('ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง');
-          this.isUploadingImage.set(false);
-        },
-      });
+    const reader = new FileReader();
+    reader.onload = () => {
+      variantForm.patchValue({ stagedPreviewUrl: reader.result as string });
+      variantForm.markAsDirty();
+      this.isModified.set(true);
+    };
+    reader.readAsDataURL(file);
+    this.submitError.set(null);
   }
 
   removeVariantImage(variantIndex: number): void {
     const variantForm = this.variants.at(variantIndex) as FormGroup;
-    variantForm.patchValue({ imageUrl: null });
+    variantForm.patchValue({ imageUrl: null, stagedFile: null, stagedPreviewUrl: null });
     variantForm.markAsDirty();
     this.isModified.set(true);
   }
@@ -555,45 +551,86 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
 
   executeSubmit(): void {
     this.showReviewModal.set(false);
-    const payload = this.buildPayload();
     this.isSubmitting.set(true);
 
-    if (this.currentMode() === 'edit') {
-      this.productService
-        .updateProduct(this.productId()!, payload)
+    const uploadObservables: Observable<any>[] = [];
+    const variantFormsWithUploads: FormGroup[] = [];
+
+    this.variants.controls.forEach((control) => {
+      const fg = control as FormGroup;
+      const file = fg.get('stagedFile')?.value;
+      if (file) {
+        uploadObservables.push(this.productService.uploadImage(file));
+        variantFormsWithUploads.push(fg);
+      }
+    });
+
+    const saveProduct = () => {
+      const payload = this.buildPayload();
+      if (this.currentMode() === 'edit') {
+        this.productService
+          .updateProduct(this.productId()!, payload)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.productForm.markAsPristine();
+              this.swal.success('แก้ไขข้อมูลสินค้าสำเร็จ').then(() => {
+                this.router.navigate(['/products']);
+              });
+            },
+            error: (err) => {
+              this.isSubmitting.set(false);
+              const errMsg = err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้';
+              this.submitError.set(errMsg);
+              this.swal.error(errMsg);
+            },
+          });
+      } else {
+        this.productService
+          .createProduct(payload)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.productForm.markAsPristine();
+              this.swal.success('บันทึกข้อมูลสินค้าสำเร็จ').then(() => {
+                this.router.navigate(['/products']);
+              });
+            },
+            error: (err) => {
+              this.isSubmitting.set(false);
+              const errMsg = err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้';
+              this.submitError.set(errMsg);
+              this.swal.error(errMsg);
+            },
+          });
+      }
+    };
+
+    if (uploadObservables.length > 0) {
+      forkJoin(uploadObservables)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: () => {
-            this.productForm.markAsPristine();
-            this.swal.success('แก้ไขข้อมูลสินค้าสำเร็จ').then(() => {
-              this.router.navigate(['/products']);
+          next: (responses: any[]) => {
+            responses.forEach((res, index) => {
+              const fg = variantFormsWithUploads[index];
+              fg.patchValue({
+                imageUrl: res.imageUrl,
+                stagedFile: null,
+                stagedPreviewUrl: null
+              });
             });
+            saveProduct();
           },
           error: (err) => {
+            console.error('Variant image upload failed', err);
             this.isSubmitting.set(false);
-            const errMsg = err?.error?.message ?? 'ไม่สามารถแก้ไขข้อมูลสินค้าได้';
+            const errMsg = 'ไม่สามารถอัปโหลดรูปภาพสินค้าได้ กรุณาลองใหม่อีกครั้ง';
             this.submitError.set(errMsg);
             this.swal.error(errMsg);
-          },
+          }
         });
     } else {
-      this.productService
-        .createProduct(payload)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: () => {
-            this.productForm.markAsPristine();
-            this.swal.success('บันทึกข้อมูลสินค้าสำเร็จ').then(() => {
-              this.router.navigate(['/products']);
-            });
-          },
-          error: (err) => {
-            this.isSubmitting.set(false);
-            const errMsg = err?.error?.message ?? 'ไม่สามารถบันทึกสินค้าได้ในขณะนี้';
-            this.submitError.set(errMsg);
-            this.swal.error(errMsg);
-          },
-        });
+      saveProduct();
     }
   }
 

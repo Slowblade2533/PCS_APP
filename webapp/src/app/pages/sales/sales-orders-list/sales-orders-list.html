@@ -1,0 +1,117 @@
+<div class="p-6">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">ใบสั่งขาย</h1>
+    <a routerLink="/sales/orders/create" class="btn btn-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      สร้างใบสั่งขาย
+    </a>
+  </div>
+
+  <div class="bg-base-100 shadow-xl rounded-box p-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <input
+        type="text"
+        placeholder="ค้นหาเลขที่ใบสั่งขาย หรือ ชื่อลูกค้า..."
+        class="input input-bordered w-full"
+        [ngModel]="searchTerm()"
+        (input)="onSearch($event)"
+      />
+      <select class="select select-bordered w-full" [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event); onFilterChange()">
+        @for (opt of statusOptions; track opt.value) {
+          <option [value]="opt.value">{{ opt.label }}</option>
+        }
+      </select>
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="bg-base-100 shadow-xl rounded-box overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-200">
+          <tr>
+            <th>เลขที่ใบขาย</th>
+            <th>วันที่</th>
+            <th>ลูกค้า</th>
+            <th class="text-right">จำนวนรายการ</th>
+            <th>วิธีชำระเงิน</th>
+            <th class="text-right">ยอดรวม</th>
+            <th>สถานะ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="8" class="text-center py-8">
+                <span class="loading loading-spinner loading-lg"></span>
+              </td>
+            </tr>
+          } @else if (data().items.length === 0) {
+            <tr>
+              <td colspan="8" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลใบสั่งขาย</td>
+            </tr>
+          } @else {
+            @for (item of data().items; track item.orderId) {
+              <tr>
+                <td class="font-medium">{{ item.orderNo }}</td>
+                <td>{{ item.orderDate | date:'dd/MM/yyyy' }}</td>
+                <td>{{ item.customerName || '-' }}</td>
+                <td class="text-right">{{ item.itemCount | number }}</td>
+                <td>
+                  {{ getPaymentLabel(item.paymentMethod) }}
+                </td>
+                <td class="text-right font-semibold text-primary">
+                  {{ item.grandTotal | number:'1.2-2' }}
+                </td>
+                <td>
+                  <span class="badge {{ getStatusBadgeClass(item.orderStatus) }} badge-sm">
+                    {{ getStatusLabel(item.orderStatus) }}
+                  </span>
+                </td>
+                <td class="text-right">
+                  <a [routerLink]="['/sales/orders', item.orderId]" class="btn btn-ghost btn-xs">เปิด</a>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (data().totalCount > 0) {
+      <div class="flex justify-between items-center p-4 bg-base-200/50">
+        <span class="text-sm text-base-content/70">
+          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง 
+          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }} 
+          จากทั้งหมด {{ data().totalCount }} รายการ
+        </span>
+        <div class="join">
+          <button 
+            class="join-item btn btn-sm" 
+            [disabled]="data().pageNumber === 1"
+            (click)="onPageChange(data().pageNumber - 1)">
+            «
+          </button>
+          <button class="join-item btn btn-sm">หน้า {{ data().pageNumber }}</button>
+          <button 
+            class="join-item btn btn-sm" 
+            [disabled]="data().pageNumber * data().pageSize >= data().totalCount"
+            (click)="onPageChange(data().pageNumber + 1)">
+            »
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

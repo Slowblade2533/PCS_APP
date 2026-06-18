@@ -84,6 +84,7 @@ export class StockTransactionList implements OnInit {
 
     this.form = this.fb.group({
       transactionType: ['IN', Validators.required],
+      condition: ['Normal', Validators.required],
       branchId: [branchId ? +branchId : null, Validators.required],
       variantId: [variantId ? +variantId : null, [Validators.required, Validators.min(1)]],
       quantity: [null, [Validators.required, Validators.min(1)]],
@@ -140,9 +141,10 @@ export class StockTransactionList implements OnInit {
       return;
     }
 
-    const { transactionType, branchId, variantId, quantity, referenceNo, note } = this.form.value;
+    const { transactionType, condition, branchId, variantId, quantity, referenceNo, note } = this.form.value;
     const payload: StockTransactionRequest = {
       transactionType,
+      condition,
       branchId,
       variantId,
       quantity,

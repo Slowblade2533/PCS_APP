@@ -206,6 +206,121 @@ export const routes: Routes = [
         data: { permission: 'system:settings' },
         canDeactivate: [pendingChangesGuard],
       },
+
+      // ── Finance ───────────────────────────────────────────────
+      {
+        path: 'finance/accounts',
+        loadComponent: () =>
+          import('./pages/finance/chart-of-accounts/chart-of-accounts').then(
+            (m) => m.ChartOfAccountsList,
+          ),
+      },
+      {
+        path: 'finance/tax-invoices',
+        loadComponent: () =>
+          import('./pages/finance/tax-invoices-list/tax-invoices-list').then(
+            (m) => m.TaxInvoicesList,
+          ),
+      },
+      {
+        path: 'finance/transactions',
+        loadComponent: () =>
+          import('./pages/finance/transactions-list/transactions-list').then(
+            (m) => m.TransactionsList,
+          ),
+      },
+      {
+        path: 'finance/transactions/create',
+        loadComponent: () =>
+          import('./pages/finance/transaction-create/transaction-create').then(
+            (m) => m.TransactionCreate,
+          ),
+        canDeactivate: [pendingChangesGuard],
+      },
+      {
+        path: 'finance/transactions/:id',
+        loadComponent: () =>
+          import('./pages/finance/transaction-create/transaction-create').then(
+            (m) => m.TransactionCreate,
+          ),
+      },
+      {
+        path: 'finance/trial-balance',
+        loadComponent: () =>
+          import('./pages/finance/trial-balance/trial-balance').then(
+            (m) => m.TrialBalance,
+          ),
+      },
+
+      // ── Sales ─────────────────────────────────────────────────
+      {
+        path: 'sales/orders',
+        loadComponent: () =>
+          import('./pages/sales/sales-orders-list/sales-orders-list').then(
+            (m) => m.SalesOrdersList,
+          ),
+      },
+      {
+        path: 'sales/orders/create',
+        loadComponent: () =>
+          import('./pages/sales/sales-order-create/sales-order-create').then(
+            (m) => m.SalesOrderCreate,
+          ),
+        canDeactivate: [pendingChangesGuard],
+      },
+      {
+        path: 'sales/orders/:id',
+        loadComponent: () =>
+          import('./pages/sales/sales-order-create/sales-order-create').then(
+            (m) => m.SalesOrderCreate,
+          ),
+      },
+
+      // ── Purchasing (General) ──────────────────────────────────
+      {
+        path: 'purchasing/purchase-orders',
+        loadComponent: () =>
+          import('./pages/purchasing/purchase-orders-list/purchase-orders-list').then(
+            (m) => m.PurchaseOrdersList,
+          ),
+      },
+      {
+        path: 'purchasing/purchase-orders/create',
+        loadComponent: () =>
+          import('./pages/purchasing/purchase-order-create/purchase-order-create').then(
+            (m) => m.PurchaseOrderCreate,
+          ),
+        canDeactivate: [pendingChangesGuard],
+      },
+      {
+        path: 'purchasing/purchase-orders/:id',
+        loadComponent: () =>
+          import('./pages/purchasing/purchase-order-create/purchase-order-create').then(
+            (m) => m.PurchaseOrderCreate,
+          ),
+      },
+      {
+        path: 'purchasing/goods-receipts',
+        loadComponent: () =>
+          import('./pages/purchasing/goods-receipts-list/goods-receipts-list').then(
+            (m) => m.GoodsReceiptsList,
+          ),
+      },
+      {
+        path: 'purchasing/goods-receipts/create',
+        loadComponent: () =>
+          import('./pages/purchasing/goods-receipt-create/goods-receipt-create').then(
+            (m) => m.GoodsReceiptCreate,
+          ),
+        canDeactivate: [pendingChangesGuard],
+      },
+      {
+        path: 'purchasing/goods-receipts/:id',
+        loadComponent: () =>
+          import('./pages/purchasing/goods-receipt-create/goods-receipt-create').then(
+            (m) => m.GoodsReceiptCreate,
+          ),
+      },
     ],
   },
   {

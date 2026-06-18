@@ -19,6 +19,12 @@
       "skillPath": "skills/azure-sql-best-practices/SKILL.md",
       "computedHash": "64f1047270432b5acf9ff91edfa19a01998fc3dcbeb3997e1907719836203d47"
     },
+    "brainstorming": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "45a7e91ad905b9375efebfdf506bd4968c1cc6f43509115f0e1f43f425591e9f"
+    },
     "dotnet-trace-collect": {
       "source": "dotnet/skills",
       "sourceType": "github",

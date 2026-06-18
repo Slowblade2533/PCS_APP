@@ -30,8 +30,9 @@
     (searchTermChange)="onSearchChange($event)"
     [selectedStatus]="query.productStatus || ''"
     (selectedStatusChange)="query.productStatus = $event"
-    [selectedType]="query.productType || ''"
-    (selectedTypeChange)="query.productType = $event"
+    [showCondition]="true"
+    [selectedCondition]="query.condition || ''"
+    (selectedConditionChange)="query.condition = $event"
     [selectedInventoryGroup]="query.inventoryGroup || ''"
     (selectedInventoryGroupChange)="query.inventoryGroup = $event"
     (filterChange)="onFilterChange()"
@@ -112,7 +113,16 @@
                   <td>
                     <div>
                       <p class="font-medium text-sm">{{ item.productName }}</p>
-                      <p class="text-xs text-base-content/50">{{ item.variantName }}</p>
+                      <p class="text-xs text-base-content/50">
+                        {{ item.variantName }}
+                        @if (item.condition === 'Normal') {
+                          <span class="badge badge-success badge-xs font-semibold ml-1">ปกติ</span>
+                        } @else if (item.condition === 'Defect') {
+                          <span class="badge badge-warning badge-xs font-semibold ml-1">ตำหนิ</span>
+                        } @else if (item.condition === 'Damage') {
+                          <span class="badge badge-error badge-xs font-semibold ml-1">ชำรุด</span>
+                        }
+                      </p>
                       <div class="flex flex-wrap items-center gap-1 mt-0.5">
                         <span class="badge badge-ghost badge-xs font-mono">{{ item.sku }}</span>
                         @if (item.brandName) {

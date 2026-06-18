@@ -1,0 +1,136 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using PCS_API.DTOs;
+using PCS_API.Repositories;
+
+namespace PCS_API.Controllers;
+
+[ApiController]
+[Route("api/financial")]
+[Authorize]
+public class FinancialController : ControllerBase
+{
+    private readonly IFinancialRepository _financialRepo;
+    private readonly IWebHostEnvironment _env;
+
+    public FinancialController(IFinancialRepository financialRepo, IWebHostEnvironment env)
+    {
+        _financialRepo = financialRepo;
+        _env = env;
+    }
+
+    // ─── Chart of Accounts ────────────────────────────────────────────────────
+    [HttpGet("accounts")]
+    public async Task<IActionResult> GetAccounts()
+    {
+        var accounts = await _financialRepo.GetAllAccountsAsync();
+        return Ok(accounts);
+    }
+
+    [HttpGet("accounts/{id}")]
+    public async Task<IActionResult> GetAccount(int id)
+    {
+        var account = await _financialRepo.GetAccountByIdAsync(id);
+        return account is null ? NotFound() : Ok(account);
+    }
+
+    [HttpPost("accounts")]
+    public async Task<IActionResult> CreateAccount([FromBody] ChartOfAccountCreateDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        var result = await _financialRepo.CreateAccountAsync(dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    // ─── Tax Invoices ─────────────────────────────────────────────────────────
+    [HttpGet("tax-invoices")]
+    public async Task<IActionResult> GetTaxInvoices([FromQuery] TaxInvoiceSearchDto search, CancellationToken ct)
+    {
+        var result = await _financialRepo.GetTaxInvoicesPagedAsync(search, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("tax-invoices/{id}")]
+    public async Task<IActionResult> GetTaxInvoice(int id)
+    {
+        var result = await _financialRepo.GetTaxInvoiceByIdAsync(id);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("tax-invoices")]
+    public async Task<IActionResult> CreateTaxInvoice([FromBody] TaxInvoiceCreateDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        var result = await _financialRepo.CreateTaxInvoiceAsync(dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    // ─── Financial Transactions ────────────────────────────────────────────────
+    [HttpGet("transactions")]
+    public async Task<IActionResult> GetTransactions([FromQuery] FinancialTransactionSearchDto search, CancellationToken ct)
+    {
+        var result = await _financialRepo.GetTransactionsPagedAsync(search, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("transactions/{id}")]
+    public async Task<IActionResult> GetTransaction(int id)
+    {
+        var result = await _financialRepo.GetTransactionByIdAsync(id);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    [HttpPost("transactions")]
+    public async Task<IActionResult> CreateTransaction([FromBody] FinancialTransactionCreateDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            var result = await _financialRepo.CreateTransactionWithLedgerAsync(dto);
+            if (!result.IsSuccess)
+            {
+                await CleanUpAttachmentAsync(dto.AttachmentUrl);
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+        catch
+        {
+            await CleanUpAttachmentAsync(dto.AttachmentUrl);
+            throw;
+        }
+    }
+
+    private async Task CleanUpAttachmentAsync(string? attachmentUrl)
+    {
+        if (string.IsNullOrWhiteSpace(attachmentUrl)) return;
+
+        try
+        {
+            bool isUsed = await _financialRepo.IsAttachmentUsedAsync(attachmentUrl);
+            if (!isUsed)
+            {
+                var webRootPath = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var fullPath = Path.Combine(webRootPath, attachmentUrl.TrimStart('/'));
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+        }
+        catch
+        {
+            // Fail silently or log
+        }
+    }
+
+    // ─── Reports ──────────────────────────────────────────────────────────────
+    [HttpGet("reports/trial-balance")]
+    public async Task<IActionResult> GetTrialBalance([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
+    {
+        var result = await _financialRepo.GetTrialBalanceAsync(dateFrom, dateTo);
+        return Ok(result);
+    }
+}

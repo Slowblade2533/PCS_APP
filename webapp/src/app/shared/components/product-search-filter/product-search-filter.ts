@@ -20,6 +20,10 @@ export class ProductSearchFilter {
   @Input() selectedType: string = '';
   @Output() selectedTypeChange = new EventEmitter<string>();
 
+  @Input() showCondition: boolean = false;
+  @Input() selectedCondition: string = '';
+  @Output() selectedConditionChange = new EventEmitter<string>();
+
   @Output() filterChange = new EventEmitter<void>();
 
   onSearchTextChange(value: string) {

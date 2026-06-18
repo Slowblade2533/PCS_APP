@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
@@ -20,8 +21,12 @@ export class CompanyProfile implements OnInit {
 
   isLoading = signal(false);
   isSaving = signal(false);
-  isUploadingLogo = signal(false);
-  isUploadingVatDoc = signal(false);
+
+  stagedLogoFile: File | null = null;
+  stagedLogoPreviewUrl = signal<string | null>(null);
+
+  stagedVatDocFile: File | null = null;
+  stagedVatDocFileName = signal<string | null>(null);
 
   apiOrigin = environment.apiUrl;
 
@@ -72,6 +77,11 @@ export class CompanyProfile implements OnInit {
             email: res.email,
             logoUrl: res.logoUrl,
           });
+          
+          this.stagedLogoFile = null;
+          this.stagedLogoPreviewUrl.set(null);
+          this.stagedVatDocFile = null;
+          this.stagedVatDocFileName.set(null);
           this.isLoading.set(false);
         },
         error: (err) => {
@@ -84,56 +94,33 @@ export class CompanyProfile implements OnInit {
   onFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      this.isUploadingLogo.set(true);
-      this.http
-        .post<any>(`${environment.apiUrl}/upload/company-logo`, formData)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (res) => {
-            this.form.patchValue({ logoUrl: res.imageUrl });
-            this.isUploadingLogo.set(false);
-          },
-          error: (err) => {
-            console.error('Upload failed', err);
-            this.swal.error('อัปโหลดรูปล้มเหลว');
-            this.isUploadingLogo.set(false);
-          },
-        });
+      this.stagedLogoFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.stagedLogoPreviewUrl.set(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
   onVatDocSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      this.isUploadingVatDoc.set(true);
-      this.http
-        .post<any>(`${environment.apiUrl}/upload/company-logo`, formData)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (res) => {
-            this.form.patchValue({ vatDocumentUrl: res.imageUrl });
-            this.isUploadingVatDoc.set(false);
-          },
-          error: (err) => {
-            console.error('Upload failed', err);
-            this.swal.error('อัปโหลดเอกสารล้มเหลว');
-            this.isUploadingVatDoc.set(false);
-          },
-        });
+      this.stagedVatDocFile = file;
+      this.stagedVatDocFileName.set(file.name);
+      this.form.patchValue({ vatDocumentUrl: null }); // Clear old URL if replacing
     }
   }
 
   removeLogo() {
+    this.stagedLogoFile = null;
+    this.stagedLogoPreviewUrl.set(null);
     this.form.patchValue({ logoUrl: null });
   }
 
   removeVatDoc() {
+    this.stagedVatDocFile = null;
+    this.stagedVatDocFileName.set(null);
     this.form.patchValue({ vatDocumentUrl: null });
   }
 
@@ -144,21 +131,64 @@ export class CompanyProfile implements OnInit {
     }
 
     this.isSaving.set(true);
-    const payload = this.form.value;
 
-    this.http
-      .put(`${environment.apiUrl}/branches/${this.branchId}`, payload)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.swal.success('บันทึกข้อมูลสำเร็จ');
-          this.isSaving.set(false);
-        },
-        error: (err) => {
-          console.error('Save failed', err);
-          this.swal.error('บันทึกข้อมูลล้มเหลว');
-          this.isSaving.set(false);
-        },
-      });
+    const uploads: { [key: string]: Observable<any> } = {};
+
+    if (this.stagedLogoFile) {
+      const logoData = new FormData();
+      logoData.append('file', this.stagedLogoFile);
+      uploads['logo'] = this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, logoData);
+    }
+
+    if (this.stagedVatDocFile) {
+      const vatData = new FormData();
+      vatData.append('file', this.stagedVatDocFile);
+      uploads['vatDoc'] = this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, vatData);
+    }
+
+    const runSave = (logoUrl: string | null, vatUrl: string | null) => {
+      const payload = { ...this.form.value };
+      if (logoUrl !== null) payload.logoUrl = logoUrl;
+      if (vatUrl !== null) payload.vatDocumentUrl = vatUrl;
+
+      this.http
+        .put(`${environment.apiUrl}/branches/${this.branchId}`, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.swal.success('บันทึกข้อมูลสำเร็จ');
+            this.stagedLogoFile = null;
+            this.stagedLogoPreviewUrl.set(null);
+            this.stagedVatDocFile = null;
+            this.stagedVatDocFileName.set(null);
+            this.loadProfile();
+            this.isSaving.set(false);
+          },
+          error: (err) => {
+            console.error('Save failed', err);
+            this.swal.error('บันทึกข้อมูลล้มเหลว');
+            this.isSaving.set(false);
+          },
+        });
+    };
+
+    if (Object.keys(uploads).length > 0) {
+      forkJoin(uploads)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res: any) => {
+            const logoUrl = res.logo ? res.logo.imageUrl : null;
+            const vatUrl = res.vatDoc ? res.vatDoc.imageUrl : null;
+            runSave(logoUrl, vatUrl);
+          },
+          error: (err) => {
+            console.error('Upload failed during save', err);
+            this.swal.error('อัปโหลดไฟล์ล้มเหลว');
+            this.isSaving.set(false);
+          }
+        });
+    } else {
+      runSave(null, null);
+    }
   }
 }

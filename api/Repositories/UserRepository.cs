@@ -67,40 +67,44 @@ public class UserRepository : IUserRepository
             whereClause += " AND u.IsActive = @IsActive";
         }
 
-        var countSql = $"SELECT COUNT(1) FROM dbo.Users u {whereClause}";
-        var countCommand = new CommandDefinition(countSql, search, cancellationToken: cancellationToken);
-        var totalCount = await conn.ExecuteScalarAsync<int>(countCommand);
+        var multiSql = $@"
+            SELECT COUNT(1) FROM dbo.Users u {whereClause};
 
-        var dataSql = $@"
             SELECT u.Id, u.Username, u.Email, u.FullName, u.IsActive, u.CreatedAt, u.RoleId, r.RoleName
             FROM dbo.Users u
             INNER JOIN dbo.Roles r ON u.RoleId = r.Id
             {whereClause}
             ORDER BY u.Id DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+
+            WITH PagedUsers AS (
+                SELECT u.Id
+                FROM dbo.Users u
+                {whereClause}
+                ORDER BY u.Id DESC
+                OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
+            )
+            SELECT up.UserId, up.PermissionId, p.PermissionCode
+            FROM dbo.UserPermissions up
+            INNER JOIN dbo.Permissions p ON up.PermissionId = p.Id
+            WHERE up.UserId IN (SELECT Id FROM PagedUsers);
         ";
 
         var p = new DynamicParameters(search);
         p.Add("@Offset", search.GetSafeOffset());
         
-        var dataCommand = new CommandDefinition(dataSql, p, cancellationToken: cancellationToken);
-        var users = await conn.QueryAsync<dynamic>(dataCommand);
+        var multiCommand = new CommandDefinition(multiSql, p, cancellationToken: cancellationToken);
+        using var multi = await conn.QueryMultipleAsync(multiCommand);
+        
+        var totalCount = await multi.ReadFirstAsync<int>();
+        var users = (await multi.ReadAsync<dynamic>()).ToList();
         
         if (!users.Any())
         {
             return (new List<UserListItemDto>(), totalCount);
         }
 
-        var userIds = users.Select(u => (int)u.Id).ToList();
-
-        var permsSql = @"
-            SELECT up.UserId, up.PermissionId, p.PermissionCode
-            FROM dbo.UserPermissions up
-            INNER JOIN dbo.Permissions p ON up.PermissionId = p.Id
-            WHERE up.UserId IN @UserIds";
-            
-        var permsCommand = new CommandDefinition(permsSql, new { UserIds = userIds }, cancellationToken: cancellationToken);
-        var userPerms = await conn.QueryAsync<dynamic>(permsCommand);
+        var userPerms = (await multi.ReadAsync<dynamic>()).ToList();
 
         var items = users.Select(u => 
         {
@@ -137,22 +141,24 @@ public class UserRepository : IUserRepository
     {
         using var conn = _connectionFactory.CreateConnection();
 
-        var dataSql = @"
+        var sql = @"
             SELECT u.Id, u.Username, u.Email, u.FullName, u.IsActive, u.CreatedAt, u.RoleId, r.RoleName 
             FROM dbo.Users u
             INNER JOIN dbo.Roles r ON u.RoleId = r.Id 
-            WHERE u.Id = @Id";
-        var user = await conn.QuerySingleOrDefaultAsync<dynamic>(dataSql, new { Id = id });
+            WHERE u.Id = @Id;
 
-        if (user == null) return null;
-
-        var permsSql = @"
             SELECT up.PermissionId, p.PermissionCode
             FROM dbo.UserPermissions up
             INNER JOIN dbo.Permissions p ON up.PermissionId = p.Id
-            WHERE up.UserId = @Id";
+            WHERE up.UserId = @Id;
+        ";
 
-        var perms = await conn.QueryAsync<UserPermissionSummaryDto>(permsSql, new { Id = id });
+        using var multi = await conn.QueryMultipleAsync(sql, new { Id = id });
+        var user = await multi.ReadFirstOrDefaultAsync<dynamic>();
+
+        if (user == null) return null;
+
+        var perms = (await multi.ReadAsync<UserPermissionSummaryDto>()).ToList();
 
         var fullName = (string)user.FullName ?? "";
         var nameParts = fullName.Split(' ', 2);
@@ -168,7 +174,7 @@ public class UserRepository : IUserRepository
             CreatedAt = user.CreatedAt,
             RoleId = (int)user.RoleId,
             RoleName = (string)user.RoleName,
-            Permissions = perms.ToList()
+            Permissions = perms
         };
     }
 

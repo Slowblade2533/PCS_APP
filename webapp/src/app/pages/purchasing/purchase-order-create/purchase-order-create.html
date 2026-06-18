@@ -1,0 +1,259 @@
+<div class="p-6 max-w-6xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <div class="flex items-center gap-4">
+      <h1 class="text-2xl font-bold">
+        {{ isViewMode() ? 'รายละเอียดใบสั่งซื้อ' : 'สร้างใบสั่งซื้อใหม่' }}
+      </h1>
+      @if (isViewMode() && detail()) {
+        <span class="badge {{ getStatusBadgeClass(detail()?.status) }} badge-lg font-semibold uppercase">
+          {{ getStatusLabel(detail()?.status) }}
+        </span>
+      }
+    </div>
+    <div class="flex gap-2">
+      <a routerLink="/purchasing/purchase-orders" class="btn btn-ghost">กลับไปหน้ารายการ</a>
+      @if (isViewMode() && detail()) {
+        @if (detail()?.status === 'DRAFT') {
+          <button class="btn btn-info text-white" [disabled]="submitting()" (click)="updateStatus('ORDERED')">ยืนยันการสั่งซื้อ</button>
+          <button class="btn btn-error" [disabled]="submitting()" (click)="updateStatus('CANCELLED')">ยกเลิก PO</button>
+        }
+        @if (detail()?.status === 'ORDERED' || detail()?.status === 'PARTIALLY_RECEIVED') {
+          <a [routerLink]="['/purchasing/goods-receipts/create']" [queryParams]="{ poId: poId() }" class="btn btn-success text-white">รับสินค้าเข้าสต๊อค (GR)</a>
+        }
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center p-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else {
+    @if (error()) {
+      <div class="alert alert-error mb-6 shadow-sm">
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    @if (isViewMode() && detail()) {
+      <!-- View Mode -->
+      <div class="bg-base-100 shadow-xl rounded-box p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div><span class="text-base-content/60 block text-sm">เลขที่ใบสั่งซื้อ (PO No.)</span><p class="font-medium text-lg text-primary">{{ detail()?.pONo }}</p></div>
+          <div><span class="text-base-content/60 block text-sm">วันที่สั่งซื้อ</span><p class="font-medium">{{ detail()?.pODate | date:'dd/MM/yyyy' }}</p></div>
+          <div><span class="text-base-content/60 block text-sm">กำหนดส่งมอบ (Expected)</span><p class="font-medium">{{ (detail()?.expectedDeliveryDate | date:'dd/MM/yyyy') || '-' }}</p></div>
+          
+          <div><span class="text-base-content/60 block text-sm">การชำระเงิน</span><p class="font-medium">{{ getPaymentLabel(detail()?.paymentMethod) }} <span class="text-sm text-base-content/60 ml-2">{{ detail()?.paymentRefNo }}</span></p></div>
+          <div><span class="text-base-content/60 block text-sm">บัญชีผู้รับเงิน / ผู้ขาย</span><p class="font-medium">{{ detail()?.receiverAccountName || '-' }}</p></div>
+          <div><span class="text-base-content/60 block text-sm">สลิปการโอน</span>
+            @if (detail()?.slipAttachmentUrl) {
+              <a [href]="detail()?.slipAttachmentUrl" target="_blank" class="btn btn-outline btn-xs mt-1">ดูเอกสาร</a>
+            } @else {
+              <p class="font-medium">-</p>
+            }
+          </div>
+
+          <div class="col-span-full border-t pt-4 mt-2">
+            <h3 class="font-bold mb-3">ข้อมูลผู้จำหน่าย (Supplier)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><span class="text-base-content/60 block text-sm">ชื่อซัพพลายเออร์</span><p class="font-medium">{{ detail()?.supplierName || '-' }}</p></div>
+              <div><span class="text-base-content/60 block text-sm">เบอร์โทรศัพท์</span><p class="font-medium">{{ detail()?.supplierPhone || '-' }}</p></div>
+              <div><span class="text-base-content/60 block text-sm">เลขประจำตัวผู้เสียภาษี</span><p class="font-medium">{{ detail()?.supplierTaxId || '-' }}</p></div>
+              <div class="col-span-full"><span class="text-base-content/60 block text-sm">ที่อยู่</span><p class="font-medium">{{ detail()?.supplierAddress || '-' }}</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-base-100 shadow-xl rounded-box overflow-hidden mb-6">
+        <table class="table w-full">
+          <thead class="bg-base-200">
+            <tr>
+              <th>รหัส/SKU</th>
+              <th>สินค้า</th>
+              <th class="text-right">จำนวนสั่งซื้อ</th>
+              <th class="text-right text-success">รับแล้ว</th>
+              <th class="text-right">ราคา/หน่วย</th>
+              <th class="text-right">รวมเป็นเงิน</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of detail()?.items; track item.pOItemId) {
+              <tr>
+                <td class="font-medium text-xs">{{ item.sku }}</td>
+                <td>
+                  <div class="font-medium">{{ item.productName }}</div>
+                  @if (item.variantName) { <div class="text-xs text-base-content/60">{{ item.variantName }}</div> }
+                </td>
+                <td class="text-right font-medium">{{ item.quantity | number }}</td>
+                <td class="text-right font-bold text-success">{{ item.receivedQuantity | number }}</td>
+                <td class="text-right">{{ item.unitPrice | number:'1.2-2' }}</td>
+                <td class="text-right font-semibold">{{ item.lineTotal | number:'1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end">
+        <div class="bg-base-100 shadow-xl rounded-box p-6 w-full md:w-96 space-y-3">
+          <div class="flex justify-between"><span class="text-base-content/70">รวมเป็นเงิน (Sub total)</span><span class="font-medium">{{ detail()?.subTotal | number:'1.2-2' }}</span></div>
+          <div class="flex justify-between"><span class="text-base-content/70">ส่วนลด (Discount)</span><span class="font-medium text-error">-{{ detail()?.discountTotal | number:'1.2-2' }}</span></div>
+          <div class="flex justify-between"><span class="text-base-content/70">ค่าจัดส่ง (Shipping Cost)</span><span class="font-medium">{{ detail()?.shippingCost | number:'1.2-2' }}</span></div>
+          <div class="flex justify-between"><span class="text-base-content/70">ภาษีมูลค่าเพิ่ม {{ detail()?.vatRate }}%</span><span class="font-medium">{{ detail()?.vatAmount | number:'1.2-2' }}</span></div>
+          <div class="divider my-0"></div>
+          <div class="flex justify-between items-center"><span class="font-bold">ยอดเงินสุทธิ (Grand Total)</span><span class="font-black text-2xl text-primary">{{ detail()?.grandTotal | number:'1.2-2' }}</span></div>
+        </div>
+      </div>
+
+    } @else {
+      <!-- Create Mode -->
+      <form (ngSubmit)="onSubmit()" class="bg-base-100 shadow-xl rounded-box p-6 space-y-8">
+        
+        <!-- ข้อมูลหลัก -->
+        <section>
+          <h2 class="text-xl font-bold border-b pb-2 mb-4">ข้อมูลผู้จำหน่ายและการสั่งซื้อ</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">เลขที่ PO (กำหนดเอง) <span class="text-error">*</span></span></div>
+              <input type="text" class="input input-bordered w-full text-primary font-bold" placeholder="เช่น PO-2026-0001" [ngModel]="pONo()" (ngModelChange)="pONo.set($event)" name="pONo" required />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">วันที่สั่งซื้อ <span class="text-error">*</span></span></div>
+              <input type="date" class="input input-bordered w-full" [ngModel]="pODate()" (ngModelChange)="pODate.set($event)" name="pODate" required />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">กำหนดวันส่งมอบ</span></div>
+              <input type="date" class="input input-bordered w-full" [ngModel]="expectedDeliveryDate()" (ngModelChange)="expectedDeliveryDate.set($event)" name="expectedDeliveryDate" />
+            </label>
+
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">ชื่อ Supplier <span class="text-error">*</span></span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="supplierName()" (ngModelChange)="supplierName.set($event)" name="supplierName" required />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">เบอร์โทรศัพท์</span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="supplierPhone()" (ngModelChange)="supplierPhone.set($event)" name="supplierPhone" />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">เลขผู้เสียภาษี</span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="supplierTaxId()" (ngModelChange)="supplierTaxId.set($event)" name="supplierTaxId" />
+            </label>
+            
+            <label class="form-control w-full md:col-span-full">
+              <div class="label"><span class="label-text font-medium">ที่อยู่ Supplier</span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="supplierAddress()" (ngModelChange)="supplierAddress.set($event)" name="supplierAddress" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ข้อมูลการชำระเงิน -->
+        <section>
+          <h2 class="text-xl font-bold border-b pb-2 mb-4">ข้อมูลการชำระเงิน (Payment)</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">การชำระเงิน</span></div>
+              <select class="select select-bordered w-full" [ngModel]="paymentMethod()" (ngModelChange)="paymentMethod.set($event)" name="paymentMethod">
+                <option value="CASH">เงินสด</option>
+                <option value="TRANSFER">โอนเงิน</option>
+                <option value="CREDIT">เครดิต (Credit Term)</option>
+              </select>
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">อ้างอิงการชำระ / สลิปโอน</span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="paymentRefNo()" (ngModelChange)="paymentRefNo.set($event)" name="paymentRefNo" />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">URL เอกสารแนบ / สลิป</span></div>
+              <input type="text" class="input input-bordered w-full" [ngModel]="slipAttachmentUrl()" (ngModelChange)="slipAttachmentUrl.set($event)" name="slipAttachmentUrl" />
+            </label>
+            
+            <label class="form-control w-full md:col-span-3">
+              <div class="label"><span class="label-text font-medium">บัญชีต้นทาง (ของเรา) ที่ใช้จ่ายเงิน</span></div>
+              <input type="text" class="input input-bordered w-full" placeholder="เช่น กสิกร 123-x-xxxx-x" [ngModel]="sourceAccountInfo()" (ngModelChange)="sourceAccountInfo.set($event)" name="sourceAccountInfo" />
+            </label>
+
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">ส่วนลดท้ายบิล (บาท)</span></div>
+              <input type="number" min="0" step="0.01" class="input input-bordered w-full text-error" [ngModel]="discountTotal()" (ngModelChange)="discountTotal.set($event)" name="discountTotal" />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">ค่าจัดส่ง (บาท)</span></div>
+              <input type="number" min="0" step="0.01" class="input input-bordered w-full" [ngModel]="shippingCost()" (ngModelChange)="shippingCost.set($event)" name="shippingCost" />
+            </label>
+            <label class="form-control w-full">
+              <div class="label"><span class="label-text font-medium">VAT Rate (%)</span></div>
+              <input type="number" step="0.1" min="0" class="input input-bordered w-full" [ngModel]="vatRate()" (ngModelChange)="vatRate.set($event)" name="vatRate" />
+            </label>
+          </div>
+        </section>
+
+        <!-- รายการสินค้า -->
+        <section>
+          <div class="flex justify-between items-center border-b pb-2 mb-4">
+            <h2 class="text-xl font-bold">รายการสินค้า (Order Items)</h2>
+            <button type="button" class="btn btn-sm btn-outline" (click)="addItem()">+ เพิ่มรายการสินค้า</button>
+          </div>
+
+          <div class="space-y-4">
+            @for (item of items(); track $index) {
+              <div class="flex flex-col md:flex-row gap-4 items-start p-4 bg-base-200/50 rounded-lg">
+                <div class="w-full md:w-48">
+                  <label class="form-control w-full">
+                    <div class="label"><span class="label-text font-medium text-xs">Variant ID</span></div>
+                    <input type="number" min="1" class="input input-bordered input-sm w-full" [ngModel]="item.variantId" (ngModelChange)="updateItem($index, 'variantId', $event)" [name]="'vid_'+$index" required />
+                  </label>
+                </div>
+                <div class="w-full md:w-32">
+                  <label class="form-control w-full">
+                    <div class="label"><span class="label-text font-medium text-xs">จำนวนสั่งซื้อ</span></div>
+                    <input type="number" min="1" class="input input-bordered input-sm w-full" [ngModel]="item.quantity" (ngModelChange)="updateItem($index, 'quantity', $event)" [name]="'qty_'+$index" />
+                  </label>
+                </div>
+                <div class="w-full md:w-40">
+                  <label class="form-control w-full">
+                    <div class="label"><span class="label-text font-medium text-xs">ราคาทุนต่อหน่วย</span></div>
+                    <input type="number" min="0" step="0.01" class="input input-bordered input-sm w-full" [ngModel]="item.unitPrice" (ngModelChange)="updateItem($index, 'unitPrice', $event)" [name]="'price_'+$index" />
+                  </label>
+                </div>
+                <div class="flex-1 text-right pt-9">
+                  <span class="font-semibold">{{ (item.quantity * item.unitPrice) | number:'1.2-2' }}</span>
+                </div>
+                <div class="pt-8">
+                  <button type="button" class="btn btn-square btn-sm btn-ghost text-error" (click)="removeItem($index)" [disabled]="items().length <= 1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Summary -->
+        <section class="flex justify-end border-t pt-6">
+          <div class="w-full md:w-96 space-y-3">
+            <div class="flex justify-between text-base-content/70"><span>รวมค่าสินค้า (Sub Total)</span><span>{{ subTotal | number:'1.2-2' }}</span></div>
+            <div class="flex justify-between text-base-content/70"><span>หักส่วนลดรวม</span><span class="text-error">-{{ discountTotal() | number:'1.2-2' }}</span></div>
+            <div class="flex justify-between text-base-content/70"><span>บวกค่าจัดส่ง</span><span>+{{ shippingCost() | number:'1.2-2' }}</span></div>
+            <div class="flex justify-between text-base-content/70"><span>ภาษีมูลค่าเพิ่ม {{ vatRate() }}%</span><span>{{ vatAmount | number:'1.2-2' }}</span></div>
+            <div class="divider my-1"></div>
+            <div class="flex justify-between items-center text-xl font-bold">
+              <span>ยอดเงินสุทธิ (Grand Total)</span>
+              <span class="text-primary text-2xl">{{ grandTotal | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-4 mt-6">
+          <a routerLink="/purchasing/purchase-orders" class="btn btn-ghost">ยกเลิก</a>
+          <button type="submit" class="btn btn-primary" [disabled]="submitting() || items().length === 0">
+            @if (submitting()) { <span class="loading loading-spinner"></span> }
+            บันทึกเป็นฉบับร่าง (DRAFT)
+          </button>
+        </div>
+
+      </form>
+    }
+  }
+</div>

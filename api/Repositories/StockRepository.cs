@@ -18,8 +18,8 @@ public class StockRepository : IStockRepository
     {
         var conn = transaction.Connection!;
         string sql = @"
-            INSERT INTO dbo.StockTransactions (VariantId, TransactionType, Quantity, UnitCost, ReferenceDoc, Notes, CreatedAt, CreatedBy, RequestId, BranchId, QuantityBefore, QuantityAfter)
-            VALUES (@VariantId, @TransactionType, @Quantity, @UnitCost, @ReferenceDoc, @Notes, GETDATE(), @CreatedBy, @RequestId, @BranchId, @QuantityBefore, @QuantityAfter);
+            INSERT INTO dbo.StockTransactions (VariantId, TransactionType, Condition, Quantity, UnitCost, ReferenceDoc, Notes, CreatedAt, CreatedBy, RequestId, BranchId, QuantityBefore, QuantityAfter)
+            VALUES (@VariantId, @TransactionType, @Condition, @Quantity, @UnitCost, @ReferenceDoc, @Notes, GETDATE(), @CreatedBy, @RequestId, @BranchId, @QuantityBefore, @QuantityAfter);
             SELECT CAST(SCOPE_IDENTITY() as int);";
 
         return await conn.ExecuteScalarAsync<int>(sql, tx, transaction: transaction);
@@ -52,6 +52,11 @@ public class StockRepository : IStockRepository
             whereClause += " AND p.InventoryGroup = @InventoryGroup";
             parameters.Add("InventoryGroup", search.InventoryGroup);
         }
+        if (!string.IsNullOrEmpty(search.Condition))
+        {
+            whereClause += " AND s.Condition = @Condition";
+            parameters.Add("Condition", search.Condition);
+        }
 
         string sql = $@"
             SELECT COUNT(*)
@@ -65,7 +70,8 @@ public class StockRepository : IStockRepository
                    s.CurrentQuantity, s.ReservedQuantity, s.AvailableQuantity,
                    s.ReorderPoint, s.UpdatedAt,
                    b.Id AS BranchId, b.BranchName,
-                   v.ImageUrl, p.BrandName
+                   v.ImageUrl, p.BrandName,
+                   s.Condition
             FROM dbo.Stocks s
             INNER JOIN dbo.ProductVariants v ON s.VariantId = v.VariantId
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
@@ -111,7 +117,7 @@ public class StockRepository : IStockRepository
 
             SELECT t.TransactionId, t.VariantId, v.Sku, v.Barcode, p.ProductNameTh AS ProductName,
                    COALESCE(NULLIF(v.VariantNameTh, ''), NULLIF(LTRIM(RTRIM(CONCAT(v.Color, ' ', v.SizeLabel, ' ', v.StylePattern))), ''), '') AS VariantName,
-                   t.TransactionType, t.Quantity, t.CreatedAt, b.BranchName
+                   t.TransactionType, t.Condition, t.Quantity, t.CreatedAt, b.BranchName
             FROM dbo.StockTransactions t
             INNER JOIN dbo.ProductVariants v ON t.VariantId = v.VariantId
             INNER JOIN dbo.Products p ON v.ProductId = p.ProductId
@@ -134,7 +140,7 @@ public class StockRepository : IStockRepository
         };
     }
 
-    public async Task<(int Before, int After)> UpdateStockQuantityAsync(int variantId, string transactionType, int qtyChange, IDbTransaction transaction)
+    public async Task<(int Before, int After)> UpdateStockQuantityAsync(int variantId, string transactionType, string condition, int qtyChange, IDbTransaction transaction)
     {
         var conn = transaction.Connection!;
         const int maxRetries = 3;
@@ -144,8 +150,23 @@ public class StockRepository : IStockRepository
         {
             var stock = await conn.QuerySingleOrDefaultAsync<StockSnapshotModel>(
                 @"SELECT CurrentQuantity, ReservedQuantity, RowVersion 
-                  FROM dbo.Stocks WHERE VariantId = @variantId",
-                new { variantId }, transaction);
+                  FROM dbo.Stocks WHERE VariantId = @variantId AND Condition = @condition",
+                new { variantId, condition }, transaction);
+            
+            if (stock == null)
+            {
+                // If it doesn't exist, we insert it with 0 quantities first
+                await conn.ExecuteAsync(
+                    @"INSERT INTO dbo.Stocks (VariantId, Condition, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
+                      VALUES (@variantId, @condition, 0, 0, 0, GETDATE())",
+                    new { variantId, condition }, transaction);
+                
+                stock = await conn.QuerySingleOrDefaultAsync<StockSnapshotModel>(
+                    @"SELECT CurrentQuantity, ReservedQuantity, RowVersion 
+                      FROM dbo.Stocks WHERE VariantId = @variantId AND Condition = @condition",
+                    new { variantId, condition }, transaction);
+            }
+
             if (stock == null)
             {
                 throw new KeyNotFoundException("ไม่พบข้อมูลสต็อกสำหรับสินค้านี้");
@@ -170,9 +191,9 @@ public class StockRepository : IStockRepository
                 updateQuery = @"
                     UPDATE dbo.Stocks
                     SET ReservedQuantity = @newQuantity, UpdatedAt = GETDATE()
-                    WHERE VariantId = @variantId AND RowVersion = @rowVersion";
+                    WHERE VariantId = @variantId AND Condition = @condition AND RowVersion = @rowVersion";
                 
-                updateParams = new { variantId, newQuantity, rowVersion = stock.RowVersion };
+                updateParams = new { variantId, condition, newQuantity, rowVersion = stock!.RowVersion };
             }
             else
             {
@@ -196,9 +217,9 @@ public class StockRepository : IStockRepository
                 updateQuery = @"
                     UPDATE dbo.Stocks
                     SET CurrentQuantity = @newQuantity, UpdatedAt = GETDATE()
-                    WHERE VariantId = @variantId AND RowVersion = @rowVersion";
+                    WHERE VariantId = @variantId AND Condition = @condition AND RowVersion = @rowVersion";
 
-                updateParams = new { variantId, newQuantity, rowVersion = stock.RowVersion };
+                updateParams = new { variantId, condition, newQuantity, rowVersion = stock!.RowVersion };
             }
 
             var affectedRows = await conn.ExecuteAsync(updateQuery, updateParams, transaction);

@@ -256,35 +256,39 @@ public class VcbShipmentRepository : IVcbShipmentRepository
                 string getOrderIdsSql = @"SELECT DISTINCT oi.OrderId FROM dbo.VcbShipmentItems si INNER JOIN dbo.VcbOrderItems oi ON si.OrderItemId = oi.Id WHERE si.ShipmentId = @Id";
                 var orderIds = (await conn.QueryAsync<int>(new CommandDefinition(getOrderIdsSql, new { Id = id }, transaction: tx, cancellationToken: cancellationToken))).ToList();
 
-                foreach (var orderId in orderIds)
+                if (isForceClose)
                 {
-                    bool fullyFulfilled = false;
-                    if (!isForceClose)
+                    if (orderIds.Any())
                     {
-                        string checkFulfilledSql = @"
-                            SELECT CASE 
-                                WHEN EXISTS (
-                                    SELECT 1 
-                                    FROM dbo.VcbOrderItems oi
-                                    LEFT JOIN (
-                                        SELECT si.OrderItemId, SUM(si.GoodQuantity + si.DefectiveQuantity) as Received
-                                        FROM dbo.VcbShipmentItems si
-                                        INNER JOIN dbo.VcbShipments s ON si.ShipmentId = s.Id
-                                        WHERE s.Status = 'Completed' OR s.Id = @CurrentShipmentId
-                                        GROUP BY si.OrderItemId
-                                    ) r ON oi.Id = r.OrderItemId
-                                    WHERE oi.OrderId = @OrderId
-                                      AND oi.Quantity > ISNULL(r.Received, 0)
-                                ) THEN 0 
-                                ELSE 1 
-                            END;";
-                        fullyFulfilled = await conn.QuerySingleAsync<bool>(new CommandDefinition(checkFulfilledSql, new { OrderId = orderId, CurrentShipmentId = id }, transaction: tx, cancellationToken: cancellationToken));
+                        string updateOrderSql = @"UPDATE dbo.VcbOrders SET Status = 'Completed', UpdatedAt = GETDATE() WHERE Id IN @OrderIds AND Status != 'Completed';";
+                        await conn.ExecuteAsync(new CommandDefinition(updateOrderSql, new { OrderIds = orderIds }, transaction: tx, cancellationToken: cancellationToken));
                     }
+                }
+                else if (orderIds.Any())
+                {
+                    string checkFulfilledSql = @"
+                        SELECT DISTINCT oi.OrderId
+                        FROM dbo.VcbShipmentItems si
+                        INNER JOIN dbo.VcbOrderItems oi ON si.OrderItemId = oi.Id
+                        WHERE si.ShipmentId = @CurrentShipmentId
+                          AND oi.OrderId NOT IN (
+                              SELECT DISTINCT oi2.OrderId
+                              FROM dbo.VcbOrderItems oi2
+                              LEFT JOIN (
+                                  SELECT si2.OrderItemId, SUM(si2.GoodQuantity + si2.DefectiveQuantity) as Received
+                                  FROM dbo.VcbShipmentItems si2
+                                  INNER JOIN dbo.VcbShipments s2 ON si2.ShipmentId = s2.Id
+                                  WHERE s2.Status = 'Completed' OR s2.Id = @CurrentShipmentId
+                                  GROUP BY si2.OrderItemId
+                              ) r2 ON oi2.Id = r2.OrderItemId
+                              WHERE oi2.Quantity > ISNULL(r2.Received, 0)
+                          );";
+                    var completedOrderIds = (await conn.QueryAsync<int>(new CommandDefinition(checkFulfilledSql, new { CurrentShipmentId = id }, transaction: tx, cancellationToken: cancellationToken))).ToList();
 
-                    if (isForceClose || fullyFulfilled)
+                    if (completedOrderIds.Any())
                     {
-                        string updateOrderSql = @"UPDATE dbo.VcbOrders SET Status = 'Completed', UpdatedAt = GETDATE() WHERE Id = @OrderId AND Status != 'Completed';";
-                        await conn.ExecuteAsync(new CommandDefinition(updateOrderSql, new { OrderId = orderId }, transaction: tx, cancellationToken: cancellationToken));
+                        string updateOrderSql = @"UPDATE dbo.VcbOrders SET Status = 'Completed', UpdatedAt = GETDATE() WHERE Id IN @OrderIds AND Status != 'Completed';";
+                        await conn.ExecuteAsync(new CommandDefinition(updateOrderSql, new { OrderIds = completedOrderIds }, transaction: tx, cancellationToken: cancellationToken));
                     }
                 }
 
@@ -313,18 +317,40 @@ public class VcbShipmentRepository : IVcbShipmentRepository
                             UPDATE dbo.Stocks
                             SET CurrentQuantity = CurrentQuantity + @GoodQty{i},
                                 UpdatedAt = GETDATE()
-                            WHERE VariantId = @VarId{i};
+                            WHERE VariantId = @VarId{i} AND Condition = 'Normal';
                             
                             IF @@ROWCOUNT = 0
                             BEGIN
-                                INSERT INTO dbo.Stocks (VariantId, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
-                                VALUES (@VarId{i}, @GoodQty{i}, 0, 0, GETDATE());
+                                INSERT INTO dbo.Stocks (VariantId, Condition, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
+                                VALUES (@VarId{i}, 'Normal', @GoodQty{i}, 0, 0, GETDATE());
                             END
 
-                            INSERT INTO dbo.StockTransactions (VariantId, BranchId, TransactionType, Quantity, UnitCost, Notes, CreatedBy, CreatedAt)
-                            VALUES (@VarId{i}, @BranchId, 'IN', @GoodQty{i}, 0.00, N'รับสินค้าจาก VCANBUY Shipment #' + CAST(@ShipmentId AS VARCHAR), @CreatedBy, GETDATE());
+                            INSERT INTO dbo.StockTransactions (VariantId, BranchId, TransactionType, Condition, Quantity, UnitCost, Notes, CreatedBy, CreatedAt)
+                            VALUES (@VarId{i}, @BranchId, 'IN', 'Normal', @GoodQty{i}, 0.00, N'รับสินค้าจาก VCANBUY Shipment #' + CAST(@ShipmentId AS VARCHAR), @CreatedBy, GETDATE());
                         ");
                         stockParams.Add($"GoodQty{i}", item.GoodQuantity);
+                        stockParams.Add($"VarId{i}", item.VariantId);
+                    }
+
+                    if (item.DefectiveQuantity > 0)
+                    {
+                        // Add to Stocks
+                        stockSql.AppendLine($@"
+                            UPDATE dbo.Stocks
+                            SET CurrentQuantity = CurrentQuantity + @DefectQty{i},
+                                UpdatedAt = GETDATE()
+                            WHERE VariantId = @VarId{i} AND Condition = 'Defect';
+                            
+                            IF @@ROWCOUNT = 0
+                            BEGIN
+                                INSERT INTO dbo.Stocks (VariantId, Condition, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
+                                VALUES (@VarId{i}, 'Defect', @DefectQty{i}, 0, 0, GETDATE());
+                            END
+
+                            INSERT INTO dbo.StockTransactions (VariantId, BranchId, TransactionType, Condition, Quantity, UnitCost, Notes, CreatedBy, CreatedAt)
+                            VALUES (@VarId{i}, @BranchId, 'IN', 'Defect', @DefectQty{i}, 0.00, N'รับสินค้าตำหนิจาก VCANBUY Shipment #' + CAST(@ShipmentId AS VARCHAR), @CreatedBy, GETDATE());
+                        ");
+                        stockParams.Add($"DefectQty{i}", item.DefectiveQuantity);
                         stockParams.Add($"VarId{i}", item.VariantId);
                     }
 

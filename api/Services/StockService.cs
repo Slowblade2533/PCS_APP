@@ -45,6 +45,7 @@ public class StockService : IStockService
         {
             VariantId = dto.VariantId,
             TransactionType = dto.TransactionType.ToUpper(),
+            Condition = dto.Condition,
             Quantity = dto.Quantity,
             UnitCost = dto.UnitCost,
             ReferenceDoc = dto.ReferenceDoc,
@@ -70,16 +71,65 @@ public class StockService : IStockService
                 throw new KeyNotFoundException("ไม่พบข้อมูลสินค้า (Product Variant) ที่ระบุ");
             }
 
-            var (before, after) = await _repo.UpdateStockQuantityAsync(dto.VariantId, dto.TransactionType, qtyChange, dbTransaction);
+            if (dto.TransactionType.ToUpper() == "DAMAGE" && dto.Condition.ToUpper() != "DAMAGE")
+            {
+                var condFrom = dto.Condition;
+                var condTo = "Damage";
 
-            tx.QuantityBefore = before;
-            tx.QuantityAfter = after;
-            
-            tx.Quantity = after - before;
+                // Decrement from source condition
+                var (beforeFrom, afterFrom) = await _repo.UpdateStockQuantityAsync(dto.VariantId, "DAMAGE", condFrom, -Math.Abs(dto.Quantity), dbTransaction);
 
-            await _repo.CreateTransactionAsync(tx, dbTransaction);
+                // Increment in target condition (Damage)
+                var (beforeTo, afterTo) = await _repo.UpdateStockQuantityAsync(dto.VariantId, "IN", condTo, Math.Abs(dto.Quantity), dbTransaction);
+
+                // Log decrement transaction
+                var txFrom = new StockTransactionModel
+                {
+                    VariantId = dto.VariantId,
+                    TransactionType = "DAMAGE",
+                    Condition = condFrom,
+                    Quantity = afterFrom - beforeFrom,
+                    UnitCost = dto.UnitCost,
+                    ReferenceDoc = dto.ReferenceDoc,
+                    Notes = dto.Notes ?? $"ย้ายไปสภาพชำรุด {dto.Quantity} ชิ้น",
+                    CreatedBy = userId,
+                    RequestId = dto.RequestId,
+                    BranchId = dto.BranchId,
+                    QuantityBefore = beforeFrom,
+                    QuantityAfter = afterFrom
+                };
+                await _repo.CreateTransactionAsync(txFrom, dbTransaction);
+
+                // Log increment transaction under Damage
+                var txTo = new StockTransactionModel
+                {
+                    VariantId = dto.VariantId,
+                    TransactionType = "IN",
+                    Condition = condTo,
+                    Quantity = afterTo - beforeTo,
+                    UnitCost = dto.UnitCost,
+                    ReferenceDoc = dto.ReferenceDoc,
+                    Notes = dto.Notes ?? $"ย้ายมาจากสภาพ{condFrom}เนื่องจากชำรุด {dto.Quantity} ชิ้น",
+                    CreatedBy = userId,
+                    RequestId = Guid.NewGuid(), // Separate RequestId for the auto-move insert
+                    BranchId = dto.BranchId,
+                    QuantityBefore = beforeTo,
+                    QuantityAfter = afterTo
+                };
+                await _repo.CreateTransactionAsync(txTo, dbTransaction);
+            }
+            else
+            {
+                var (before, after) = await _repo.UpdateStockQuantityAsync(dto.VariantId, dto.TransactionType, dto.Condition, qtyChange, dbTransaction);
+
+                tx.QuantityBefore = before;
+                tx.QuantityAfter = after;
+                tx.Quantity = after - before;
+
+                await _repo.CreateTransactionAsync(tx, dbTransaction);
+            }
+
             await dbTransaction.CommitAsync(cancellationToken);
-
             return true;
         }
         catch (Exception)

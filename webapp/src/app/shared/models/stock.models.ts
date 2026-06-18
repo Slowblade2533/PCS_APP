@@ -12,6 +12,7 @@ export interface StockItem {
   imageUrl?: string;
   updatedAt: string;
   brandName?: string;
+  condition: string;
 }
 
 export interface StockListQuery {
@@ -22,6 +23,7 @@ export interface StockListQuery {
   productStatus?: string;
   productType?: string;
   inventoryGroup?: string;
+  condition?: string;
 }
 
 export interface StockTransaction {
@@ -43,6 +45,7 @@ export interface StockTransaction {
   createdBy: number | null;
   createdByUsername: string | null;
   createdAt: string;
+  condition: string;
 }
 
 export interface StockTransactionQuery {
@@ -63,6 +66,7 @@ export interface StockTransactionRequest {
   referenceNo?: string;
   requestId?: string;
   note?: string;
+  condition: string;
 }
 
 export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'RESERVE' | 'UNRESERVE' | 'DAMAGE' | 'LOST';

@@ -549,29 +549,49 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   validateItemQuantities(): boolean {
+    const grouped: { [key: number]: any[] } = {};
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items.at(i);
-      const status = item.get('receiptStatus')?.value;
-      const expected = item.get('expectedQuantity')?.value || 0;
-      const good = item.get('goodQuantity')?.value || 0;
-      const defective = item.get('defectiveQuantity')?.value || 0;
-      const total = good + defective;
+      const orderItemId = item.get('orderItemId')?.value;
+      if (orderItemId) {
+        if (!grouped[orderItemId]) {
+          grouped[orderItemId] = [];
+        }
+        grouped[orderItemId].push(item);
+      }
+    }
+
+    for (const orderItemId in grouped) {
+      const group = grouped[orderItemId];
+      const firstItem = group[0];
+      const sku = firstItem.get('sku')?.value || '';
+      const productName = firstItem.get('productName')?.value || '';
+      const status = firstItem.get('receiptStatus')?.value;
+      const expected = firstItem.get('expectedQuantity')?.value || 0;
+
+      let totalGood = 0;
+      let totalDefective = 0;
+      for (const item of group) {
+        totalGood += item.get('goodQuantity')?.value || 0;
+        totalDefective += item.get('defectiveQuantity')?.value || 0;
+      }
+      const total = totalGood + totalDefective;
 
       if (status === 'Complete' && total !== expected) {
         this.swal.warning(
-          `รายการที่ ${i + 1}: สถานะ "รับครบ" แต่ยอดรวม (ดี+เสีย) ไม่เท่ากับที่สั่ง (${expected})`,
+          `สินค้า "${productName || sku}": สถานะ "รับครบ" แต่ยอดรวมทุกกล่องที่ได้รับ (${total}) ไม่เท่ากับจำนวนที่สั่ง (${expected})`,
         );
         return false;
       }
       if (status === 'Incomplete' && total >= expected) {
         this.swal.warning(
-          `รายการที่ ${i + 1}: สถานะ "รับไม่ครบ" แต่ยอดรวม (ดี+เสีย) ดันมากกว่าหรือเท่ากับที่สั่ง (${expected})`,
+          `สินค้า "${productName || sku}": สถานะ "รับไม่ครบ" แต่ยอดรวมทุกกล่องที่ได้รับ (${total}) มีค่ามากกว่าหรือเท่ากับจำนวนที่สั่ง (${expected})`,
         );
         return false;
       }
       if (status === 'Over' && total <= expected) {
         this.swal.warning(
-          `รายการที่ ${i + 1}: สถานะ "รับเกิน" แต่ยอดรวม (ดี+เสีย) น้อยกว่าหรือเท่ากับที่สั่ง (${expected})`,
+          `สินค้า "${productName || sku}": สถานะ "รับเกิน" แต่ยอดรวมทุกกล่องที่ได้รับ (${total}) มีค่าน้อยกว่าหรือเท่ากับจำนวนที่สั่ง (${expected})`,
         );
         return false;
       }

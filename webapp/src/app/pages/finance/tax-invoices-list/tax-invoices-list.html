@@ -1,0 +1,107 @@
+<div class="p-6">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">ใบกำกับภาษี (Tax Invoices)</h1>
+  </div>
+
+  <div class="bg-base-100 shadow-xl rounded-box p-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <input
+        type="text"
+        placeholder="ค้นหาเลขที่ใบกำกับภาษี, ชื่อบริษัท..."
+        class="input input-bordered w-full"
+        [ngModel]="searchTerm()"
+        (input)="onSearch($event)"
+      />
+      <select class="select select-bordered w-full" [ngModel]="selectedTaxType()" (ngModelChange)="selectedTaxType.set($event); onFilterChange()">
+        <option value="">ทุกประเภท</option>
+        <option value="INPUT_TAX">ภาษีซื้อ (Input Tax)</option>
+        <option value="OUTPUT_TAX">ภาษีขาย (Output Tax)</option>
+      </select>
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="bg-base-100 shadow-xl rounded-box overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-200">
+          <tr>
+            <th>วันที่</th>
+            <th>เลขที่เอกสาร</th>
+            <th>ประเภท</th>
+            <th>บริษัท/ร้านค้า</th>
+            <th>เลขประจำตัวผู้เสียภาษี</th>
+            <th class="text-right">มูลค่าสินค้า (Vatable)</th>
+            <th class="text-right">จำนวนภาษี (VAT)</th>
+            <th class="text-right">ยอดรวม</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="8" class="text-center py-8">
+                <span class="loading loading-spinner loading-lg"></span>
+              </td>
+            </tr>
+          } @else if (data().items.length === 0) {
+            <tr>
+              <td colspan="8" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลใบกำกับภาษี</td>
+            </tr>
+          } @else {
+            @for (item of data().items; track item.taxInvoiceId) {
+              <tr>
+                <td>{{ item.taxInvoiceDate | date:'dd/MM/yyyy' }}</td>
+                <td class="font-medium text-primary">{{ item.taxInvoiceNo }}</td>
+                <td>
+                  @if (item.taxType === 'INPUT') {
+                    <span class="badge badge-warning badge-sm">ภาษีซื้อ</span>
+                  } @else {
+                    <span class="badge badge-success badge-sm text-white">ภาษีขาย</span>
+                  }
+                </td>
+                <td>{{ item.partnerName }}</td>
+                <td>{{ item.partnerTaxId || '-' }}</td>
+                <td class="text-right">{{ item.baseAmount | number:'1.2-2' }}</td>
+                <td class="text-right font-medium text-error">{{ item.vatAmount | number:'1.2-2' }}</td>
+                <td class="text-right font-bold">{{ item.totalAmount | number:'1.2-2' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (data().totalCount > 0) {
+      <div class="flex justify-between items-center p-4 bg-base-200/50">
+        <span class="text-sm text-base-content/70">
+          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง 
+          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }} 
+          จากทั้งหมด {{ data().totalCount }} รายการ
+        </span>
+        <div class="join">
+          <button 
+            class="join-item btn btn-sm" 
+            [disabled]="data().pageNumber === 1"
+            (click)="onPageChange(data().pageNumber - 1)">
+            «
+          </button>
+          <button class="join-item btn btn-sm">หน้า {{ data().pageNumber }}</button>
+          <button 
+            class="join-item btn btn-sm" 
+            [disabled]="data().pageNumber * data().pageSize >= data().totalCount"
+            (click)="onPageChange(data().pageNumber + 1)">
+            »
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

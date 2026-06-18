@@ -31,7 +31,7 @@ export class StockService {
     if (query.branchId) params = params.set('branchId', query.branchId);
     if (query.search) params = params.set('searchTerm', query.search);
     if (query.productStatus) params = params.set('productStatus', query.productStatus);
-    if (query.productType) params = params.set('productType', query.productType);
+    if (query.condition) params = params.set('condition', query.condition);
     if (query.inventoryGroup) params = params.set('inventoryGroup', query.inventoryGroup);
     return this.http.get<PagedResult<StockItem>>(this.apiUrl, { params });
   }

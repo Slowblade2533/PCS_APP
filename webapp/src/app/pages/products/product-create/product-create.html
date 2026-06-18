@@ -182,11 +182,11 @@
                 <div class="form-control mb-4 p-3 bg-base-100 rounded-lg border border-base-200">
                   <label class="label-text text-xs font-semibold mb-2">รูปภาพประกอบ SKU</label>
                   <div class="flex items-center gap-4">
-                    @if (variant.get('imageUrl')?.value) {
+                    @if (variant.get('stagedPreviewUrl')?.value || variant.get('imageUrl')?.value) {
                       <div class="relative flex-shrink-0">
                         <app-image-hover-preview
                           [imageUrl]="
-                            apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value)
+                            variant.get('stagedPreviewUrl')?.value || (apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value))
                           "
                           altText="Preview"
                           imageClass="w-24 h-24 border rounded-md object-cover bg-base-200 cursor-pointer"
@@ -196,6 +196,7 @@
                             type="button"
                             (click)="removeVariantImage($index)"
                             class="absolute top-1 right-1 btn btn-circle btn-xs btn-error text-white opacity-80 hover:opacity-100"
+                            [disabled]="isSubmitting()"
                           >
                             ✕
                           </button>
@@ -216,7 +217,7 @@
                           accept="image/jpeg, image/png, image/webp"
                           class="file-input file-input-bordered file-input-sm w-full max-w-xs"
                           (change)="onVariantImageSelected($event, $index)"
-                          [disabled]="isUploadingImage()"
+                          [disabled]="isSubmitting()"
                         />
                         <p class="text-[10px] text-base-content/50 mt-1">
                           รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB

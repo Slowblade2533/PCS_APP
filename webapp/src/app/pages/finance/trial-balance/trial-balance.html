@@ -1,0 +1,72 @@
+<div class="p-6 max-w-5xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">งบทดลอง (Trial Balance)</h1>
+  </div>
+
+  <div class="bg-base-100 shadow-xl rounded-box p-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
+      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="bg-base-100 shadow-xl rounded-box overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-200">
+          <tr>
+            <th>รหัสบัญชี</th>
+            <th>ชื่อบัญชี</th>
+            <th class="text-right">เดบิต (Debit)</th>
+            <th class="text-right">เครดิต (Credit)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="4" class="text-center py-8">
+                <span class="loading loading-spinner loading-lg"></span>
+              </td>
+            </tr>
+          } @else if (data().length === 0) {
+            <tr>
+              <td colspan="4" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลงบทดลอง</td>
+            </tr>
+          } @else {
+            @for (row of data(); track row.accountId) {
+              <tr>
+                <td class="font-mono font-medium">{{ row.accountCode }}</td>
+                <td class="font-bold">{{ row.accountName }}</td>
+                <td class="text-right font-medium" [class.text-base-content]="row.totalDebit > 0" [class.text-base-content/30]="!row.totalDebit">
+                  {{ row.totalDebit | number:'1.2-2' }}
+                </td>
+                <td class="text-right font-medium" [class.text-base-content]="row.totalCredit > 0" [class.text-base-content/30]="!row.totalCredit">
+                  {{ row.totalCredit | number:'1.2-2' }}
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+        @if (data().length > 0) {
+          <tfoot class="bg-base-200/50">
+            <tr>
+              <td colspan="2" class="text-right font-bold text-lg">รวมยอดสุทธิ</td>
+              <td class="text-right font-bold text-xl text-primary border-t-2 border-primary">
+                {{ totalDebit | number:'1.2-2' }}
+              </td>
+              <td class="text-right font-bold text-xl text-primary border-t-2 border-primary">
+                {{ totalCredit | number:'1.2-2' }}
+              </td>
+            </tr>
+          </tfoot>
+        }
+      </table>
+    </div>
+  </div>
+</div>

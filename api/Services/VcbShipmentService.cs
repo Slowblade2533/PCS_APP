@@ -1,3 +1,4 @@
+using System.Linq;
 using PCS_API.DTOs;
 using PCS_API.Repositories;
 
@@ -32,15 +33,21 @@ public class VcbShipmentService : IVcbShipmentService
         if (dto.Items == null || dto.Items.Count == 0)
             return ResultDto<int>.Failure("กรุณาระบุรายการสินค้าอย่างน้อย 1 รายการ");
 
-        foreach (var item in dto.Items)
+        var groupedItems = dto.Items.GroupBy(i => i.OrderItemId);
+        foreach (var group in groupedItems)
         {
-            if (item.ReceiptStatus == "Complete" && (item.GoodQuantity + item.DefectiveQuantity) != item.ExpectedQuantity)
+            var firstItem = group.First();
+            int expectedQuantity = firstItem.ExpectedQuantity;
+            int totalReceived = group.Sum(i => i.GoodQuantity + i.DefectiveQuantity);
+            string status = firstItem.ReceiptStatus;
+
+            if (status == "Complete" && totalReceived != expectedQuantity)
                 return ResultDto<int>.Failure("สถานะรับครบ จำนวนรวมต้องเท่ากับจำนวนที่สั่ง");
             
-            if (item.ReceiptStatus == "Incomplete" && (item.GoodQuantity + item.DefectiveQuantity) >= item.ExpectedQuantity)
+            if (status == "Incomplete" && totalReceived >= expectedQuantity)
                 return ResultDto<int>.Failure("สถานะรับไม่ครบ จำนวนรวมต้องน้อยกว่าจำนวนที่สั่ง");
 
-            if (item.ReceiptStatus == "Over" && (item.GoodQuantity + item.DefectiveQuantity) <= item.ExpectedQuantity)
+            if (status == "Over" && totalReceived <= expectedQuantity)
                 return ResultDto<int>.Failure("สถานะรับเกิน จำนวนรวมต้องมากกว่าจำนวนที่สั่ง");
         }
 
@@ -66,15 +73,21 @@ public class VcbShipmentService : IVcbShipmentService
         if (dto.Items == null || dto.Items.Count == 0)
             return ResultDto<bool>.Failure("กรุณาระบุรายการสินค้าอย่างน้อย 1 รายการ");
 
-        foreach (var item in dto.Items)
+        var groupedItems = dto.Items.GroupBy(i => i.OrderItemId);
+        foreach (var group in groupedItems)
         {
-            if (item.ReceiptStatus == "Complete" && (item.GoodQuantity + item.DefectiveQuantity) != item.ExpectedQuantity)
+            var firstItem = group.First();
+            int expectedQuantity = firstItem.ExpectedQuantity;
+            int totalReceived = group.Sum(i => i.GoodQuantity + i.DefectiveQuantity);
+            string status = firstItem.ReceiptStatus;
+
+            if (status == "Complete" && totalReceived != expectedQuantity)
                 return ResultDto<bool>.Failure("สถานะรับครบ จำนวนรวมต้องเท่ากับจำนวนที่สั่ง");
             
-            if (item.ReceiptStatus == "Incomplete" && (item.GoodQuantity + item.DefectiveQuantity) >= item.ExpectedQuantity)
+            if (status == "Incomplete" && totalReceived >= expectedQuantity)
                 return ResultDto<bool>.Failure("สถานะรับไม่ครบ จำนวนรวมต้องน้อยกว่าจำนวนที่สั่ง");
 
-            if (item.ReceiptStatus == "Over" && (item.GoodQuantity + item.DefectiveQuantity) <= item.ExpectedQuantity)
+            if (status == "Over" && totalReceived <= expectedQuantity)
                 return ResultDto<bool>.Failure("สถานะรับเกิน จำนวนรวมต้องมากกว่าจำนวนที่สั่ง");
         }
 

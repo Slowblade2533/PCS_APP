@@ -11,6 +11,10 @@ using PCS_API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Register Dapper Type Handlers
+Dapper.SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+Dapper.SqlMapper.AddTypeHandler(new TimeOnlyTypeHandler());
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularApp", policy =>
@@ -119,6 +123,12 @@ builder.Services.AddScoped<IVcbShipmentService, VcbShipmentService>();
 builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
+
+// ── Financial, Sales & Procurement modules ───────────────────────────────────
+builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
+builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+builder.Services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
 builder.Services.AddSingleton<ImageCleanupChannel>();
 builder.Services.AddHostedService<ImageCleanupBackgroundService>();
 builder.Services.AddControllers()
@@ -203,6 +213,7 @@ app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWe
         ".png" => "image/png",
         ".webp" => "image/webp",
         ".gif" => "image/gif",
+        ".pdf" => "application/pdf",
         _ => "application/octet-stream"
     };
 

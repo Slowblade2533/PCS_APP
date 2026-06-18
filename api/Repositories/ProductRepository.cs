@@ -48,24 +48,40 @@ public class ProductRepository : IProductRepository
             }
 
             var barcodesToCheck = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Barcode)).Select(v => v.Barcode).ToList();
-            if (barcodesToCheck.Any())
-            {
-                var existingBarcodes = await connection.QueryAsync<string>(
-                    "SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes;", new { Barcodes = barcodesToCheck }, transaction);
-                if (existingBarcodes.Any())
-                {
-                    return ResultDto<int>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                }
-            }
-
             var skusToCheck = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Sku)).Select(v => v.Sku).ToList();
-            if (skusToCheck.Any())
+
+            if (barcodesToCheck.Any() || skusToCheck.Any())
             {
-                var existingSkus = await connection.QueryAsync<string>(
-                    "SELECT Sku FROM ProductVariants WHERE Sku IN @Skus;", new { Skus = skusToCheck }, transaction);
-                if (existingSkus.Any())
+                var checkSql = "";
+                var checkParams = new DynamicParameters();
+
+                if (barcodesToCheck.Any())
                 {
-                    return ResultDto<int>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
+                    checkSql += "SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes;\n";
+                    checkParams.Add("Barcodes", barcodesToCheck);
+                }
+                if (skusToCheck.Any())
+                {
+                    checkSql += "SELECT Sku FROM ProductVariants WHERE Sku IN @Skus;\n";
+                    checkParams.Add("Skus", skusToCheck);
+                }
+
+                using var multi = await connection.QueryMultipleAsync(checkSql, checkParams, transaction);
+                if (barcodesToCheck.Any())
+                {
+                    var existingBarcodes = (await multi.ReadAsync<string>()).ToList();
+                    if (existingBarcodes.Any())
+                    {
+                        return ResultDto<int>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
+                    }
+                }
+                if (skusToCheck.Any())
+                {
+                    var existingSkus = (await multi.ReadAsync<string>()).ToList();
+                    if (existingSkus.Any())
+                    {
+                        return ResultDto<int>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
+                    }
                 }
             }
 
@@ -303,25 +319,42 @@ public class ProductRepository : IProductRepository
             }
 
             var barcodes = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Barcode)).Select(v => v.Barcode).ToList();
-            if (barcodes.Any())
-            {
-                string checkBarcodeSql = @"SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes AND VariantId NOT IN @IgnoreIds;";
-                var existingBarcodes = await connection.QueryAsync<string>(checkBarcodeSql, new { Barcodes = barcodes, IgnoreIds = existingVariantsToUpdate }, transaction);
-                if (existingBarcodes.Any())
-                {
-                    return ResultDto<bool>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                }
-            }
-
             var skus = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Sku)).Select(v => v.Sku).ToList();
-            if (skus.Any())
+
+            if (barcodes.Any() || skus.Any())
             {
-                string checkSkuSql = @"SELECT Sku FROM ProductVariants WHERE Sku IN @Skus AND VariantId NOT IN @IgnoreIds;";
-                var existingSkus = await connection.QueryAsync<string>(checkSkuSql, new { Skus = skus, IgnoreIds = existingVariantsToUpdate }, transaction);
-                if (existingSkus.Any())
+                var checkSql = "";
+                var checkParams = new DynamicParameters();
+                checkParams.Add("IgnoreIds", existingVariantsToUpdate);
+
+                if (barcodes.Any())
                 {
-                    return ResultDto<bool>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                } 
+                    checkSql += "SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes AND VariantId NOT IN @IgnoreIds;\n";
+                    checkParams.Add("Barcodes", barcodes);
+                }
+                if (skus.Any())
+                {
+                    checkSql += "SELECT Sku FROM ProductVariants WHERE Sku IN @Skus AND VariantId NOT IN @IgnoreIds;\n";
+                    checkParams.Add("Skus", skus);
+                }
+
+                using var multi = await connection.QueryMultipleAsync(checkSql, checkParams, transaction);
+                if (barcodes.Any())
+                {
+                    var existingBarcodes = (await multi.ReadAsync<string>()).ToList();
+                    if (existingBarcodes.Any())
+                    {
+                        return ResultDto<bool>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
+                    }
+                }
+                if (skus.Any())
+                {
+                    var existingSkus = (await multi.ReadAsync<string>()).ToList();
+                    if (existingSkus.Any())
+                    {
+                        return ResultDto<bool>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
+                    }
+                }
             }
 
             string updateProductSql = @"
@@ -349,20 +382,18 @@ public class ProductRepository : IProductRepository
                 .ToList();
 
             Dictionary<int, string?> oldImageMap = new();
-            if (existingVarIdsForUpdate.Any())
-            {
-                var oldImages = await connection.QueryAsync<(int VariantId, string? ImageUrl)>(
-                    "SELECT VariantId, ImageUrl FROM ProductVariants WHERE VariantId IN @Ids;",
-                    new { Ids = existingVarIdsForUpdate }, transaction);
-                oldImageMap = oldImages.ToDictionary(x => x.VariantId, x => x.ImageUrl);
-            }
-
             Dictionary<int, byte[]> rowVersionMap = new();
             if (existingVarIdsForUpdate.Any())
             {
-                var stockSnapshots = await connection.QueryAsync<(int VariantId, byte[] RowVersion)>(
-                    "SELECT VariantId, RowVersion FROM Stocks WHERE VariantId IN @Ids;",
-                    new { Ids = existingVarIdsForUpdate }, transaction);
+                string batchFetchSql = @"
+                    SELECT VariantId, ImageUrl FROM ProductVariants WHERE VariantId IN @Ids;
+                    SELECT VariantId, RowVersion FROM Stocks WHERE VariantId IN @Ids;
+                ";
+                using var multi = await connection.QueryMultipleAsync(batchFetchSql, new { Ids = existingVarIdsForUpdate }, transaction);
+                var oldImages = await multi.ReadAsync<(int VariantId, string? ImageUrl)>();
+                var stockSnapshots = await multi.ReadAsync<(int VariantId, byte[] RowVersion)>();
+
+                oldImageMap = oldImages.ToDictionary(x => x.VariantId, x => x.ImageUrl);
                 rowVersionMap = stockSnapshots.ToDictionary(x => x.VariantId, x => x.RowVersion);
             }
 

@@ -20,6 +20,7 @@ public class StockDto
     public string? BranchName { get; set; }
     public string? ImageUrl { get; set; }
     public string? BrandName { get; set; }
+    public string Condition { get; set; } = "Normal";
 }
 
 public class StockSearchDto : PaginationParamsDto
@@ -29,6 +30,7 @@ public class StockSearchDto : PaginationParamsDto
     public string? ProductType { get; set; }
     public string? InventoryGroup { get; set; }
     public int? BranchId { get; set; }
+    public string? Condition { get; set; }
 }
 
 public class CreateStockTransactionDto
@@ -46,6 +48,10 @@ public class CreateStockTransactionDto
     [Required]
     [RegularExpression("^(IN|OUT|ADJUST|RESERVE|UNRESERVE|DAMAGE|LOST)$", ErrorMessage = "TransactionType ต้องเป็น IN, OUT, ADJUST, RESERVE, UNRESERVE, DAMAGE หรือ LOST")]
     public string TransactionType { get; set; } = "IN";
+
+    [Required]
+    [RegularExpression("^(Normal|Defect|Damage)$", ErrorMessage = "Condition ต้องเป็น Normal, Defect หรือ Damage")]
+    public string Condition { get; set; } = "Normal";
 
     [Required]
     [Range(1, int.MaxValue, ErrorMessage = "Quantity ต้องมากกว่า 0")]
@@ -81,4 +87,5 @@ public class StockTransactionHistoryDto
     public string? BranchName { get; set; }
     public int? QuantityBefore { get; set; }
     public int? QuantityAfter { get; set; }
+    public string Condition { get; set; } = "Normal";
 }

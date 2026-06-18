@@ -66,6 +66,21 @@
               }
             </div>
 
+            <!-- Condition -->
+            <div class="form-control">
+              <label class="label-text text-sm font-semibold mb-1.5"
+                >สภาพสินค้า <span class="text-error">*</span></label
+              >
+              <select class="select select-bordered w-full" formControlName="condition">
+                <option value="Normal">ปกติ (Normal)</option>
+                <option value="Defect">ตำหนิ (Defect)</option>
+                <option value="Damage">ชำรุด (Damage)</option>
+              </select>
+              @if (form.get('condition')?.invalid && form.get('condition')?.touched) {
+                <p class="text-xs text-error mt-1.5">กรุณาเลือกสภาพสินค้า</p>
+              }
+            </div>
+
             <!-- Variant ID -->
             <div class="form-control">
               <label class="label-text text-sm font-semibold mb-1.5">
@@ -235,6 +250,13 @@
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium truncate">
                       {{ tx.productName }} — {{ tx.variantName }}
+                      @if (tx.condition === 'Normal') {
+                        <span class="badge badge-success badge-xs font-semibold ml-1">ปกติ</span>
+                      } @else if (tx.condition === 'Defect') {
+                        <span class="badge badge-warning badge-xs font-semibold ml-1">ตำหนิ</span>
+                      } @else if (tx.condition === 'Damage') {
+                        <span class="badge badge-error badge-xs font-semibold ml-1">ชำรุด</span>
+                      }
                     </p>
                     <div class="flex gap-1 mt-0.5">
                       <span class="badge badge-ghost badge-xs font-mono">{{ tx.sku }}</span>

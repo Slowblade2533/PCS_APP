@@ -1,0 +1,58 @@
+﻿<div class="p-6 max-w-5xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">ผังบัญชี (Chart of Accounts)</h1>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4">
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="bg-base-100 shadow-xl rounded-box overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead class="bg-base-200">
+          <tr>
+            <th>รหัสบัญชี</th>
+            <th>ชื่อบัญชี</th>
+            <th>หมวดหมู่</th>
+            <th class="text-center">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+            <tr>
+              <td colspan="4" class="text-center py-8">
+                <span class="loading loading-spinner loading-lg"></span>
+              </td>
+            </tr>
+          } @else if (accounts().length === 0) {
+            <tr>
+              <td colspan="4" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลผังบัญชี</td>
+            </tr>
+          } @else {
+            @for (item of accounts(); track item.accountId) {
+              <tr>
+                <td class="font-mono font-medium">{{ item.accountCode }}</td>
+                <td class="font-bold">{{ item.accountName }}</td>
+                <td>
+                  <span class="badge {{ getAccountTypeClass(item.accountType) }} badge-sm font-semibold">
+                    {{ getAccountTypeLabel(item.accountType) }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  @if (item.isActive) {
+                    <span class="badge badge-success badge-sm text-white">ใช้งาน</span>
+                  } @else {
+                    <span class="badge badge-error badge-sm text-white">ยกเลิก</span>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

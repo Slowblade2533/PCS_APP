@@ -5,6 +5,7 @@ public class StockTransactionModel
     public long TransactionId { get; set; }
     public int VariantId { get; set; }
     public string TransactionType { get; set; } = string.Empty;
+    public string Condition { get; set; } = "Normal";
     public int Quantity { get; set; }
     public decimal? UnitCost { get; set; }
     public string? ReferenceDoc { get; set; }

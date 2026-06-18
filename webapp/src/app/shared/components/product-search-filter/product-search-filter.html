@@ -28,19 +28,35 @@
         </select>
       </div>
 
-      <div class="form-control">
-        <label class="label py-1"><span class="label-text text-xs">ประเภทสินค้า</span></label>
-        <select
-          [value]="selectedType"
-          (change)="selectedTypeChange.emit($any($event.target).value); onSelectChange()"
-          class="select select-bordered select-md w-full"
-        >
-          <option value="">ทั้งหมด</option>
-          <option value="Product">สินค้าทั่วไป</option>
-          <option value="Service">บริการ</option>
-          <option value="Consumable">วัสดุสิ้นเปลือง</option>
-        </select>
-      </div>
+      @if (showCondition) {
+        <div class="form-control">
+          <label class="label py-1"><span class="label-text text-xs">สภาพสินค้า</span></label>
+          <select
+            [value]="selectedCondition"
+            (change)="selectedConditionChange.emit($any($event.target).value); onSelectChange()"
+            class="select select-bordered select-md w-full"
+          >
+            <option value="">ทั้งหมด</option>
+            <option value="Normal">ปกติ</option>
+            <option value="Defect">ตำหนิ</option>
+            <option value="Damage">ชำรุด</option>
+          </select>
+        </div>
+      } @else {
+        <div class="form-control">
+          <label class="label py-1"><span class="label-text text-xs">ประเภทสินค้า</span></label>
+          <select
+            [value]="selectedType"
+            (change)="selectedTypeChange.emit($any($event.target).value); onSelectChange()"
+            class="select select-bordered select-md w-full"
+          >
+            <option value="">ทั้งหมด</option>
+            <option value="Product">สินค้าทั่วไป</option>
+            <option value="Service">บริการ</option>
+            <option value="Consumable">วัสดุสิ้นเปลือง</option>
+          </select>
+        </div>
+      }
 
       <div class="form-control">
         <label class="label py-1"><span class="label-text text-xs">กลุ่มคลังสินค้า</span></label>
