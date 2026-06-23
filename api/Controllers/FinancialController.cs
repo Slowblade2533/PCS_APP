@@ -103,6 +103,28 @@ public class FinancialController : ControllerBase
         }
     }
 
+    [HttpPut("transactions/{id}")]
+    public async Task<IActionResult> UpdateTransaction(int id, [FromBody] FinancialTransactionCreateDto dto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            var result = await _financialRepo.UpdateTransactionWithLedgerAsync(id, dto);
+            if (!result.IsSuccess)
+            {
+                await CleanUpAttachmentAsync(dto.AttachmentUrl);
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+        catch
+        {
+            await CleanUpAttachmentAsync(dto.AttachmentUrl);
+            throw;
+        }
+    }
+
     private async Task CleanUpAttachmentAsync(string? attachmentUrl)
     {
         if (string.IsNullOrWhiteSpace(attachmentUrl)) return;
@@ -131,6 +153,36 @@ public class FinancialController : ControllerBase
     public async Task<IActionResult> GetTrialBalance([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
     {
         var result = await _financialRepo.GetTrialBalanceAsync(dateFrom, dateTo);
+        return Ok(result);
+    }
+
+    [HttpGet("reports/general-journal")]
+    public async Task<IActionResult> GetGeneralJournal([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
+    {
+        var result = await _financialRepo.GetGeneralJournalAsync(dateFrom, dateTo);
+        return Ok(result);
+    }
+
+    [HttpGet("reports/general-ledger")]
+    public async Task<IActionResult> GetGeneralLedger([FromQuery] int accountId, [FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
+    {
+        if (accountId <= 0) return BadRequest("AccountId is required.");
+        var result = await _financialRepo.GetGeneralLedgerAsync(accountId, dateFrom, dateTo);
+        return Ok(result);
+    }
+
+    [HttpGet("reports/profit-loss")]
+    public async Task<IActionResult> GetProfitAndLoss([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
+    {
+        var result = await _financialRepo.GetProfitAndLossAsync(dateFrom, dateTo);
+        return Ok(result);
+    }
+
+    [HttpGet("reports/balance-sheet")]
+    public async Task<IActionResult> GetBalanceSheet([FromQuery] DateOnly asOfDate)
+    {
+        if (asOfDate == default) asOfDate = DateOnly.FromDateTime(DateTime.Today);
+        var result = await _financialRepo.GetBalanceSheetAsync(asOfDate);
         return Ok(result);
     }
 }

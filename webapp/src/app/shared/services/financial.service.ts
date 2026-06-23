@@ -13,6 +13,14 @@ import {
   TaxInvoiceCreatePayload,
   TaxInvoiceSearchParams,
   TrialBalanceRow,
+  GeneralJournalRow,
+  GeneralLedgerRow,
+  ProfitAndLossReport,
+  BalanceSheetReport,
+  PartnerBankAccount,
+  PartnerBankAccountCreatePayload,
+  CompanyBankAccount,
+  CompanyBankAccountCreatePayload,
 } from '../models/financial.models';
 import { Branch } from '../models/user.models';
 
@@ -78,6 +86,10 @@ export class FinancialService {
     return this.http.post<{ value: number }>(`${this.apiUrl}/transactions`, payload);
   }
 
+  updateTransaction(id: number, payload: FinancialTransactionCreatePayload): Observable<{ value: number }> {
+    return this.http.put<{ value: number }>(`${this.apiUrl}/transactions/${id}`, payload);
+  }
+
   uploadAttachment(file: File): Observable<{ imageUrl: string }> {
     const formData = new FormData();
     formData.append('file', file);
@@ -87,11 +99,66 @@ export class FinancialService {
     );
   }
 
+  // ─── Bank Accounts ──────────────────────────────────────────────────────────
+  getPartnerBankAccounts(partnerName?: string, supplierId?: number): Observable<PartnerBankAccount[]> {
+    let p = new HttpParams();
+    if (partnerName) p = p.set('partnerName', partnerName);
+    if (supplierId) p = p.set('supplierId', supplierId.toString());
+    return this.http.get<PartnerBankAccount[]>(`${environment.apiUrl}/bank-accounts/partner`, { params: p });
+  }
+
+  savePartnerBankAccount(payload: PartnerBankAccountCreatePayload): Observable<{ value: number }> {
+    return this.http.post<{ value: number }>(`${environment.apiUrl}/bank-accounts/partner`, payload);
+  }
+
+  deletePartnerBankAccount(id: number): Observable<{ value: boolean }> {
+    return this.http.delete<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/partner/${id}`);
+  }
+
+  getCompanyBankAccounts(): Observable<CompanyBankAccount[]> {
+    return this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`);
+  }
+
+  saveCompanyBankAccount(payload: CompanyBankAccountCreatePayload): Observable<{ value: number }> {
+    return this.http.post<{ value: number }>(`${environment.apiUrl}/bank-accounts/company`, payload);
+  }
+
+  deleteCompanyBankAccount(id: number): Observable<{ value: boolean }> {
+    return this.http.delete<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/company/${id}`);
+  }
+
   // ─── Reports ────────────────────────────────────────────────────────────────
   getTrialBalance(dateFrom?: string, dateTo?: string): Observable<TrialBalanceRow[]> {
     let p = new HttpParams();
     if (dateFrom) p = p.set('dateFrom', dateFrom);
     if (dateTo) p = p.set('dateTo', dateTo);
     return this.http.get<TrialBalanceRow[]>(`${this.apiUrl}/reports/trial-balance`, { params: p });
+  }
+
+  getGeneralJournal(dateFrom?: string, dateTo?: string): Observable<GeneralJournalRow[]> {
+    let p = new HttpParams();
+    if (dateFrom) p = p.set('dateFrom', dateFrom);
+    if (dateTo) p = p.set('dateTo', dateTo);
+    return this.http.get<GeneralJournalRow[]>(`${this.apiUrl}/reports/general-journal`, { params: p });
+  }
+
+  getGeneralLedger(accountId: number, dateFrom?: string, dateTo?: string): Observable<GeneralLedgerRow[]> {
+    let p = new HttpParams().set('accountId', accountId.toString());
+    if (dateFrom) p = p.set('dateFrom', dateFrom);
+    if (dateTo) p = p.set('dateTo', dateTo);
+    return this.http.get<GeneralLedgerRow[]>(`${this.apiUrl}/reports/general-ledger`, { params: p });
+  }
+
+  getProfitAndLoss(dateFrom?: string, dateTo?: string): Observable<ProfitAndLossReport> {
+    let p = new HttpParams();
+    if (dateFrom) p = p.set('dateFrom', dateFrom);
+    if (dateTo) p = p.set('dateTo', dateTo);
+    return this.http.get<ProfitAndLossReport>(`${this.apiUrl}/reports/profit-loss`, { params: p });
+  }
+
+  getBalanceSheet(asOfDate?: string): Observable<BalanceSheetReport> {
+    let p = new HttpParams();
+    if (asOfDate) p = p.set('asOfDate', asOfDate);
+    return this.http.get<BalanceSheetReport>(`${this.apiUrl}/reports/balance-sheet`, { params: p });
   }
 }

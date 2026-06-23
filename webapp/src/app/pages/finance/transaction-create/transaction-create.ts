@@ -10,15 +10,20 @@ import {
   FinancialTransaction,
   FinancialTransactionCreatePayload,
   LedgerEntryCreatePayload,
-  TransactionType
+  TransactionType,
+  PartnerBankAccount,
+  CompanyBankAccount
 } from '../../../shared/models/financial.models';
 import { Branch } from '../../../shared/models/user.models';
 import { FinancialService } from '../../../shared/services/financial.service';
+import { BankSelectComponent } from '../../../shared/components/bank-select/bank-select';
+import { bankLists, Bank } from '../../../shared/constants/banks.constants';
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 
 @Component({
   selector: 'app-transaction-create',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
+  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe, BankSelectComponent, ImageHoverPreview],
   templateUrl: './transaction-create.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -58,6 +63,16 @@ export class TransactionCreate implements OnInit {
   originBank = signal<string>('');
   destinationBank = signal<string>('');
   branchId = signal<number | null>(null);
+
+  // Bank Account State
+  sourceAccountNo = signal<string>('');
+  destinationAccountNo = signal<string>('');
+  sourceAccountName = signal<string>('');
+  destinationAccountName = signal<string>('');
+  partnerBankAccounts = signal<PartnerBankAccount[]>([]);
+  companyBankAccounts = signal<CompanyBankAccount[]>([]);
+  saveSourceAccountOnTheFly = signal<boolean>(false);
+  saveDestinationAccountOnTheFly = signal<boolean>(false);
 
   // Template and calculation state
   inputAmount = signal<number>(0);
@@ -99,6 +114,15 @@ export class TransactionCreate implements OnInit {
       }
     });
 
+    this.financialService.getCompanyBankAccounts().subscribe({
+      next: (accounts) => {
+        this.companyBankAccounts.set(accounts);
+      },
+      error: (err) => {
+        console.error('Failed to load company bank accounts', err);
+      }
+    });
+
     this.route.paramMap.pipe(
       tap((params) => {
         const id = params.get('id');
@@ -118,11 +142,71 @@ export class TransactionCreate implements OnInit {
       tap((res: any) => {
         if (res) {
           this.detail.set(res);
+          if (res.partnerName) {
+            this.onPartnerNameChange(res.partnerName);
+          }
         }
         this.loading.set(false);
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe();
+  }
+
+  editTransaction() {
+    const d = this.detail();
+    if (!d) return;
+
+    this.transactionDate.set(d.transactionDate.split('T')[0]);
+    this.transactionType.set(d.transactionType);
+    this.description.set(d.description || '');
+    this.paymentMethod.set(d.paymentMethod || 'CASH');
+    this.paymentRefNo.set(d.paymentRefNo || '');
+    this.sourceAccountInfo.set(d.sourceAccountInfo || '');
+    this.attachmentUrl.set(d.attachmentUrl || '');
+    
+    this.documentNo.set(d.documentNo || '');
+    this.partnerName.set(d.partnerName || '');
+    this.status.set(d.status || 'POSTED');
+    if (d.slipDateTime) {
+      this.slipDateTime.set(d.slipDateTime.substring(0, 16));
+    }
+    this.originBank.set(d.originBank || '');
+    this.destinationBank.set(d.destinationBank || '');
+    this.sourceAccountNo.set(d.sourceAccountNo || '');
+    this.destinationAccountNo.set(d.destinationAccountNo || '');
+    this.sourceAccountName.set(d.sourceAccountName || '');
+    this.destinationAccountName.set(d.destinationAccountName || '');
+    this.branchId.set(d.branchId || null);
+    if (d.partnerName) {
+      this.onPartnerNameChange(d.partnerName);
+    }
+
+    this.inputAmount.set(d.totalAmount);
+    this.autoGenerateLedger.set(false);
+
+    if (d.ledgerEntries && d.ledgerEntries.length > 0) {
+      this.ledgerEntries.set(d.ledgerEntries.map(e => ({
+        accountId: e.accountId,
+        debitAmount: e.debitAmount,
+        creditAmount: e.creditAmount,
+        memo: e.memo || ''
+      })));
+    }
+
+    this.isViewMode.set(false);
+  }
+
+  cancel() {
+    if (this.transactionId()) {
+      this.isViewMode.set(true);
+    } else {
+      this.router.navigate(['/finance/transactions']);
+    }
+  }
+
+  getBank(symbol: string): Bank | null {
+    if (!symbol) return null;
+    return bankLists[symbol] || null;
   }
 
   // Template auto-generation logic
@@ -284,6 +368,18 @@ export class TransactionCreate implements OnInit {
       return;
     }
 
+    // Validate bank account numbers if filled (must be 10-15 digits)
+    const srcAcc = this.sourceAccountNo();
+    const destAcc = this.destinationAccountNo();
+    if (srcAcc && (srcAcc.length < 10 || srcAcc.length > 15)) {
+      this.error.set('เลขที่บัญชีธนาคารต้นทางต้องเป็นตัวเลขความยาว 10 ถึง 15 หลัก');
+      return;
+    }
+    if (destAcc && (destAcc.length < 10 || destAcc.length > 15)) {
+      this.error.set('เลขที่บัญชีธนาคารปลายทางต้องเป็นตัวเลขความยาว 10 ถึง 15 หลัก');
+      return;
+    }
+
     this.submitting.set(true);
     this.error.set(null);
 
@@ -307,6 +403,10 @@ export class TransactionCreate implements OnInit {
         slipDateTime: this.slipDateTime() || undefined,
         originBank: this.originBank() || undefined,
         destinationBank: this.destinationBank() || undefined,
+        sourceAccountNo: this.sourceAccountNo() || undefined,
+        destinationAccountNo: this.destinationAccountNo() || undefined,
+        sourceAccountName: this.sourceAccountName() || undefined,
+        destinationAccountName: this.destinationAccountName() || undefined,
 
         ledgerEntries: this.ledgerEntries().map(e => ({
           accountId: Number(e.accountId),
@@ -316,14 +416,21 @@ export class TransactionCreate implements OnInit {
         }))
       };
 
-      this.financialService.createTransaction(payload).subscribe({
-        next: () => {
-          this.router.navigate(['/finance/transactions']);
-        },
-        error: (err) => {
-          this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
-          this.submitting.set(false);
-        }
+      const id = this.transactionId();
+      const request$ = id
+        ? this.financialService.updateTransaction(id, payload)
+        : this.financialService.createTransaction(payload);
+
+      this.saveOnTheFlyIfNeeded(() => {
+        request$.subscribe({
+          next: () => {
+            this.router.navigate(['/finance/transactions']);
+          },
+          error: (err) => {
+            this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
+            this.submitting.set(false);
+          }
+        });
       });
     };
 
@@ -405,6 +512,106 @@ export class TransactionCreate implements OnInit {
     if (!id) return '-';
     const b = this.branches().find(x => x.id === id);
     return b ? b.branchName : id.toString();
+  }
+
+  onPartnerNameChange(name: string) {
+    this.partnerName.set(name);
+    if (!name || name.trim().length === 0) {
+      this.partnerBankAccounts.set([]);
+      return;
+    }
+    this.financialService.getPartnerBankAccounts(name.trim()).subscribe({
+      next: (accounts) => {
+        this.partnerBankAccounts.set(accounts);
+      },
+      error: (err) => {
+        console.error('Failed to load partner bank accounts', err);
+      }
+    });
+  }
+
+  selectPartnerBankAccount(account: PartnerBankAccount, type: 'source' | 'destination') {
+    if (type === 'source') {
+      this.originBank.set(account.bankName);
+      this.sourceAccountNo.set(account.accountNo);
+      this.sourceAccountName.set(account.accountName);
+    } else {
+      this.destinationBank.set(account.bankName);
+      this.destinationAccountNo.set(account.accountNo);
+      this.destinationAccountName.set(account.accountName);
+    }
+  }
+
+  selectCompanyBankAccount(account: CompanyBankAccount, type: 'source' | 'destination') {
+    if (type === 'source') {
+      this.originBank.set(account.bankName);
+      this.sourceAccountNo.set(account.accountNo);
+      this.sourceAccountName.set(account.accountName);
+    } else {
+      this.destinationBank.set(account.bankName);
+      this.destinationAccountNo.set(account.accountNo);
+      this.destinationAccountName.set(account.accountName);
+    }
+  }
+
+  isPartnerAccountSaved(accountNo: string): boolean {
+    return this.partnerBankAccounts().some(a => a.accountNo === accountNo);
+  }
+
+  onAccountNoInput(event: Event, type: 'source' | 'destination') {
+    const input = event.target as HTMLInputElement;
+    const cleaned = input.value.replace(/[^0-9]/g, '');
+    if (type === 'source') {
+      this.sourceAccountNo.set(cleaned);
+    } else {
+      this.destinationAccountNo.set(cleaned);
+    }
+    input.value = cleaned;
+  }
+
+  private saveOnTheFlyIfNeeded(callback: () => void) {
+    const partner = this.partnerName()?.trim();
+    if (!partner) {
+      callback();
+      return;
+    }
+
+    const promises: any[] = [];
+
+    if (this.saveSourceAccountOnTheFly() && this.originBank() && this.sourceAccountNo()) {
+      promises.push(this.financialService.savePartnerBankAccount({
+        partnerName: partner,
+        bankName: this.originBank(),
+        accountNo: this.sourceAccountNo(),
+        accountName: this.sourceAccountName() || partner
+      }));
+    }
+
+    if (this.saveDestinationAccountOnTheFly() && this.destinationBank() && this.destinationAccountNo()) {
+      promises.push(this.financialService.savePartnerBankAccount({
+        partnerName: partner,
+        bankName: this.destinationBank(),
+        accountNo: this.destinationAccountNo(),
+        accountName: this.destinationAccountName() || partner
+      }));
+    }
+
+    if (promises.length === 0) {
+      callback();
+      return;
+    }
+
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin(promises).subscribe({
+        next: () => {
+          callback();
+        },
+        error: (err) => {
+          console.error('Failed to save bank account on the fly', err);
+          callback();
+        }
+      });
+    });
   }
 
   protected readonly Math = Math;

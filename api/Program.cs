@@ -95,6 +95,14 @@ builder.Services.AddAuthorization(options =>
     // Report
     options.AddPolicy("CanViewReport", p => p.Requirements.Add(new PermissionRequirementHandler("report:view")));
 
+    // Investors & Investments
+    options.AddPolicy("CanViewInvestors", p => p.Requirements.Add(new PermissionRequirementHandler("investor:view")));
+    options.AddPolicy("CanCreateInvestors", p => p.Requirements.Add(new PermissionRequirementHandler("investor:create")));
+    options.AddPolicy("CanEditInvestors", p => p.Requirements.Add(new PermissionRequirementHandler("investor:edit")));
+    options.AddPolicy("CanViewInvestments", p => p.Requirements.Add(new PermissionRequirementHandler("investment:view")));
+    options.AddPolicy("CanCreateInvestments", p => p.Requirements.Add(new PermissionRequirementHandler("investment:create")));
+    options.AddPolicy("CanEditInvestments", p => p.Requirements.Add(new PermissionRequirementHandler("investment:edit")));
+
     // Policy for authenticated access to protected static files (uploaded images)
     options.AddPolicy("AuthenticatedOnly", p => p.RequireAuthenticatedUser());
 });
@@ -126,8 +134,17 @@ builder.Services.AddScoped<IStockService, StockService>();
 
 // ── Financial, Sales & Procurement modules ───────────────────────────────────
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+builder.Services.AddScoped<IPartnerBankAccountRepository, PartnerBankAccountRepository>();
+builder.Services.AddScoped<ICompanyBankAccountRepository, CompanyBankAccountRepository>();
 builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+
+// ── Investors & Investments modules ──────────────────────────────────────────
+builder.Services.AddScoped<IInvestorRepository, InvestorRepository>();
+builder.Services.AddScoped<IInvestorBankAccountRepository, InvestorBankAccountRepository>();
+builder.Services.AddScoped<IInvestmentRepository, InvestmentRepository>();
+builder.Services.AddScoped<IInvestorService, InvestorService>();
+builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
 builder.Services.AddSingleton<ImageCleanupChannel>();
 builder.Services.AddHostedService<ImageCleanupBackgroundService>();

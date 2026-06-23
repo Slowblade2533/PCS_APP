@@ -26,15 +26,15 @@
 
   <!-- Filters -->
   <app-product-search-filter
-    [searchTerm]="query.search || ''"
+    [searchTerm]="query().search || ''"
     (searchTermChange)="onSearchChange($event)"
-    [selectedStatus]="query.productStatus || ''"
-    (selectedStatusChange)="query.productStatus = $event"
+    [selectedStatus]="query().productStatus || ''"
+    (selectedStatusChange)="updateProductStatus($event)"
     [showCondition]="true"
-    [selectedCondition]="query.condition || ''"
-    (selectedConditionChange)="query.condition = $event"
-    [selectedInventoryGroup]="query.inventoryGroup || ''"
-    (selectedInventoryGroupChange)="query.inventoryGroup = $event"
+    [selectedCondition]="query().condition || ''"
+    (selectedConditionChange)="updateCondition($event)"
+    [selectedInventoryGroup]="query().inventoryGroup || ''"
+    (selectedInventoryGroupChange)="updateInventoryGroup($event)"
     (filterChange)="onFilterChange()"
   >
   </app-product-search-filter>
@@ -191,8 +191,8 @@
 
         <!-- Pagination -->
         <app-pagination
-          [page]="query.page"
-          [pageSize]="query.pageSize"
+          [page]="query().page"
+          [pageSize]="query().pageSize"
           [totalCount]="result()?.totalCount ?? 0"
           (pageChange)="changePage($event)"
         ></app-pagination>

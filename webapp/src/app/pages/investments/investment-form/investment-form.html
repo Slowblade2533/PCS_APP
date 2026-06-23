@@ -1,0 +1,269 @@
+<div class="p-6 max-w-5xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-extrabold text-base-content tracking-tight">บันทึกสัญญาร่วมลงทุน / เงินกู้ยืมใหม่</h1>
+      <p class="text-sm text-base-content/60">บันทึกวงเงินสัญญา แหล่งทุน อัตราดอกเบี้ย พร้อมตารางคำนวณงวดชำระคืน</p>
+    </div>
+    <a routerLink="/investments" class="btn btn-outline btn-sm">ย้อนกลับ</a>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+    <!-- Main Info Card -->
+    <div class="card bg-base-100 shadow-xl border border-base-200">
+      <div class="card-body">
+        <h2 class="card-title text-lg font-bold text-primary mb-4 border-b pb-2 border-base-200">ข้อมูลสัญญา</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Investor -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">ผู้ร่วมลงทุน / เจ้าหนี้ <span class="text-error">*</span></span></label>
+            <select formControlName="investorId" class="select select-bordered w-full bg-base-100">
+              <option value="">เลือกนักลงทุน...</option>
+              @for (inv of investors(); track inv.investorId) {
+                <option [value]="inv.investorId">{{ inv.title }}{{ inv.firstName }} {{ inv.lastName }}</option>
+              }
+            </select>
+            @if (form.get('investorId')?.touched && form.get('investorId')?.invalid) {
+              <span class="text-xs text-error mt-1">กรุณาเลือกผู้ร่วมลงทุน</span>
+            }
+          </div>
+
+          <!-- Investment Type -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">ประเภทสัญญา <span class="text-error">*</span></span></label>
+            <select formControlName="investmentType" class="select select-bordered w-full bg-base-100">
+              <option [value]="0">หุ้นส่วน (Equity)</option>
+              <option [value]="1">เงินกู้ยืม (Loan)</option>
+            </select>
+          </div>
+
+          <!-- Principal Amount -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">จำนวนเงินต้น (เงินลงทุน) <span class="text-error">*</span></span></label>
+            <div class="join w-full">
+              <input type="number" formControlName="principalAmount" class="input input-bordered join-item w-full" placeholder="0.00" />
+              <span class="btn btn-disabled join-item">THB</span>
+            </div>
+            @if (form.get('principalAmount')?.touched && form.get('principalAmount')?.invalid) {
+              <span class="text-xs text-error mt-1">กรุณาระบุจำนวนเงินต้นที่มากกว่า 0</span>
+            }
+          </div>
+
+          <!-- Interest Rate -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">อัตราดอกเบี้ยต่อปี (%)</span></label>
+            <div class="join w-full">
+              <input type="number" formControlName="interestRate" class="input input-bordered join-item w-full" placeholder="0.00" />
+              <span class="btn btn-disabled join-item">%</span>
+            </div>
+          </div>
+
+          <!-- Start Date -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">วันที่เริ่มต้นสัญญา <span class="text-error">*</span></span></label>
+            <input type="date" formControlName="startDate" class="input input-bordered w-full" />
+          </div>
+
+          <!-- Maturity Date -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">วันสิ้นสุดสัญญา (กำหนดคืนเงินกู้)</span></label>
+            <input type="date" formControlName="maturityDate" class="input input-bordered w-full" />
+          </div>
+
+          <!-- Receive Destination: Cash / Bank -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">วิธีรับโอนเงินต้นเข้าบริษัท <span class="text-error">*</span></span></label>
+            <div class="flex items-center gap-4 mt-2">
+              <label class="label cursor-pointer flex gap-2">
+                <input type="checkbox" formControlName="isCash" class="checkbox checkbox-primary" />
+                <span class="label-text font-semibold">รับเป็นเงินสด (ไม่โอนเข้าธนาคาร)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Bank Account Destination -->
+          @if (!form.get('isCash')?.value) {
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">บัญชีธนาคารบริษัทที่รับโอน <span class="text-error">*</span></span></label>
+              <select formControlName="companyBankAccountId" class="select select-bordered w-full bg-base-100">
+                <option value="">เลือกบัญชีรับเงินโอน...</option>
+                @for (bank of companyBankAccounts(); track bank.id) {
+                  <option [value]="bank.id">{{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})</option>
+                }
+              </select>
+              @if (form.get('companyBankAccountId')?.touched && form.get('companyBankAccountId')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาเลือกบัญชีธนาคารปลายทางของบริษัท</span>
+              }
+            </div>
+          }
+
+          <!-- Contract Document Upload -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">เอกสารใบสัญญาเงินกู้ / ร่วมทุน (PDF หรือรูปภาพ)</span></label>
+            <div class="flex flex-col gap-2">
+              <input type="file" class="file-input file-input-bordered file-input-sm w-full" (change)="onFileUpload($event)" accept="image/*,application/pdf" />
+              @if (isUploading()) {
+                <div class="flex items-center gap-2 text-xs text-primary mt-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  กำลังอัปโหลดไฟล์...
+                </div>
+              }
+              @if (form.get('contractUrl')?.value) {
+                <div class="text-xs text-success flex items-center gap-1 font-semibold">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  อัปโหลดสัญญาแนบแล้ว
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loan installment calculations configuration -->
+    @if (form.get('investmentType')?.value == 1) {
+      <!-- Interest Rate Schedule Card (Tiered rate configuration) -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-4 border-b pb-2 border-base-200">
+            <div>
+              <h2 class="card-title text-lg font-bold text-primary">อัตราดอกเบี้ยแบบแบ่งช่วงเวลา (Tiered Rates)</h2>
+              <p class="text-xs text-base-content/60">เช่น 6 เดือนแรก 0% หลังจากนั้นคิดอัตราปกติ (หากไม่มี ให้ข้ามส่วนนี้ไป)</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-primary btn-sm" (click)="addInterestSchedule()">
+              เพิ่มช่วงอัตราดอกเบี้ย
+            </button>
+          </div>
+
+          @if (interestSchedules.length === 0) {
+            <div class="text-center py-6 text-sm text-base-content/40 bg-base-200/20 rounded-lg">
+              ใช้อัตราดอกเบี้ยคงที่ปกติ ตลอดอายุสัญญา
+            </div>
+          } @else {
+            <div class="space-y-3">
+              <div class="hidden md:grid md:grid-cols-12 gap-4 text-xs font-bold text-base-content/60 px-2">
+                <div class="col-span-4">เดือนที่เริ่มต้นงวด</div>
+                <div class="col-span-4">เดือนที่สิ้นสุดงวด</div>
+                <div class="col-span-3">อัตราดอกเบี้ยต่อปี (%)</div>
+                <div class="col-span-1 text-right">ลบ</div>
+              </div>
+
+              <div formArrayName="interestSchedules" class="space-y-2">
+                @for (item of interestSchedules.controls; track i; let i = $index) {
+                  <div [formGroupName]="i" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-base-200/30 p-2 rounded-lg">
+                    <div class="col-span-4">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">เดือนที่เริ่มต้นงวด</span></label>
+                      <input type="number" formControlName="startMonth" class="input input-bordered input-sm w-full" placeholder="งวดแรกสุดคือ 1" />
+                    </div>
+                    <div class="col-span-4">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">เดือนที่สิ้นสุดงวด</span></label>
+                      <input type="number" formControlName="endMonth" class="input input-bordered input-sm w-full" placeholder="เช่น 6" />
+                    </div>
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">อัตราดอกเบี้ยต่อปี (%)</span></label>
+                      <input type="number" formControlName="interestRate" class="input input-bordered input-sm w-full" placeholder="0.00" />
+                    </div>
+                    <div class="col-span-1 text-right">
+                      <button type="button" class="btn btn-square btn-ghost btn-xs text-error" (click)="removeInterestSchedule(i)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Installment calculation config -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b pb-2 border-base-200">
+            <div>
+              <h2 class="card-title text-lg font-bold text-primary">ตารางงวดชำระคืนเงินต้นพร้อมดอกเบี้ย</h2>
+              <p class="text-xs text-base-content/60">ระบุจำนวนงวด และรันสูตรคำนวณเบื้องต้น จากนั้นท่านสามารถปรับแต่งยอดตามที่ตกลงกันได้</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="form-control w-28">
+                <input type="number" formControlName="installmentCount" class="input input-bordered input-sm w-full font-bold" placeholder="จำนวนงวด" />
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm shadow-sm" (click)="autoCalculateSchedules()">
+                คำนวณงวดชำระอัตโนมัติ
+              </button>
+            </div>
+          </div>
+
+          @if (schedules.length === 0) {
+            <div class="text-center py-12 text-sm text-base-content/40 bg-base-200/20 border-2 border-dashed border-base-300 rounded-lg">
+              กรุณาป้อนจำนวนงวดชำระคืนและคลิก "คำนวณงวดชำระอัตโนมัติ" เพื่อสร้างตารางงวดการผ่อนชำระ
+            </div>
+          } @else {
+            <div class="space-y-4">
+              <div class="hidden md:grid md:grid-cols-12 gap-4 text-xs font-bold text-base-content/60 px-2">
+                <div class="col-span-2">งวดที่</div>
+                <div class="col-span-3">วันกำหนดชำระ</div>
+                <div class="col-span-3">ยอดชำระคืนเงินต้น</div>
+                <div class="col-span-3">ยอดชำระคืนดอกเบี้ย</div>
+                <div class="col-span-1 text-right">ลบ</div>
+              </div>
+
+              <div formArrayName="schedules" class="space-y-3">
+                @for (row of schedules.controls; track i; let i = $index) {
+                  <div [formGroupName]="i" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-base-200/40 p-3 rounded-lg border border-base-200">
+                    <!-- Installment Number -->
+                    <div class="col-span-2 font-bold text-center md:text-left">
+                      งวดที่ {{ row.get('installmentNumber')?.value }} / {{ schedules.length }}
+                    </div>
+
+                    <!-- Due Date -->
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">วันกำหนดชำระ</span></label>
+                      <input type="date" formControlName="dueDate" class="input input-bordered input-sm w-full" />
+                    </div>
+
+                    <!-- Principal Amount -->
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">ยอดเงินต้น</span></label>
+                      <input type="number" formControlName="principalAmount" class="input input-bordered input-sm w-full font-semibold" placeholder="0.00" />
+                    </div>
+
+                    <!-- Interest Amount -->
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">ยอดดอกเบี้ย</span></label>
+                      <input type="number" formControlName="interestAmount" class="input input-bordered input-sm w-full font-semibold" placeholder="0.00" />
+                    </div>
+
+                    <!-- Delete Row -->
+                    <div class="col-span-1 text-right">
+                      <button type="button" class="btn btn-square btn-ghost btn-xs text-error" (click)="removeScheduleRow(i)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="flex justify-end gap-3 mt-6">
+      <a routerLink="/investments" class="btn btn-outline">ยกเลิก</a>
+      <button type="submit" class="btn btn-primary shadow-md" [disabled]="isLoading() || isUploading()">
+        @if (isLoading()) {
+          <span class="loading loading-spinner"></span>
+        }
+        บันทึกสัญญาเงินลงทุน
+      </button>
+    </div>
+  </form>
+</div>

@@ -7,6 +7,7 @@ import {
   HostListener,
   OnInit,
   inject,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -43,15 +44,15 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   public readonly location = inject(Location);
   public readonly apiOrigin = environment.apiUrl.replace('/api', '');
 
-  isEditMode = false;
-  shipmentId: number | null = null;
-  isSearching = false;
-  isSubmitting = false;
-  searchResults: VcbDelivery[] = [];
+  isEditMode = signal(false);
+  shipmentId = signal<number | null>(null);
+  isSearching = signal(false);
+  isSubmitting = signal(false);
+  searchResults = signal<VcbDelivery[]>([]);
   searchSubject = new Subject<string>();
-  selectedDelivery: VcbDelivery | null = null;
-  availableOrderItems: VcbOrderItem[] = [];
-  availableSubBoxes: string[] = [];
+  selectedDelivery = signal<VcbDelivery | null>(null);
+  availableOrderItems = signal<VcbOrderItem[]>([]);
+  availableSubBoxes = signal<string[]>([]);
   shipmentForm!: FormGroup;
 
   searchParams: VcbDeliverySearch = {
@@ -60,7 +61,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     searchTerm: '',
     status: 'Shipping',
   };
-  totalCount = 0;
+  totalCount = signal(0);
 
   get items(): FormArray {
     return this.shipmentForm.get('items') as FormArray;
@@ -82,8 +83,8 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       if (idStr) {
         const id = parseInt(idStr, 10);
         if (!isNaN(id)) {
-          this.isEditMode = true;
-          this.shipmentId = id;
+          this.isEditMode.set(true);
+          this.shipmentId.set(id);
           this.loadShipmentForEdit(id);
         }
       } else {
@@ -93,7 +94,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   loadShipmentForEdit(id: number): void {
-    this.isSearching = true;
+    this.isSearching.set(true);
     this.procurementService.getVcbShipmentById(id).subscribe({
       next: (res: any) => {
         const shipment = res.value || res.data || res;
@@ -108,9 +109,9 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
             next: (deliveryRes: any) => {
               const fullDelivery = deliveryRes.value || deliveryRes.data || deliveryRes;
               if (fullDelivery) {
-                this.selectedDelivery = fullDelivery;
+                this.selectedDelivery.set(fullDelivery);
                 
-                this.availableSubBoxes = [];
+                const tempSubBoxes: string[] = [];
                 if (fullDelivery.items) {
                   const receivedSet = new Set<string>(fullDelivery.receivedBoxNumbers || []);
                   fullDelivery.items.forEach((dItem: any) => {
@@ -119,31 +120,32 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                         const subBoxes = JSON.parse(dItem.containedBoxNumbers);
                         if (Array.isArray(subBoxes)) {
                           subBoxes.forEach((sub: any) => {
-                            if (sub.boxNo && !this.availableSubBoxes.includes(sub.boxNo)) {
+                            if (sub.boxNo && !tempSubBoxes.includes(sub.boxNo)) {
                               const isRec = receivedSet.has(sub.boxNo);
                               const isCurrentShipmentBox = shipment.items.some((si: any) => 
                                 si.boxNumbers && si.boxNumbers.split(',').map((b: string) => b.trim()).includes(sub.boxNo)
                               );
                               if (!isRec || isCurrentShipmentBox) {
-                                this.availableSubBoxes.push(sub.boxNo);
+                                tempSubBoxes.push(sub.boxNo);
                               }
                             }
                           });
                         }
                       } catch (e) {
-                        if (!this.availableSubBoxes.includes(dItem.containedBoxNumbers)) {
+                        if (!tempSubBoxes.includes(dItem.containedBoxNumbers)) {
                           const isRec = receivedSet.has(dItem.containedBoxNumbers);
                           const isCurrentShipmentBox = shipment.items.some((si: any) => 
                             si.boxNumbers && si.boxNumbers.split(',').map((b: string) => b.trim()).includes(dItem.containedBoxNumbers)
                           );
                           if (!isRec || isCurrentShipmentBox) {
-                            this.availableSubBoxes.push(dItem.containedBoxNumbers);
+                            tempSubBoxes.push(dItem.containedBoxNumbers);
                           }
                         }
                       }
                     }
                   });
                 }
+                this.availableSubBoxes.set(tempSubBoxes);
 
                 if (fullDelivery.orders && fullDelivery.orders.length > 0) {
                   const orderRequests = fullDelivery.orders.map((o: any) =>
@@ -151,19 +153,20 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                   );
                   forkJoin(orderRequests).subscribe({
                     next: (orderResponses: any) => {
-                      this.availableOrderItems = [];
+                      const tempOrderItems: VcbOrderItem[] = [];
                       orderResponses.forEach((orderRes: any) => {
                         const order = orderRes.value || orderRes.data || orderRes;
                         if (order && order.items) {
                           order.items.forEach((item: any) => {
-                            this.availableOrderItems.push(item);
+                            tempOrderItems.push(item);
                           });
                         }
                       });
+                      this.availableOrderItems.set(tempOrderItems);
 
                       this.items.clear();
                       shipment.items.forEach((sItem: any) => {
-                        const matchingOrderItem = this.availableOrderItems.find(aoi => aoi.id === sItem.orderItemId);
+                        const matchingOrderItem = tempOrderItems.find(aoi => aoi.id === sItem.orderItemId);
                         const expectedQty = matchingOrderItem 
                           ? (matchingOrderItem.remainingQuantity ?? matchingOrderItem.quantity)
                           : sItem.expectedQuantity;
@@ -203,35 +206,35 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                         this.items.push(itemForm);
                       });
 
-                      this.isSearching = false;
+                      this.isSearching.set(false);
                       this.cdr.markForCheck();
                     },
                     error: () => {
-                      this.isSearching = false;
+                      this.isSearching.set(false);
                       this.cdr.markForCheck();
                     }
                   });
                 } else {
-                  this.isSearching = false;
+                  this.isSearching.set(false);
                   this.cdr.markForCheck();
                 }
               } else {
-                this.isSearching = false;
+                this.isSearching.set(false);
                 this.cdr.markForCheck();
               }
             },
             error: () => {
-              this.isSearching = false;
+              this.isSearching.set(false);
               this.cdr.markForCheck();
             }
           });
         } else {
-          this.isSearching = false;
+          this.isSearching.set(false);
           this.cdr.markForCheck();
         }
       },
       error: () => {
-        this.isSearching = false;
+        this.isSearching.set(false);
         this.cdr.markForCheck();
         this.swal.error('ไม่สามารถโหลดข้อมูลใบรับสินค้าได้');
       }
@@ -239,7 +242,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   addAllItems(): void {
-    this.availableOrderItems
+    this.availableOrderItems()
       .filter((item) => (item.remainingQuantity ?? item.quantity) > 0)
       .forEach((item) => this.addItemToShipment(item));
   }
@@ -280,22 +283,22 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return this.shipmentForm.dirty && !this.isSubmitting;
+    return this.shipmentForm.dirty && !this.isSubmitting();
   }
 
   loadDeliveries(): void {
-    this.isSearching = true;
+    this.isSearching.set(true);
     this.procurementService
       .getVcbDeliveries(this.searchParams)
       .pipe(
         finalize(() => {
-          this.isSearching = false;
+          this.isSearching.set(false);
           this.cdr.markForCheck();
         }),
       )
       .subscribe((res: any) => {
-        this.searchResults = res?.items || [];
-        this.totalCount = res?.totalCount || 0;
+        this.searchResults.set(res?.items || []);
+        this.totalCount.set(res?.totalCount || 0);
       });
   }
 
@@ -344,7 +347,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       }
     }
 
-    this.isSubmitting = true;
+    this.isSubmitting.set(true);
     const dto: VcbShipmentCreate = {
       deliveryId: formValue.deliveryId,
       notes: formValue.notes,
@@ -361,10 +364,10 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       })),
     };
 
-    if (this.isEditMode && this.shipmentId) {
-      this.procurementService.updateVcbShipment(this.shipmentId, dto).subscribe({
+    if (this.isEditMode() && this.shipmentId()) {
+      this.procurementService.updateVcbShipment(this.shipmentId()!, dto).subscribe({
         next: (res: any) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           if (res.isSuccess) {
             this.shipmentForm.markAsPristine();
@@ -378,7 +381,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                 .then((result) => {
                   if (result.isConfirmed) {
                     this.procurementService
-                      .updateVcbShipmentStatus(this.shipmentId!, 'Completed')
+                      .updateVcbShipmentStatus(this.shipmentId()!, 'Completed')
                       .subscribe(() => {
                         this.swal.success('รับเข้าสต็อกเรียบร้อย');
                         this.router.navigate(['/procurement/vcb-shipments']);
@@ -394,7 +397,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
           }
         },
         error: (err) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
         }
@@ -402,7 +405,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     } else {
       this.procurementService.createVcbShipment(dto).subscribe({
         next: (res) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           if (res.isSuccess) {
             this.shipmentForm.markAsPristine();
@@ -435,7 +438,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
           }
         },
         error: (err) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
         },
@@ -458,17 +461,18 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   selectDelivery(delivery: VcbDelivery): void {
-    this.isSearching = true;
+    this.isSearching.set(true);
     this.procurementService.getVcbDeliveryById(delivery.id).subscribe({
       next: (res: any) => {
         const fullDelivery = res.value || res.data || res;
         if (fullDelivery) {
-          this.selectedDelivery = fullDelivery;
+          this.selectedDelivery.set(fullDelivery);
           this.shipmentForm.patchValue({ deliveryId: fullDelivery.id });
           this.items.clear();
-          this.availableOrderItems = [];
-          this.availableSubBoxes = [];
+          this.availableOrderItems.set([]);
+          this.availableSubBoxes.set([]);
 
+          const tempSubBoxes: string[] = [];
           if (fullDelivery.items) {
             const receivedSet = new Set<string>(fullDelivery.receivedBoxNumbers || []);
             fullDelivery.items.forEach((dItem: any) => {
@@ -477,20 +481,21 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                   const subBoxes = JSON.parse(dItem.containedBoxNumbers);
                   if (Array.isArray(subBoxes)) {
                     subBoxes.forEach((sub: any) => {
-                      if (sub.boxNo && !this.availableSubBoxes.includes(sub.boxNo) && !receivedSet.has(sub.boxNo)) {
-                        this.availableSubBoxes.push(sub.boxNo);
+                      if (sub.boxNo && !tempSubBoxes.includes(sub.boxNo) && !receivedSet.has(sub.boxNo)) {
+                        tempSubBoxes.push(sub.boxNo);
                       }
                     });
                   }
                 } catch (e) {
                   // Fallback for simple string if not JSON
-                  if (!this.availableSubBoxes.includes(dItem.containedBoxNumbers) && !receivedSet.has(dItem.containedBoxNumbers)) {
-                    this.availableSubBoxes.push(dItem.containedBoxNumbers);
+                  if (!tempSubBoxes.includes(dItem.containedBoxNumbers) && !receivedSet.has(dItem.containedBoxNumbers)) {
+                    tempSubBoxes.push(dItem.containedBoxNumbers);
                   }
                 }
               }
             });
           }
+          this.availableSubBoxes.set(tempSubBoxes);
 
           if (fullDelivery.orders && fullDelivery.orders.length > 0) {
             const orderRequests = fullDelivery.orders.map((o: any) =>
@@ -498,36 +503,38 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
             );
             forkJoin(orderRequests).subscribe({
               next: (orderResponses: any) => {
+                const tempOrderItems: VcbOrderItem[] = [];
                 orderResponses.forEach((orderRes: any) => {
                   const order = orderRes.value || orderRes.data || orderRes;
                   if (order && order.items) {
                     order.items.forEach((item: any) => {
-                      this.availableOrderItems.push(item);
+                      tempOrderItems.push(item);
                     });
                     order.items
                       .filter((item: any) => (item.remainingQuantity ?? item.quantity) > 0)
                       .forEach((item: any) => this.addItemToShipment(item));
                   }
                 });
-                this.isSearching = false;
+                this.availableOrderItems.set(tempOrderItems);
+                this.isSearching.set(false);
                 this.cdr.markForCheck();
               },
               error: () => {
-                this.isSearching = false;
+                this.isSearching.set(false);
                 this.cdr.markForCheck();
               },
             });
           } else {
-            this.isSearching = false;
+            this.isSearching.set(false);
             this.cdr.markForCheck();
           }
         } else {
-          this.isSearching = false;
+          this.isSearching.set(false);
           this.cdr.markForCheck();
         }
       },
       error: () => {
-        this.isSearching = false;
+        this.isSearching.set(false);
         this.cdr.markForCheck();
       },
     });
@@ -544,8 +551,9 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   isBoxReceived(boxNo: string): boolean {
-    if (!this.selectedDelivery || !this.selectedDelivery.receivedBoxNumbers) return false;
-    return this.selectedDelivery.receivedBoxNumbers.includes(boxNo);
+    const delivery = this.selectedDelivery();
+    if (!delivery || !delivery.receivedBoxNumbers) return false;
+    return delivery.receivedBoxNumbers.includes(boxNo);
   }
 
   validateItemQuantities(): boolean {

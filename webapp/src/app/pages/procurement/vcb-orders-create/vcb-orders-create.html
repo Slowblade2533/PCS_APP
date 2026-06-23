@@ -18,11 +18,11 @@
     </button>
     <div>
       <h1 class="text-2xl font-bold text-amber-500 dark:text-amber-400">
-        🛍️ {{ isEditMode ? 'แก้ไขออเดอร์ VCANBUY' : 'สร้างออเดอร์ VCANBUY ใหม่' }}
+        🛍️ {{ isEditMode() ? 'แก้ไขออเดอร์ VCANBUY' : 'สร้างออเดอร์ VCANBUY ใหม่' }}
       </h1>
       <p class="text-base-content/60 mt-1">
         {{
-          isEditMode
+          isEditMode()
             ? 'แก้ไขข้อมูลออเดอร์และรายการสินค้า'
             : 'กรอกข้อมูลออเดอร์และรายการสินค้าที่สั่งจากจีน'
         }}
@@ -88,10 +88,10 @@
               accept="image/*"
               (change)="onFileChange($event)"
             />
-            @if (slipFilePreviewUrl) {
+            @if (slipFilePreviewUrl()) {
               <div class="mt-4 relative inline-block self-start">
                 <app-image-hover-preview
-                  [imageUrl]="slipFilePreviewUrl"
+                  [imageUrl]="slipFilePreviewUrl()!"
                   altText="Slip Preview"
                   imageClass="max-h-48 rounded-lg shadow-md border border-base-200 cursor-pointer w-auto object-contain"
                 ></app-image-hover-preview>
@@ -142,21 +142,21 @@
               placeholder="พิมพ์ชื่อสินค้าหรือ SKU อย่างน้อย 3 ตัวอักษร..."
               (input)="onSearchChange($event)"
             />
-            @if (isSearching) {
+            @if (isSearching()) {
               <div class="absolute right-3 top-3">
                 <span class="loading loading-spinner loading-sm text-primary"></span>
               </div>
             }
 
             <!-- Search Results Dropdown -->
-            @if (searchResults.length > 0) {
+            @if (searchResults().length > 0) {
               <ul
                 class="menu bg-base-100 w-full shadow-lg rounded-box absolute z-50 mt-1 border border-base-200 max-h-60 overflow-auto"
               >
-                @for (prod of searchResults; track prod.productId) {
+                @for (prod of searchResults(); track prod.productId) {
                   <li>
                     <a
-                      (click)="selectProduct(prod); searchResults = []"
+                      (click)="selectProduct(prod); searchResults.set([])"
                       class="flex items-center gap-3"
                     >
                       <div class="w-10 h-10 shrink-0">
@@ -201,13 +201,13 @@
         </div>
 
         <!-- Variants selection -->
-        @if (isFetchingVariants) {
+        @if (isFetchingVariants()) {
           <div class="py-4 flex justify-center">
             <span class="loading loading-spinner text-primary"></span>
           </div>
         }
 
-        @if (selectedProductVariants.length > 0) {
+        @if (selectedProductVariants().length > 0) {
           <div class="mt-4 p-4 bg-base-200/50 rounded-box border border-base-200">
             <div
               class="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4 pb-4 border-b border-base-300"
@@ -215,9 +215,9 @@
               <div
                 class="w-16 h-16 shrink-0 bg-base-100 rounded border border-base-200 overflow-hidden flex items-center justify-center"
               >
-                @if (selectedProduct?.imageUrl) {
+                @if (selectedProduct()?.imageUrl) {
                   <app-image-hover-preview
-                    [imageUrl]="apiOrigin + selectedProduct?.imageUrl"
+                    [imageUrl]="apiOrigin + selectedProduct()?.imageUrl"
                     imageClass="w-full h-full object-cover cursor-pointer"
                   ></app-image-hover-preview>
                 } @else {
@@ -238,14 +238,14 @@
                 }
               </div>
               <div>
-                <h3 class="font-bold text-lg text-primary">{{ selectedProduct?.productNameTh }}</h3>
+                <h3 class="font-bold text-lg text-primary">{{ selectedProduct()?.productNameTh }}</h3>
                 <p class="text-sm opacity-70">
                   เลือกรุ่น/ตัวเลือกสินค้าด้านล่าง (คลิกเพื่อเพิ่มลงออเดอร์)
                 </p>
               </div>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              @for (v of selectedProductVariants; track v.sku) {
+              @for (v of selectedProductVariants(); track v.sku) {
                 <div
                   class="card bg-base-100 border transition-all overflow-hidden relative"
                   [class.border-base-300]="!isVariantSelected(v.variantId)"
@@ -259,7 +259,7 @@
                   [class.cursor-not-allowed]="isVariantSelected(v.variantId)"
                   (click)="
                     !isVariantSelected(v.variantId)
-                      ? addVariantToOrder(v, selectedProduct?.productNameTh || '')
+                      ? addVariantToOrder(v, selectedProduct()?.productNameTh || '')
                       : null
                   "
                 >
@@ -289,9 +289,9 @@
                         [imageUrl]="apiOrigin + v.imageUrl"
                         imageClass="max-h-full object-contain cursor-pointer"
                       ></app-image-hover-preview>
-                    } @else if (selectedProduct?.imageUrl) {
+                    } @else if (selectedProduct()?.imageUrl) {
                       <app-image-hover-preview
-                        [imageUrl]="apiOrigin + selectedProduct?.imageUrl"
+                        [imageUrl]="apiOrigin + selectedProduct()?.imageUrl"
                         imageClass="max-h-full object-contain opacity-60 cursor-pointer"
                       ></app-image-hover-preview>
                     } @else {
@@ -317,9 +317,9 @@
                   >
                     <p
                       class="font-bold text-sm line-clamp-2 mb-1"
-                      [title]="v.variantNameTh || selectedProduct?.productNameTh"
+                      [title]="v.variantNameTh || selectedProduct()?.productNameTh || ''"
                     >
-                      {{ v.variantNameTh || selectedProduct?.productNameTh }}
+                      {{ v.variantNameTh || selectedProduct()?.productNameTh }}
                     </p>
                     <p class="text-xs opacity-70 mb-2 truncate" [title]="v.sku">SKU: {{ v.sku }}</p>
                     <p class="text-primary font-black text-sm mt-auto">
@@ -462,11 +462,11 @@
 
     <div class="flex justify-end gap-4 mt-4">
       <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
-      <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting">
-        @if (isSubmitting) {
+      <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting()">
+        @if (isSubmitting()) {
           <span class="loading loading-spinner loading-sm"></span>
         } @else {
-          @if (!isEditMode) {
+          @if (!isEditMode()) {
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -493,7 +493,7 @@
               />
             </svg>
           }
-          {{ isEditMode ? 'อัปเดตข้อมูล' : 'บันทึกออเดอร์' }}
+          {{ isEditMode() ? 'อัปเดตข้อมูล' : 'บันทึกออเดอร์' }}
         }
       </button>
     </div>

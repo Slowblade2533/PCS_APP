@@ -57,11 +57,19 @@ export class TrialBalance implements OnInit {
     this.refresh$.next();
   }
 
+  getNetDebit(row: TrialBalanceRow): number {
+    return row.balance > 0 ? row.balance : 0;
+  }
+
+  getNetCredit(row: TrialBalanceRow): number {
+    return row.balance < 0 ? -row.balance : 0;
+  }
+
   get totalDebit(): number {
-    return this.data().reduce((sum, row) => sum + row.totalDebit, 0);
+    return this.data().reduce((sum, row) => sum + this.getNetDebit(row), 0);
   }
 
   get totalCredit(): number {
-    return this.data().reduce((sum, row) => sum + row.totalCredit, 0);
+    return this.data().reduce((sum, row) => sum + this.getNetCredit(row), 0);
   }
 }

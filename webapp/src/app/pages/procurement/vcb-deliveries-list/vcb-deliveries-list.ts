@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import Big from 'big.js';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -40,16 +40,16 @@ export class VcbDeliveriesList implements OnInit {
 
   apiOrigin = environment.apiUrl.replace('/api', '');
 
-  deliveries: VcbDelivery[] = [];
+  deliveries = signal<VcbDelivery[]>([]);
   searchParams: VcbDeliverySearch = {
     page: 1,
     pageSize: 10,
     searchTerm: '',
     status: '',
   };
-  totalCount = 0;
-  totalPages = 0;
-  isLoading = false;
+  totalCount = signal(0);
+  totalPages = signal(0);
+  isLoading = signal(false);
 
   filterForm = new FormGroup({
     searchTerm: new FormControl(''),
@@ -82,17 +82,17 @@ export class VcbDeliveriesList implements OnInit {
   }
 
   loadDeliveries(): void {
-    this.isLoading = true;
+    this.isLoading.set(true);
     this.procurementService.getVcbDeliveries(this.searchParams).subscribe({
       next: (res) => {
-        this.deliveries = res.items || [];
-        this.totalCount = res.totalCount || 0;
-        this.totalPages = Math.ceil(this.totalCount / this.searchParams.pageSize);
-        this.isLoading = false;
+        this.deliveries.set(res.items || []);
+        this.totalCount.set(res.totalCount || 0);
+        this.totalPages.set(Math.ceil(this.totalCount() / this.searchParams.pageSize));
+        this.isLoading.set(false);
         this.cdr.markForCheck();
       },
       error: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
         this.cdr.markForCheck();
       },
     });

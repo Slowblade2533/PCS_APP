@@ -38,7 +38,7 @@ export class UsersList implements OnInit {
     selectedIsActive: new FormControl<boolean | undefined>(undefined),
   });
 
-  query: UserListQuery = { page: 1, pageSize: 20 };
+  query = signal<UserListQuery>({ page: 1, pageSize: 20 });
 
   ngOnInit(): void {
     this.filterForm
@@ -49,7 +49,7 @@ export class UsersList implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((search) => {
-        this.query = { ...this.query, search: search || undefined, page: 1 };
+        this.query.update((q) => ({ ...q, search: search || undefined, page: 1 }));
         this.refresh$.next();
       });
 
@@ -57,7 +57,7 @@ export class UsersList implements OnInit {
       .get('selectedIsActive')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isActive) => {
-        this.query = { ...this.query, isActive: isActive === null ? undefined : isActive, page: 1 };
+        this.query.update((q) => ({ ...q, isActive: isActive === null ? undefined : isActive, page: 1 }));
         this.refresh$.next();
       });
 
@@ -65,12 +65,13 @@ export class UsersList implements OnInit {
       .pipe(
         tap(() => this.loading.set(true)),
         switchMap(() => {
-          const s = this.query.search?.trim() || '';
+          const qVal = this.query();
+          const s = qVal.search?.trim() || '';
           if (s.length > 0 && s.length < 3) {
             return of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 });
           }
           return this.userService
-            .getUsers(this.query)
+            .getUsers(qVal)
             .pipe(
               catchError(() =>
                 of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 }),
@@ -86,13 +87,14 @@ export class UsersList implements OnInit {
   }
 
   changePage(page: number): void {
-    this.query = { ...this.query, page };
+    this.query.update((q) => ({ ...q, page }));
     this.loadUsers();
   }
 
   hasNextPage(): boolean {
     const total = this.result()?.totalCount ?? 0;
-    return this.query.page * this.query.pageSize < total;
+    const qVal = this.query();
+    return qVal.page * qVal.pageSize < total;
   }
 
   loadUsers(): void {

@@ -113,6 +113,10 @@ export interface FinancialTransaction {
   slipDateTime?: string;
   originBank?: string;
   destinationBank?: string;
+  sourceAccountNo?: string;
+  destinationAccountNo?: string;
+  sourceAccountName?: string;
+  destinationAccountName?: string;
 
   ledgerEntries: LedgerEntry[];
 }
@@ -162,6 +166,10 @@ export interface FinancialTransactionCreatePayload {
   slipDateTime?: string;
   originBank?: string;
   destinationBank?: string;
+  sourceAccountNo?: string;
+  destinationAccountNo?: string;
+  sourceAccountName?: string;
+  destinationAccountName?: string;
 
   ledgerEntries: LedgerEntryCreatePayload[];
 }
@@ -184,4 +192,107 @@ export interface TrialBalanceRow {
   totalDebit: number;
   totalCredit: number;
   balance: number;
+}
+
+// ─── General Journal ───────────────────────────────────────────────────────
+export interface GeneralJournalRow {
+  entryId: number;
+  transactionId: number;
+  transactionDate: string;
+  documentNo?: string;
+  transactionType: string;
+  transactionTypeLabel?: string;
+  memo?: string;
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  debitAmount: number;
+  creditAmount: number;
+}
+
+// ─── General Ledger ────────────────────────────────────────────────────────
+export interface GeneralLedgerRow {
+  transactionDate?: string;
+  documentNo?: string;
+  memo?: string;
+  debitAmount: number;
+  creditAmount: number;
+  runningBalance: number;
+  isBroughtForward: boolean;
+}
+
+// ─── Profit & Loss ─────────────────────────────────────────────────────────
+export interface ProfitAndLossReport {
+  dateFrom?: string;
+  dateTo?: string;
+  revenueLines: ProfitAndLossLine[];
+  totalRevenue: number;
+  expenseLines: ProfitAndLossLine[];
+  totalExpense: number;
+  netProfit: number;
+}
+
+export interface ProfitAndLossLine {
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  balance: number;
+}
+
+// ─── Balance Sheet ─────────────────────────────────────────────────────────
+export interface BalanceSheetReport {
+  asOfDate: string;
+  assetLines: BalanceSheetLine[];
+  totalAssets: number;
+  liabilityLines: BalanceSheetLine[];
+  totalLiabilities: number;
+  equityLines: BalanceSheetLine[];
+  totalEquity: number;
+  totalLiabilitiesAndEquity: number;
+}
+
+export interface BalanceSheetLine {
+  accountId: number;
+  accountCode: string;
+  accountName: string;
+  balance: number;
+}
+
+// ─── Bank Accounts ────────────────────────────────────────────────────────────
+export interface PartnerBankAccount {
+  id: number;
+  supplierId?: number;
+  partnerName: string;
+  bankName: string;
+  accountNo: string;
+  accountName: string;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface PartnerBankAccountCreatePayload {
+  supplierId?: number;
+  partnerName: string;
+  bankName: string;
+  accountNo: string;
+  accountName: string;
+  isDefault?: boolean;
+}
+
+export interface CompanyBankAccount {
+  id: number;
+  bankName: string;
+  accountNo: string;
+  accountName: string;
+  chartOfAccountId?: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CompanyBankAccountCreatePayload {
+  bankName: string;
+  accountNo: string;
+  accountName: string;
+  chartOfAccountId?: number;
 }

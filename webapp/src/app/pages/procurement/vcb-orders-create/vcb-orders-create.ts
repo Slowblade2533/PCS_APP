@@ -7,6 +7,7 @@ import {
   HostListener,
   OnInit,
   inject,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -41,19 +42,19 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
 
   apiOrigin = environment.apiUrl.replace('/api', '');
 
-  editOrderId: number | null = null;
-  isEditMode = false;
-  isFetchingVariants = false;
-  isLoadingData = false;
-  isSearching = false;
-  isSubmitting = false;
+  editOrderId = signal<number | null>(null);
+  isEditMode = signal(false);
+  isFetchingVariants = signal(false);
+  isLoadingData = signal(false);
+  isSearching = signal(false);
+  isSubmitting = signal(false);
   orderForm!: FormGroup;
-  searchResults: ProductListItem[] = [];
+  searchResults = signal<ProductListItem[]>([]);
   searchSubject = new Subject<string>();
-  selectedProduct: ProductListItem | null = null;
-  selectedProductVariants: ProductVariantDetail[] = [];
+  selectedProduct = signal<ProductListItem | null>(null);
+  selectedProductVariants = signal<ProductVariantDetail[]>([]);
   selectedSlipFile: File | null = null;
-  slipFilePreviewUrl: string | null = null;
+  slipFilePreviewUrl = signal<string | null>(null);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -73,7 +74,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return this.orderForm.dirty && !this.isSubmitting;
+    return this.orderForm.dirty && !this.isSubmitting();
   }
 
   private initForm(): void {
@@ -92,16 +93,16 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       const id = params.get('id');
       const mode = this.route.snapshot.queryParamMap.get('mode');
       if (id && mode === 'edit') {
-        this.isEditMode = true;
-        this.editOrderId = Number(id);
+        this.isEditMode.set(true);
+        this.editOrderId.set(Number(id));
         this.loadOrderData();
       }
     });
   }
   private loadOrderData(): void {
-    if (!this.editOrderId) return;
-    this.isLoadingData = true;
-    this.procurementService.getVcbOrderById(this.editOrderId).subscribe({
+    if (!this.editOrderId()) return;
+    this.isLoadingData.set(true);
+    this.procurementService.getVcbOrderById(this.editOrderId()!).subscribe({
       next: (res) => {
         const order = res.value || res.data;
         if (order) {
@@ -121,9 +122,9 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
           });
 
           if (order.transferSlipUrl) {
-            this.slipFilePreviewUrl = this.apiOrigin + order.transferSlipUrl;
+            this.slipFilePreviewUrl.set(this.apiOrigin + order.transferSlipUrl);
           } else {
-            this.slipFilePreviewUrl = null;
+            this.slipFilePreviewUrl.set(null);
           }
 
           order.items.forEach((item) => {
@@ -140,7 +141,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
           });
           this.calculateTotal();
         }
-        this.isLoadingData = false;
+        this.isLoadingData.set(false);
         this.cdr.markForCheck();
       },
       error: () => {
@@ -161,7 +162,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
         debounceTime(300),
         switchMap((term) => {
           if (!term) return [];
-          this.isSearching = true;
+          this.isSearching.set(true);
           return this.productService
             .getProducts({
               pageNumber: 1,
@@ -170,7 +171,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
             })
             .pipe(
               finalize(() => {
-                this.isSearching = false;
+                this.isSearching.set(false);
                 this.cdr.markForCheck();
               }),
             );
@@ -178,7 +179,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((res: any) => {
-        this.searchResults = res?.items || [];
+        this.searchResults.set(res?.items || []);
         this.cdr.markForCheck();
       });
   }
@@ -188,22 +189,22 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
     if (term.length > 2) {
       this.searchSubject.next(term);
     } else {
-      this.searchResults = [];
-      this.selectedProductVariants = [];
+      this.searchResults.set([]);
+      this.selectedProductVariants.set([]);
     }
   }
 
   selectProduct(prod: ProductListItem): void {
-    this.selectedProduct = prod;
-    this.isFetchingVariants = true;
+    this.selectedProduct.set(prod);
+    this.isFetchingVariants.set(true);
     this.productService.getProductById(prod.productId).subscribe({
       next: (res) => {
-        this.selectedProductVariants = res.variants || [];
-        this.isFetchingVariants = false;
+        this.selectedProductVariants.set(res.variants || []);
+        this.isFetchingVariants.set(false);
         this.cdr.markForCheck();
       },
       error: () => {
-        this.isFetchingVariants = false;
+        this.isFetchingVariants.set(false);
         this.cdr.markForCheck();
         this.swal.error('ไม่สามารถดึงข้อมูลสินค้านี้ได้');
       },
@@ -248,7 +249,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       this.selectedSlipFile = file;
       const reader = new FileReader();
       reader.onload = () => {
-        this.slipFilePreviewUrl = reader.result as string;
+        this.slipFilePreviewUrl.set(reader.result as string);
         this.cdr.markForCheck();
       };
       reader.readAsDataURL(file);
@@ -257,7 +258,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
 
   clearFile(): void {
     this.selectedSlipFile = null;
-    this.slipFilePreviewUrl = null;
+    this.slipFilePreviewUrl.set(null);
     const fileInput = document.getElementById('slipFile') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   }
@@ -304,7 +305,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       return;
     }
 
-    this.isSubmitting = true;
+    this.isSubmitting.set(true);
     const formValue = this.orderForm.value;
     const dto: VcbOrderCreate = {
       orderNo: formValue.orderNo,
@@ -325,8 +326,8 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       formData.append('slipFile', this.selectedSlipFile);
     }
 
-    if (this.isEditMode && this.editOrderId) {
-      this.procurementService.updateVcbOrder(this.editOrderId, formData).subscribe({
+    if (this.isEditMode() && this.editOrderId()) {
+      this.procurementService.updateVcbOrder(this.editOrderId()!, formData).subscribe({
         next: (res) => {
           this.cdr.markForCheck();
           if (res.isSuccess) {
@@ -335,12 +336,12 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
               this.router.navigate(['/procurement/vcb-orders']);
             });
           } else {
-            this.isSubmitting = false;
+            this.isSubmitting.set(false);
             this.swal.error(res.error || res.errorMessage || 'เกิดข้อผิดพลาด');
           }
         },
         error: (err) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           this.swal.error(
             err.error?.errorMessage || err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
@@ -357,12 +358,12 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
               this.router.navigate(['/procurement/vcb-orders']);
             });
           } else {
-            this.isSubmitting = false;
+            this.isSubmitting.set(false);
             this.swal.error(res.error || res.errorMessage || 'เกิดข้อผิดพลาด');
           }
         },
         error: (err) => {
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
           this.cdr.markForCheck();
           this.swal.error(
             err.error?.errorMessage || err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ',

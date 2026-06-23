@@ -1,0 +1,66 @@
+<div class="relative w-full">
+  @if (isCustomText()) {
+    <div class="flex items-center gap-2">
+      <input type="text" 
+        class="input input-bordered w-full" 
+        [placeholder]="placeholder"
+        [ngModel]="customText()" 
+        (ngModelChange)="onCustomTextChange($event)" />
+      <button type="button" class="btn btn-ghost btn-sm text-error" (click)="clearSelection($event)" title="ยกเลิก">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+  } @else {
+    <!-- Toggle Button -->
+    <div tabindex="0" role="button" class="btn btn-outline w-full justify-between bg-base-100 hover:bg-base-200 text-base-content border-base-300 font-normal" (click)="toggleDropdown($event)">
+      @if (selectedBank()) {
+        <div class="flex items-center gap-3">
+          <img [src]="'/' + selectedBank()?.icon" [alt]="selectedBank()?.symbol" class="w-6 h-6 object-contain rounded-sm bg-white" />
+          <span>{{ selectedBank()?.name }}</span>
+        </div>
+      } @else {
+        <span class="text-base-content/50">{{ placeholder }}</span>
+      }
+      <div class="flex items-center gap-1">
+        @if (selectedBank()) {
+          <button type="button" class="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-error" (click)="clearSelection($event)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        }
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+      </div>
+    </div>
+
+    <!-- Custom Dropdown Menu -->
+    @if (isOpen()) {
+      <div class="absolute z-[100] mt-1 w-full bg-base-100 shadow-xl rounded-box border border-base-200 p-2">
+        <div class="p-2 pb-3 sticky top-0 bg-base-100 z-[1] border-b border-base-200 mb-2">
+          <input type="text" class="input input-bordered input-sm w-full" placeholder="ค้นหาธนาคาร..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" (click)="$event.stopPropagation()" />
+        </div>
+        <ul class="max-h-60 overflow-y-auto flex-nowrap menu menu-sm p-0">
+          @for (bank of filteredBanks(); track bank.symbol) {
+            <li>
+              <a (click)="selectBank(bank)" [class.active]="selectedBank()?.symbol === bank.symbol" class="flex items-center gap-3 py-2">
+                <img [src]="'/' + bank.icon" [alt]="bank.symbol" class="w-6 h-6 object-contain rounded-sm bg-white" />
+                <div class="flex flex-col">
+                  <span class="font-medium leading-none">{{ bank.name }}</span>
+                  <span class="text-xs opacity-60 mt-1">{{ bank.fullname }}</span>
+                </div>
+              </a>
+            </li>
+          }
+          @if (filteredBanks().length === 0) {
+            <li class="px-4 py-2 text-center text-sm opacity-50">ไม่พบข้อมูลธนาคาร</li>
+          }
+          <div class="divider my-1"></div>
+          <li>
+            <a (click)="selectOther()" class="text-primary font-medium py-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+              อื่นๆ (พิมพ์ระบุเอง)
+            </a>
+          </li>
+        </ul>
+      </div>
+    }
+  }
+</div>

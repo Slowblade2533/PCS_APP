@@ -22,10 +22,10 @@ export class CompanyProfile implements OnInit {
   isLoading = signal(false);
   isSaving = signal(false);
 
-  stagedLogoFile: File | null = null;
+  stagedLogoFile = signal<File | null>(null);
   stagedLogoPreviewUrl = signal<string | null>(null);
 
-  stagedVatDocFile: File | null = null;
+  stagedVatDocFile = signal<File | null>(null);
   stagedVatDocFileName = signal<string | null>(null);
 
   apiOrigin = environment.apiUrl;
@@ -78,9 +78,9 @@ export class CompanyProfile implements OnInit {
             logoUrl: res.logoUrl,
           });
           
-          this.stagedLogoFile = null;
+          this.stagedLogoFile.set(null);
           this.stagedLogoPreviewUrl.set(null);
-          this.stagedVatDocFile = null;
+          this.stagedVatDocFile.set(null);
           this.stagedVatDocFileName.set(null);
           this.isLoading.set(false);
         },
@@ -94,7 +94,7 @@ export class CompanyProfile implements OnInit {
   onFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      this.stagedLogoFile = file;
+      this.stagedLogoFile.set(file);
       const reader = new FileReader();
       reader.onload = () => {
         this.stagedLogoPreviewUrl.set(reader.result as string);
@@ -106,20 +106,20 @@ export class CompanyProfile implements OnInit {
   onVatDocSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      this.stagedVatDocFile = file;
+      this.stagedVatDocFile.set(file);
       this.stagedVatDocFileName.set(file.name);
       this.form.patchValue({ vatDocumentUrl: null }); // Clear old URL if replacing
     }
   }
 
   removeLogo() {
-    this.stagedLogoFile = null;
+    this.stagedLogoFile.set(null);
     this.stagedLogoPreviewUrl.set(null);
     this.form.patchValue({ logoUrl: null });
   }
 
   removeVatDoc() {
-    this.stagedVatDocFile = null;
+    this.stagedVatDocFile.set(null);
     this.stagedVatDocFileName.set(null);
     this.form.patchValue({ vatDocumentUrl: null });
   }
@@ -134,15 +134,17 @@ export class CompanyProfile implements OnInit {
 
     const uploads: { [key: string]: Observable<any> } = {};
 
-    if (this.stagedLogoFile) {
+    const logoFile = this.stagedLogoFile();
+    if (logoFile) {
       const logoData = new FormData();
-      logoData.append('file', this.stagedLogoFile);
+      logoData.append('file', logoFile);
       uploads['logo'] = this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, logoData);
     }
 
-    if (this.stagedVatDocFile) {
+    const vatFile = this.stagedVatDocFile();
+    if (vatFile) {
       const vatData = new FormData();
-      vatData.append('file', this.stagedVatDocFile);
+      vatData.append('file', vatFile);
       uploads['vatDoc'] = this.http.post<any>(`${environment.apiUrl}/upload/company-logo`, vatData);
     }
 
@@ -157,9 +159,9 @@ export class CompanyProfile implements OnInit {
         .subscribe({
           next: () => {
             this.swal.success('บันทึกข้อมูลสำเร็จ');
-            this.stagedLogoFile = null;
+            this.stagedLogoFile.set(null);
             this.stagedLogoPreviewUrl.set(null);
-            this.stagedVatDocFile = null;
+            this.stagedVatDocFile.set(null);
             this.stagedVatDocFileName.set(null);
             this.loadProfile();
             this.isSaving.set(false);

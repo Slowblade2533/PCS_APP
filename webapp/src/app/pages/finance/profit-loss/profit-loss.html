@@ -1,0 +1,110 @@
+<div class="p-6">
+  <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-base-content">งบกำไรขาดทุน (Profit & Loss)</h1>
+      <p class="text-sm text-base-content/70 mt-1">
+        รายงานสรุปรายได้และค่าใช้จ่าย เพื่อคำนวณกำไรสุทธิ
+      </p>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+    <div class="card-body p-4 flex flex-col sm:flex-row gap-4 items-end">
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ตั้งแต่วันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateFrom" />
+      </div>
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ถึงวันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateTo" />
+      </div>
+      <button class="btn btn-primary" (click)="loadData()" [disabled]="loading()">
+        @if (loading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } ค้นหา
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error shadow-sm mb-6">
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else if (report()) {
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body">
+      <div class="text-center mb-6">
+        <h2 class="text-xl font-bold">งบกำไรขาดทุน</h2>
+        <p class="text-base-content/70">สำหรับช่วงวันที่ {{ dateFrom() }} ถึง {{ dateTo() }}</p>
+      </div>
+
+      <div class="overflow-x-auto max-w-4xl mx-auto w-full">
+        <table class="table w-full border-collapse">
+          <tbody>
+            <!-- REVENUE SECTION -->
+            <tr class="bg-base-200/50">
+              <td colspan="2" class="font-bold text-lg">รายได้ (Revenue)</td>
+            </tr>
+            @for (rev of report()!.revenueLines; track rev.accountId) {
+            <tr class="hover">
+              <td class="pl-8">{{ rev.accountCode }} - {{ rev.accountName }}</td>
+              <td class="text-right">{{ rev.balance | number:'1.2-2' }}</td>
+            </tr>
+            }
+            @if (report()!.revenueLines.length === 0) {
+            <tr>
+              <td colspan="2" class="pl-8 text-base-content/50 italic">- ไม่มีข้อมูลรายได้ -</td>
+            </tr>
+            }
+            <tr class="font-bold border-t-2 border-base-300">
+              <td class="text-right">รวมรายได้</td>
+              <td class="text-right text-success">{{ report()!.totalRevenue | number:'1.2-2' }}</td>
+            </tr>
+
+            <tr><td colspan="2" class="h-4"></td></tr>
+
+            <!-- EXPENSE SECTION -->
+            <tr class="bg-base-200/50">
+              <td colspan="2" class="font-bold text-lg">ค่าใช้จ่าย (Expenses)</td>
+            </tr>
+            @for (exp of report()!.expenseLines; track exp.accountId) {
+            <tr class="hover">
+              <td class="pl-8">{{ exp.accountCode }} - {{ exp.accountName }}</td>
+              <td class="text-right">{{ exp.balance | number:'1.2-2' }}</td>
+            </tr>
+            }
+            @if (report()!.expenseLines.length === 0) {
+            <tr>
+              <td colspan="2" class="pl-8 text-base-content/50 italic">- ไม่มีข้อมูลค่าใช้จ่าย -</td>
+            </tr>
+            }
+            <tr class="font-bold border-t-2 border-base-300">
+              <td class="text-right">รวมค่าใช้จ่าย</td>
+              <td class="text-right text-error">{{ report()!.totalExpense | number:'1.2-2' }}</td>
+            </tr>
+
+            <tr><td colspan="2" class="h-6 border-b border-base-300"></td></tr>
+
+            <!-- NET PROFIT -->
+            <tr class="font-black text-xl">
+              <td class="text-right py-4">กำไรสุทธิ (Net Profit)</td>
+              <td class="text-right py-4" [class.text-success]="report()!.netProfit >= 0" [class.text-error]="report()!.netProfit < 0">
+                {{ report()!.netProfit | number:'1.2-2' }}
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" class="border-t-4 border-double border-base-300"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  }
+</div>

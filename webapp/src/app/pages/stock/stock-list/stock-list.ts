@@ -39,13 +39,13 @@ export class StockList implements OnInit {
   loading = signal(false);
   result = signal<PagedResult<StockItem> | null>(null);
 
-  query: StockListQuery = { page: 1, pageSize: 20, inventoryGroup: 'ForSale' };
+  query = signal<StockListQuery>({ page: 1, pageSize: 20, inventoryGroup: 'ForSale' });
 
   ngOnInit(): void {
     this.search$
       .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => {
-        this.query = { ...this.query, search: search || undefined, page: 1 };
+        this.query.update((q) => ({ ...q, search: search || undefined, page: 1 }));
         this.refresh$.next();
       });
 
@@ -53,12 +53,13 @@ export class StockList implements OnInit {
       .pipe(
         tap(() => this.loading.set(true)),
         switchMap(() => {
-          const s = this.query.search?.trim() || '';
+          const qVal = this.query();
+          const s = qVal.search?.trim() || '';
           if (s.length > 0 && s.length < 3) {
             return of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 });
           }
           return this.stockService
-            .getStocks(this.query)
+            .getStocks(qVal)
             .pipe(
               catchError(() =>
                 of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 1 }),
@@ -74,13 +75,14 @@ export class StockList implements OnInit {
   }
 
   changePage(page: number): void {
-    this.query = { ...this.query, page };
+    this.query.update((q) => ({ ...q, page }));
     this.loadStock();
   }
 
   hasNextPage(): boolean {
     const total = this.result()?.totalCount ?? 0;
-    return this.query.page * this.query.pageSize < total;
+    const qVal = this.query();
+    return qVal.page * qVal.pageSize < total;
   }
 
   loadStock(): void {
@@ -88,8 +90,20 @@ export class StockList implements OnInit {
   }
 
   onFilterChange(): void {
-    this.query = { ...this.query, page: 1 };
+    this.query.update((q) => ({ ...q, page: 1 }));
     this.loadStock();
+  }
+
+  updateProductStatus(status: string): void {
+    this.query.update((q) => ({ ...q, productStatus: status || undefined }));
+  }
+
+  updateCondition(condition: string): void {
+    this.query.update((q) => ({ ...q, condition: condition || undefined }));
+  }
+
+  updateInventoryGroup(group: any): void {
+    this.query.update((q) => ({ ...q, inventoryGroup: group }));
   }
 
   onSearchChange(value: string): void {

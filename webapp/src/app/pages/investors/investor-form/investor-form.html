@@ -1,0 +1,187 @@
+<div class="p-6 max-w-4xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-extrabold text-base-content tracking-tight">
+        {{ isEditMode() ? 'แก้ไขข้อมูลนักลงทุน' : 'เพิ่มข้อมูลนักลงทุน' }}
+      </h1>
+      <p class="text-sm text-base-content/60">กรอกข้อมูลส่วนตัวและบัญชีธนาคารสำหรับรับเงินโอน</p>
+    </div>
+    <a [routerLink]="isEditMode() ? ['/investors', investorId()] : ['/investors']" class="btn btn-outline btn-sm">
+      ย้อนกลับ
+    </a>
+  </div>
+
+  @if (isLoading() && isEditMode()) {
+    <div class="flex justify-center items-center py-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      <!-- Personal Info Card -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <h2 class="card-title text-lg font-bold text-primary mb-4 border-b pb-2 border-base-200">
+            ข้อมูลส่วนบุคคล / ติดต่อ
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Title -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">คำนำหน้า</span></label>
+              <select formControlName="title" class="select select-bordered w-full bg-base-100">
+                <option value="นาย">นาย</option>
+                <option value="นาง">นาง</option>
+                <option value="นางสาว">นางสาว</option>
+                <option value="บริษัท">บริษัท</option>
+                <option value="หจก.">หจก.</option>
+              </select>
+            </div>
+
+            <!-- First Name -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">ชื่อ / ชื่อจดทะเบียนบริษัท <span class="text-error">*</span></span></label>
+              <input type="text" formControlName="firstName" class="input input-bordered w-full" placeholder="ระบุชื่อ" />
+              @if (form.get('firstName')?.touched && form.get('firstName')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาระบุชื่อ (ไม่เกิน 100 ตัวอักษร)</span>
+              }
+            </div>
+
+            <!-- Last Name -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">นามสกุล <span class="text-error">*</span></span></label>
+              <input type="text" formControlName="lastName" class="input input-bordered w-full" placeholder="ระบุนามสกุล" />
+              @if (form.get('lastName')?.touched && form.get('lastName')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาระบุนามสกุล (ไม่เกิน 100 ตัวอักษร)</span>
+              }
+            </div>
+
+            <!-- Tax ID -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">เลขผู้เสียภาษี / เลขบัตรประชาชน</span></label>
+              <input type="text" formControlName="taxId" class="input input-bordered w-full" placeholder="ระบุเลขประจำตัวผู้เสียภาษี" />
+              @if (form.get('taxId')?.touched && form.get('taxId')?.invalid) {
+                <span class="text-xs text-error mt-1">ข้อมูลไม่ถูกต้อง</span>
+              }
+            </div>
+
+            <!-- Phone -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">เบอร์โทรศัพท์ <span class="text-error">*</span></span></label>
+              <input type="text" formControlName="phone" class="input input-bordered w-full" placeholder="ระบุเบอร์โทรศัพท์" />
+              @if (form.get('phone')?.touched && form.get('phone')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาระบุเบอร์โทรศัพท์</span>
+              }
+            </div>
+
+            <!-- Email -->
+            <div class="form-control w-full">
+              <label class="label"><span class="label-text font-semibold">อีเมล</span></label>
+              <input type="email" formControlName="email" class="input input-bordered w-full" placeholder="example@email.com" />
+              @if (form.get('email')?.touched && form.get('email')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาระบุอีเมลในรูปแบบที่ถูกต้อง</span>
+              }
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="form-control w-full mt-4">
+            <label class="label"><span class="label-text font-semibold">ที่อยู่ติดต่อ</span></label>
+            <textarea formControlName="address" rows="3" class="textarea textarea-bordered w-full" placeholder="ระบุที่อยู่สำหรับการติดต่อ"></textarea>
+            @if (form.get('address')?.touched && form.get('address')?.invalid) {
+              <span class="text-xs text-error mt-1">ที่อยู่ต้องไม่เกิน 500 ตัวอักษร</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank Accounts Card -->
+      <div class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-4 border-b pb-2 border-base-200">
+            <h2 class="card-title text-lg font-bold text-primary">ข้อมูลบัญชีธนาคารสำหรับจ่ายเงินโอน</h2>
+            <button type="button" class="btn btn-outline btn-primary btn-sm" (click)="addBankAccount()">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              เพิ่มบัญชี
+            </button>
+          </div>
+
+          @if (bankAccounts.length === 0) {
+            <div class="text-center py-8 text-base-content/40 bg-base-200/20 rounded-lg border-2 border-dashed border-base-300">
+              กรุณาเพิ่มบัญชีธนาคารอย่างน้อย 1 บัญชี เพื่อรองรับการทำรายการชำระคืน
+            </div>
+          } @else {
+            <div class="space-y-4">
+              <div class="hidden md:grid md:grid-cols-12 gap-4 text-xs font-bold text-base-content/60 px-2">
+                <div class="col-span-3">ชื่อธนาคาร</div>
+                <div class="col-span-4">เลขที่บัญชี</div>
+                <div class="col-span-3">ประเภทบัญชี</div>
+                <div class="col-span-1 text-center">บัญชีหลัก</div>
+                <div class="col-span-1 text-right">ลบ</div>
+              </div>
+
+              <div formArrayName="bankAccounts" class="space-y-3">
+                @for (account of bankAccounts.controls; track i; let i = $index) {
+                  <div [formGroupName]="i" class="grid grid-cols-1 md:grid-cols-12 gap-3 bg-base-200/35 p-3 rounded-lg border border-base-200 items-center">
+                    <!-- Bank Name -->
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">ชื่อธนาคาร</span></label>
+                      <app-bank-select
+                        [value]="account.get('bankName')?.value || ''"
+                        (valueChange)="account.get('bankName')?.setValue($event)"
+                        placeholder="เลือกธนาคาร / ช่องทาง">
+                      </app-bank-select>
+                    </div>
+
+                    <!-- Account Number -->
+                    <div class="col-span-4">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">เลขที่บัญชี</span></label>
+                      <input type="text" formControlName="accountNumber" class="input input-bordered input-sm w-full font-mono" placeholder="ระบุเฉพาะตัวเลข" />
+                    </div>
+
+                    <!-- Account Type -->
+                    <div class="col-span-3">
+                      <label class="label md:hidden"><span class="label-text text-xs font-bold">ประเภทบัญชี</span></label>
+                      <select formControlName="accountType" class="select select-bordered select-sm w-full bg-base-100">
+                        <option value="Savings">ออมทรัพย์ (Savings)</option>
+                        <option value="Current">กระแสรายวัน (Current)</option>
+                        <option value="Fixed">ฝากประจำ (Fixed)</option>
+                      </select>
+                    </div>
+
+                    <!-- Default Switch -->
+                    <div class="col-span-1 text-center flex items-center justify-center">
+                      <label class="label md:hidden mr-2"><span class="label-text text-xs font-bold">บัญชีหลัก</span></label>
+                      <input type="checkbox" formControlName="isDefault" class="checkbox checkbox-primary checkbox-sm" (change)="onDefaultChange(i)" />
+                    </div>
+
+                    <!-- Delete Button -->
+                    <div class="col-span-1 text-right">
+                      <button type="button" class="btn btn-square btn-ghost btn-xs text-error" (click)="removeBankAccount(i)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end gap-3 mt-6">
+        <a [routerLink]="isEditMode() ? ['/investors', investorId()] : ['/investors']" class="btn btn-outline">ยกเลิก</a>
+        <button type="submit" class="btn btn-primary shadow-md" [disabled]="isLoading()">
+          @if (isLoading()) {
+            <span class="loading loading-spinner"></span>
+          }
+          บันทึกข้อมูล
+        </button>
+      </div>
+    </form>
+  }
+</div>

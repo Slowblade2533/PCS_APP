@@ -183,6 +183,68 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                 }, transaction: tx, cancellationToken: cancellationToken));
             }
 
+            // Sync Financial Transaction for Freight In
+            const string syncFinTxSql = @"
+                DECLARE @FinTxId INT;
+                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbDelivery' AND ReferenceId = @DeliveryId;
+
+                IF @TransferredAmount > 0
+                BEGIN
+                    IF @FinTxId IS NULL
+                    BEGIN
+                        INSERT INTO dbo.FinancialTransactions (
+                            TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
+                            Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
+                            ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
+                            Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
+                            SlipDateTime
+                        )
+                        VALUES (
+                            @OrderDate, 'FREIGHT_VCB', 'VcbDelivery', @DeliveryId, NULL,
+                            N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo, @TransferredAmount, 'TRANSFER', NULL, NULL,
+                            NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
+                            'POSTED', 1, GETDATE(), @CreatedBy, @DeliveryNo, N'VCANBUY',
+                            @OrderDate
+                        );
+                        SET @FinTxId = SCOPE_IDENTITY();
+                    END
+                    ELSE
+                    BEGIN
+                        UPDATE dbo.FinancialTransactions SET
+                            TransactionDate = @OrderDate,
+                            Description = N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo,
+                            TotalAmount = @TransferredAmount,
+                            AttachmentUrl = @TransferSlipUrl,
+                            UpdatedAt = GETDATE()
+                        WHERE TransactionId = @FinTxId;
+                    END
+
+                    DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+
+                    INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
+                    VALUES 
+                        (@FinTxId, 14, @TransferredAmount, 0, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo),
+                        (@FinTxId, 2, 0, @TransferredAmount, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo);
+                END
+                ELSE
+                BEGIN
+                    IF @FinTxId IS NOT NULL
+                    BEGIN
+                        DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+                        DELETE FROM dbo.FinancialTransactions WHERE TransactionId = @FinTxId;
+                    END
+                END";
+
+            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
+            {
+                DeliveryId = deliveryId,
+                dto.DeliveryNo,
+                dto.OrderDate,
+                dto.TransferredAmount,
+                TransferSlipUrl = transferSlipUrl,
+                CreatedBy = currentUserId
+            }, transaction: tx, cancellationToken: cancellationToken));
+
             await tx.CommitAsync(cancellationToken);
             return deliveryId;
         }
@@ -291,6 +353,68 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                     await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.AccountTransactions WHERE Id = @ExpenseId", new { ExpenseId = existingExpense.Value }, transaction: tx, cancellationToken: cancellationToken));
                 }
             }
+
+            // Sync Financial Transaction for Freight In
+            const string syncFinTxSql = @"
+                DECLARE @FinTxId INT;
+                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbDelivery' AND ReferenceId = @DeliveryId;
+
+                IF @TransferredAmount > 0
+                BEGIN
+                    IF @FinTxId IS NULL
+                    BEGIN
+                        INSERT INTO dbo.FinancialTransactions (
+                            TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
+                            Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
+                            ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
+                            Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
+                            SlipDateTime
+                        )
+                        VALUES (
+                            @OrderDate, 'FREIGHT_VCB', 'VcbDelivery', @DeliveryId, NULL,
+                            N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo, @TransferredAmount, 'TRANSFER', NULL, NULL,
+                            NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
+                            'POSTED', 1, GETDATE(), @CreatedBy, @DeliveryNo, N'VCANBUY',
+                            @OrderDate
+                        );
+                        SET @FinTxId = SCOPE_IDENTITY();
+                    END
+                    ELSE
+                    BEGIN
+                        UPDATE dbo.FinancialTransactions SET
+                            TransactionDate = @OrderDate,
+                            Description = N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo,
+                            TotalAmount = @TransferredAmount,
+                            AttachmentUrl = @TransferSlipUrl,
+                            UpdatedAt = GETDATE()
+                        WHERE TransactionId = @FinTxId;
+                    END
+
+                    DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+
+                    INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
+                    VALUES 
+                        (@FinTxId, 14, @TransferredAmount, 0, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo),
+                        (@FinTxId, 2, 0, @TransferredAmount, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo);
+                END
+                ELSE
+                BEGIN
+                    IF @FinTxId IS NOT NULL
+                    BEGIN
+                        DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+                        DELETE FROM dbo.FinancialTransactions WHERE TransactionId = @FinTxId;
+                    END
+                END";
+
+            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
+            {
+                DeliveryId = id,
+                dto.DeliveryNo,
+                dto.OrderDate,
+                dto.TransferredAmount,
+                TransferSlipUrl = transferSlipUrl,
+                CreatedBy = currentUserId
+            }, transaction: tx, cancellationToken: cancellationToken));
 
             await tx.CommitAsync(cancellationToken);
             return true;

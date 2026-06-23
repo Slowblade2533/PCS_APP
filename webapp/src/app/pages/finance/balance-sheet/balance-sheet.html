@@ -1,0 +1,148 @@
+<div class="p-6">
+  <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-base-content">งบแสดงฐานะการเงิน (Balance Sheet)</h1>
+      <p class="text-sm text-base-content/70 mt-1">
+        รายงานสรุปสินทรัพย์ หนี้สิน และส่วนของเจ้าของ
+      </p>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+    <div class="card-body p-4 flex flex-col sm:flex-row gap-4 items-end">
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ณ วันที่ (As of Date)</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="asOfDate" />
+      </div>
+      <button class="btn btn-primary" (click)="loadData()" [disabled]="loading()">
+        @if (loading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } ค้นหา
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error shadow-sm mb-6">
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else if (report()) {
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="card-body">
+      <div class="text-center mb-6">
+        <h2 class="text-xl font-bold">งบแสดงฐานะการเงิน</h2>
+        <p class="text-base-content/70">ณ วันที่ {{ asOfDate() }}</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+        <!-- LEFT COLUMN: ASSETS -->
+        <div>
+          <table class="table w-full border-collapse">
+            <tbody>
+              <tr class="bg-base-200/50">
+                <td colspan="2" class="font-bold text-lg">สินทรัพย์ (Assets)</td>
+              </tr>
+              @for (asset of report()!.assetLines; track asset.accountId) {
+              <tr class="hover">
+                <td class="pl-4">{{ asset.accountCode }} - {{ asset.accountName }}</td>
+                <td class="text-right">{{ asset.balance | number:'1.2-2' }}</td>
+              </tr>
+              }
+              @if (report()!.assetLines.length === 0) {
+              <tr>
+                <td colspan="2" class="pl-4 text-base-content/50 italic">- ไม่มีข้อมูลสินทรัพย์ -</td>
+              </tr>
+              }
+              
+              <tr><td colspan="2" class="h-[100px]"></td><!-- Spacer to align bottoms if needed --></tr>
+              
+              <tr class="font-bold border-t-2 border-base-300">
+                <td class="text-right">รวมสินทรัพย์</td>
+                <td class="text-right text-primary text-lg">{{ report()!.totalAssets | number:'1.2-2' }}</td>
+              </tr>
+              <tr>
+                <td colspan="2" class="border-t-4 border-double border-base-300"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- RIGHT COLUMN: LIABILITIES & EQUITY -->
+        <div>
+          <table class="table w-full border-collapse">
+            <tbody>
+              <!-- LIABILITIES -->
+              <tr class="bg-base-200/50">
+                <td colspan="2" class="font-bold text-lg">หนี้สิน (Liabilities)</td>
+              </tr>
+              @for (liab of report()!.liabilityLines; track liab.accountId) {
+              <tr class="hover">
+                <td class="pl-4">{{ liab.accountCode }} - {{ liab.accountName }}</td>
+                <td class="text-right">{{ liab.balance | number:'1.2-2' }}</td>
+              </tr>
+              }
+              @if (report()!.liabilityLines.length === 0) {
+              <tr>
+                <td colspan="2" class="pl-4 text-base-content/50 italic">- ไม่มีข้อมูลหนี้สิน -</td>
+              </tr>
+              }
+              <tr class="font-bold border-t border-base-300">
+                <td class="text-right">รวมหนี้สิน</td>
+                <td class="text-right">{{ report()!.totalLiabilities | number:'1.2-2' }}</td>
+              </tr>
+
+              <tr><td colspan="2" class="h-4"></td></tr>
+
+              <!-- EQUITY -->
+              <tr class="bg-base-200/50">
+                <td colspan="2" class="font-bold text-lg">ส่วนของเจ้าของ (Equity)</td>
+              </tr>
+              @for (eq of report()!.equityLines; track eq.accountId) {
+              <tr class="hover">
+                <td class="pl-4">{{ eq.accountCode }} - {{ eq.accountName }}</td>
+                <td class="text-right">{{ eq.balance | number:'1.2-2' }}</td>
+              </tr>
+              }
+              @if (report()!.equityLines.length === 0) {
+              <tr>
+                <td colspan="2" class="pl-4 text-base-content/50 italic">- ไม่มีข้อมูลส่วนของเจ้าของ -</td>
+              </tr>
+              }
+              <tr class="font-bold border-t border-base-300">
+                <td class="text-right">รวมส่วนของเจ้าของ</td>
+                <td class="text-right">{{ report()!.totalEquity | number:'1.2-2' }}</td>
+              </tr>
+
+              <tr><td colspan="2" class="h-4"></td></tr>
+
+              <tr class="font-bold border-t-2 border-base-300">
+                <td class="text-right">รวมหนี้สินและส่วนของเจ้าของ</td>
+                <td class="text-right text-primary text-lg" 
+                    [class.text-error]="report()!.totalAssets !== report()!.totalLiabilitiesAndEquity">
+                  {{ report()!.totalLiabilitiesAndEquity | number:'1.2-2' }}
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" class="border-t-4 border-double border-base-300"></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          @if (report()!.totalAssets !== report()!.totalLiabilitiesAndEquity) {
+            <div class="mt-2 text-error text-right text-sm">
+              * ข้อมูลไม่สมดุล (Unbalanced) ผลต่าง: {{ (report()!.totalAssets - report()!.totalLiabilitiesAndEquity) | number:'1.2-2' }}
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+  </div>
+  }
+</div>

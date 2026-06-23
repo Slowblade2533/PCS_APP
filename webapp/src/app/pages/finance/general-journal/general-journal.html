@@ -1,0 +1,140 @@
+<div class="p-6">
+  <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-base-content">สมุดรายวันทั่วไป (General Journal)</h1>
+      <p class="text-sm text-base-content/70 mt-1">
+        รายการบันทึกบัญชีแบบคู่ (Double-Entry) ทั้งหมด
+      </p>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+    <div class="card-body p-4 flex flex-col sm:flex-row gap-4 items-end">
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ตั้งแต่วันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateFrom" />
+      </div>
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ถึงวันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateTo" />
+      </div>
+      <button class="btn btn-primary" (click)="loadData()" [disabled]="loading()">
+        @if (loading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } ค้นหา
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error shadow-sm mb-6">
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  <!-- Summary Statistics Cards -->
+  @if (!loading() && rows().length > 0) {
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Total Money In Card -->
+      <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-base-content/60 uppercase">เงินเข้าทั้งหมด</span>
+              <h3 class="text-2xl font-bold text-success mt-1">{{ totalMoneyIn() | number:'1.2-2' }} บาท</h3>
+            </div>
+            <div class="p-3 bg-success/10 text-success rounded-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Money Out Card -->
+      <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-base-content/60 uppercase">เงินออกทั้งหมด</span>
+              <h3 class="text-2xl font-bold text-error mt-1">{{ totalMoneyOut() | number:'1.2-2' }} บาท</h3>
+            </div>
+            <div class="p-3 bg-error/10 text-error rounded-xl">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Net Balance Card -->
+      <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-base-content/60 uppercase">เงินคงเหลือทั้งหมด</span>
+              <h3 class="text-2xl font-bold mt-1" [class.text-success]="netBalance() >= 0" [class.text-error]="netBalance() < 0">
+                {{ netBalance() | number:'1.2-2' }} บาท
+              </h3>
+            </div>
+            <div class="p-3 rounded-xl" [class.bg-success/10]="netBalance() >= 0" [class.text-success]="netBalance() >= 0" [class.bg-error/10]="netBalance() < 0" [class.text-error]="netBalance() < 0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75H21m0 0v-3.375c0-.621-.504-1.125-1.125-1.125H3.75m17.25 4.5v12.75c0 .621-.504 1.125-1.125 1.125H18M9 15h1.5M9 18h1.5" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="overflow-x-auto">
+      <table class="table w-full">
+        <thead class="bg-base-200">
+          <tr>
+            <th>วันที่</th>
+            <th>เลขที่อ้างอิง / รายการ</th>
+            <th>รหัสบัญชี</th>
+            <th>ชื่อบัญชี</th>
+            <th class="text-right">เดบิต (Dr.)</th>
+            <th class="text-right">เครดิต (Cr.)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+          <tr>
+            <td colspan="6" class="text-center py-8">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </td>
+          </tr>
+          } @else if (rows().length === 0) {
+          <tr>
+            <td colspan="6" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลในระบบ</td>
+          </tr>
+          } @else {
+            @for (row of rows(); track row.entryId; let idx = $index) {
+            <tr class="hover" [ngClass]="getTransactionClass(row.transactionType)" [class.border-b-2]="row.transactionId !== (rows()[idx + 1]?.transactionId)" [class.border-base-300]="row.transactionId !== (rows()[idx + 1]?.transactionId)">
+              <td>{{ row.transactionDate | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="font-medium">{{ row.documentNo || '-' }}</div>
+                <div class="text-sm text-base-content/70">{{ row.memo || row.transactionTypeLabel || row.transactionType }}</div>
+              </td>
+              <td class="font-mono">{{ row.accountCode }}</td>
+              <td>{{ row.accountName }}</td>
+              <td class="text-right text-success font-medium">
+                {{ row.debitAmount > 0 ? (row.debitAmount | number:'1.2-2') : '' }}
+              </td>
+              <td class="text-right text-error font-medium">
+                {{ row.creditAmount > 0 ? (row.creditAmount | number:'1.2-2') : '' }}
+              </td>
+            </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

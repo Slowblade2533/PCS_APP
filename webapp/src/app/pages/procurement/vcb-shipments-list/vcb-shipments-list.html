@@ -67,7 +67,7 @@
 
       <div class="overflow-x-auto min-h-100 relative">
         <!-- Loading overlay -->
-        @if (isLoading) {
+        @if (isLoading()) {
           <div
             class="absolute inset-0 bg-base-100/50 backdrop-blur-sm flex items-center justify-center z-10"
           >
@@ -87,7 +87,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (item of shipments; track item.id) {
+            @for (item of shipments(); track item.id) {
               <tr class="hover:bg-base-200/30 transition-colors">
                 <td class="text-center font-medium">{{ item.id }}</td>
                 <td>
@@ -156,7 +156,7 @@
                 </td>
               </tr>
             } @empty {
-              @if (!isLoading) {
+              @if (!isLoading()) {
                 <tr>
                   <td colspan="7" class="text-center py-8 text-base-content/50">
                     ไม่พบข้อมูลการรับสินค้า VCANBUY
@@ -172,20 +172,20 @@
         <div class="text-sm text-base-content/70">
           แสดงรายการที่
           <span class="font-bold">{{
-            totalCount === 0 ? 0 : (searchParams.page - 1) * searchParams.pageSize + 1
+            totalCount() === 0 ? 0 : (searchParams.page - 1) * searchParams.pageSize + 1
           }}</span>
           ถึง
           <span class="font-bold">{{
-            searchParams.page * searchParams.pageSize > totalCount
-              ? totalCount
+            searchParams.page * searchParams.pageSize > totalCount()
+              ? totalCount()
               : searchParams.page * searchParams.pageSize
           }}</span>
-          จากทั้งหมด <span class="font-bold">{{ totalCount }}</span>
+          จากทั้งหมด <span class="font-bold">{{ totalCount() }}</span>
         </div>
         <app-pagination
           [page]="searchParams.page"
           [pageSize]="searchParams.pageSize"
-          [totalCount]="totalCount"
+          [totalCount]="totalCount()"
           (pageChange)="onPageChange($event)"
         >
         </app-pagination>

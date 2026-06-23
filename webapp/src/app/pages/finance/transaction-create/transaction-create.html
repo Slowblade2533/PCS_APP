@@ -1,9 +1,17 @@
 <div class="p-6 max-w-5xl mx-auto">
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold text-base-content">
-      {{ isViewMode() ? 'รายละเอียดสมุดรายวัน' : 'บันทึกรายการบัญชีใหม่' }}
+      {{ isViewMode() ? 'รายละเอียดสมุดรายวัน' : (transactionId() ? 'แก้ไขรายการบัญชี' : 'บันทึกรายการบัญชีใหม่') }}
     </h1>
-    <a routerLink="/finance/transactions" class="btn btn-ghost">กลับไปหน้ารายการ</a>
+    <div class="flex gap-2">
+      @if (isViewMode() && detail()) {
+        <button type="button" class="btn btn-primary" (click)="editTransaction()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
+          แก้ไขรายการ
+        </button>
+      }
+      <a routerLink="/finance/transactions" class="btn btn-ghost">กลับไปหน้ารายการ</a>
+    </div>
   </div>
 
   @if (loading()) {
@@ -69,7 +77,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75H21m0 0v-3.375c0-.621-.504-1.125-1.125-1.125H3.75m17.25 4.5v12.75c0 .621-.504 1.125-1.125 1.125H18M9 15h1.5M9 18h1.5M8.25 12h.008v.008H8.25V12Zm.008 2.25H8.25v.008h.008v-.008Zm0 2.25H8.25v.008h.008v-.008Zm2.25-4.5h.008v.008H10.5V12Zm.008 2.25H10.5v.008h.008v-.008Zm0 2.25H10.5v.008h.008v-.008Zm2.25-4.5h.008v.008H12.75V12Zm.008 2.25H12.75v.008h.008v-.008Zm0 2.25H12.75v.008h.008v-.008Z" /></svg>
             ข้อมูลการเงิน (Financial Info)
           </h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
               <span class="text-base-content/60 block text-xs font-semibold uppercase">ยอดเงินสุทธิ</span>
               <p class="font-bold text-2xl text-success">{{ detail()?.totalAmount | number:'1.2-2' }} บาท</p>
@@ -88,47 +96,67 @@
             </div>
             <div>
               <span class="text-base-content/60 block text-xs font-semibold uppercase">วันที่-เวลาในสลิป</span>
-              <p class="font-medium">{{ detail()?.slipDateTime ? (detail()?.slipDateTime | date:'dd/MM/yyyy HH:mm') : '-' }}</p>
+              <p class="font-medium text-lg">{{ detail()?.slipDateTime ? (detail()?.slipDateTime | date:'dd/MM/yyyy HH:mm') : '-' }}</p>
             </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-base-200 pt-6 mt-6">
             <div>
-              <span class="text-base-content/60 block text-xs font-semibold uppercase">ธนาคารต้นทาง</span>
-              <p class="font-medium">{{ detail()?.originBank || '-' }}</p>
+              <span class="text-base-content/60 block text-xs font-semibold uppercase">ธนาคารต้นทาง / บัญชีส่งเงิน</span>
+              @if (getBank(detail()?.originBank || '')) {
+                <div class="flex items-center gap-2 mt-1">
+                  <img [src]="'/' + getBank(detail()?.originBank || '')?.icon" class="w-6 h-6 object-contain rounded-sm" />
+                  <span class="font-medium">{{ getBank(detail()?.originBank || '')?.name }}</span>
+                </div>
+              } @else {
+                <p class="font-medium mt-1">{{ detail()?.originBank || '-' }}</p>
+              }
+              @if (detail()?.sourceAccountNo) {
+                <p class="text-sm font-mono mt-1 text-base-content/70">เลขที่บัญชี: {{ detail()?.sourceAccountNo }}</p>
+              }
+              @if (detail()?.sourceAccountName) {
+                <p class="text-xs mt-0.5 text-base-content/60">ชื่อบัญชี: {{ detail()?.sourceAccountName }}</p>
+              }
             </div>
             <div>
               <span class="text-base-content/60 block text-xs font-semibold uppercase">ธนาคารปลายทาง / บัญชีรับเงิน</span>
-              <p class="font-medium">{{ detail()?.destinationBank || detail()?.receiverAccountName || '-' }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 3: ไฟล์แนบ (Attachment) -->
-        @if (detail()?.attachmentUrl) {
-          <div class="mb-8">
-            <h2 class="text-lg font-bold text-primary flex items-center gap-2 border-b pb-2 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" /></svg>
-              ไฟล์แนบ (Attachment)
-            </h2>
-            <div class="flex items-center gap-6 bg-base-200/50 p-4 rounded-xl">
-              <a [href]="getAttachmentUrl(detail()?.attachmentUrl)" target="_blank" class="btn btn-outline btn-primary btn-sm flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
-                เปิดไฟล์แนบ
-              </a>
-              @if (isImageUrl(detail()?.attachmentUrl)) {
-                <div class="group relative inline-block">
-                  <div class="avatar">
-                    <div class="w-16 h-16 rounded-lg border border-base-300 bg-base-200 overflow-hidden cursor-zoom-in">
-                      <img [src]="getAttachmentUrl(detail()?.attachmentUrl)" alt="Attachment Preview" class="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                  <!-- Zoom popup -->
-                  <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[99] bg-base-100 p-2 shadow-2xl border border-base-300 rounded-box w-72 h-72 pointer-events-none">
-                    <img [src]="getAttachmentUrl(detail()?.attachmentUrl)" alt="Attachment Zoom" class="w-full h-full object-contain rounded" />
-                  </div>
+              @if (getBank(detail()?.destinationBank || '')) {
+                <div class="flex items-center gap-2 mt-1">
+                  <img [src]="'/' + getBank(detail()?.destinationBank || '')?.icon" class="w-6 h-6 object-contain rounded-sm" />
+                  <span class="font-medium">{{ getBank(detail()?.destinationBank || '')?.name }}</span>
                 </div>
+              } @else {
+                <p class="font-medium mt-1">{{ detail()?.destinationBank || detail()?.receiverAccountName || '-' }}</p>
+              }
+              @if (detail()?.destinationAccountNo) {
+                <p class="text-sm font-mono mt-1 text-base-content/70">เลขที่บัญชี: {{ detail()?.destinationAccountNo }}</p>
+              }
+              @if (detail()?.destinationAccountName) {
+                <p class="text-xs mt-0.5 text-base-content/60">ชื่อบัญชี: {{ detail()?.destinationAccountName }}</p>
+              }
+            </div>
+            <div>
+              <span class="text-base-content/60 block text-xs font-semibold uppercase">ไฟล์แนบ (Attachment)</span>
+              @if (detail()?.attachmentUrl) {
+                <div class="flex items-center gap-3 mt-1.5">
+                  <a [href]="getAttachmentUrl(detail()?.attachmentUrl)" target="_blank" class="btn btn-outline btn-primary btn-xs h-8 min-h-8 px-3 flex items-center gap-1.5 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                    เปิดไฟล์แนบ
+                  </a>
+                  @if (isImageUrl(detail()?.attachmentUrl)) {
+                    <app-image-hover-preview
+                      [imageUrl]="getAttachmentUrl(detail()?.attachmentUrl)"
+                      altText="Attachment Preview"
+                      imageClass="w-10 h-10 rounded-lg border border-base-300 bg-base-200 cursor-zoom-in object-cover shadow-sm"
+                    ></app-image-hover-preview>
+                  }
+                </div>
+              } @else {
+                <p class="font-medium mt-1 text-base-content/40">-</p>
               }
             </div>
           </div>
-        }
+        </div>
 
         <!-- Section 4: รายการบันทึกบัญชี (Journal Entries) -->
         <div>
@@ -253,20 +281,146 @@
             </label>
             <label class="form-control w-full">
               <div class="label"><span class="label-text font-medium">คู่ค้า / ผู้โอน / ผู้รับเงิน</span></div>
-              <input type="text" class="input input-bordered w-full" placeholder="เช่น คุณสมศักดิ์ รักดี, บริษัท เอบีซี จำกัด" [ngModel]="partnerName()" (ngModelChange)="partnerName.set($event)" name="partnerName" />
+              <input type="text" class="input input-bordered w-full" placeholder="เช่น คุณสมศักดิ์ รักดี, บริษัท เอบีซี จำกัด" [ngModel]="partnerName()" (ngModelChange)="onPartnerNameChange($event)" name="partnerName" />
             </label>
             <label class="form-control w-full">
               <div class="label"><span class="label-text font-medium">วันที่-เวลาทำรายการจากสลิป (โอนเงิน)</span></div>
               <input type="datetime-local" class="input input-bordered w-full" [ngModel]="slipDateTime()" (ngModelChange)="slipDateTime.set($event)" name="slipDateTime" />
             </label>
-            <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">ธนาคารต้นทาง (ผู้โอน)</span></div>
-              <input type="text" class="input input-bordered w-full" placeholder="เช่น กสิกรไทย (KBANK)" [ngModel]="originBank()" (ngModelChange)="originBank.set($event)" name="originBank" />
-            </label>
-            <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">ธนาคารปลายทาง / บัญชีรับเงิน</span></div>
-              <input type="text" class="input input-bordered w-full" placeholder="เช่น ไทยพาณิชย์ (SCB)" [ngModel]="destinationBank()" (ngModelChange)="destinationBank.set($event)" name="destinationBank" />
-            </label>
+
+            <!-- Origin Bank Group -->
+            <div class="flex flex-col gap-2 border border-base-200 p-3 rounded-lg bg-base-100">
+              <div class="form-control w-full">
+                <div class="label flex justify-between items-center w-full pb-1">
+                  <span class="label-text font-medium text-xs">ธนาคารต้นทาง (ผู้โอน)</span>
+                  <!-- Quick selector -->
+                  @if (companyBankAccounts().length > 0 || partnerBankAccounts().length > 0) {
+                    <div class="dropdown dropdown-end">
+                      <div tabindex="0" role="button" class="btn btn-xs btn-outline btn-secondary gap-1 py-0 px-2 h-6 min-h-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                        เลือกบัญชี
+                      </div>
+                      <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-72 z-[10] max-h-60 overflow-y-auto border border-base-200">
+                        @if (partnerBankAccounts().length > 0) {
+                          <li class="menu-title text-xs font-bold text-primary">บัญชีของคู่ค้า ({{ partnerName() }})</li>
+                          @for (acc of partnerBankAccounts(); track acc.id) {
+                            <li>
+                              <a (click)="selectPartnerBankAccount(acc, 'source')" class="text-xs py-1.5 flex flex-col items-start gap-0.5">
+                                <div class="flex items-center gap-1 font-medium">
+                                  @if (getBank(acc.bankName)) {
+                                    <img [src]="'/' + getBank(acc.bankName)?.icon" class="w-3.5 h-3.5 object-contain" />
+                                  }
+                                  <span>{{ acc.bankName }} - {{ acc.accountNo }}</span>
+                                </div>
+                                <span class="text-base-content/60 text-[10px]">{{ acc.accountName }}</span>
+                              </a>
+                            </li>
+                          }
+                        }
+                        @if (companyBankAccounts().length > 0) {
+                          <li class="menu-title text-xs font-bold text-secondary mt-1">บัญชีของบริษัท</li>
+                          @for (acc of companyBankAccounts(); track acc.id) {
+                            <li>
+                              <a (click)="selectCompanyBankAccount(acc, 'source')" class="text-xs py-1.5 flex flex-col items-start gap-0.5">
+                                <div class="flex items-center gap-1 font-medium">
+                                  @if (getBank(acc.bankName)) {
+                                    <img [src]="'/' + getBank(acc.bankName)?.icon" class="w-3.5 h-3.5 object-contain" />
+                                  }
+                                  <span>{{ acc.bankName }} - {{ acc.accountNo }}</span>
+                                </div>
+                                <span class="text-base-content/60 text-[10px]">{{ acc.accountName }}</span>
+                              </a>
+                            </li>
+                          }
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+                <app-bank-select [value]="originBank()" (valueChange)="originBank.set($event)" placeholder="เลือกหรือระบุธนาคารต้นทาง"></app-bank-select>
+              </div>
+              <div class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs">เลขที่บัญชีต้นทาง (เฉพาะตัวเลข 10-15 หลัก)</span></div>
+                <input type="text" class="input input-bordered w-full font-mono text-sm h-9 min-h-9" placeholder="เช่น 0201234567" [ngModel]="sourceAccountNo()" (input)="onAccountNoInput($event, 'source')" name="sourceAccountNo" maxlength="15" />
+                @if (partnerName() && originBank() && sourceAccountNo() && sourceAccountNo().length >= 10 && !isPartnerAccountSaved(sourceAccountNo())) {
+                  <label class="label cursor-pointer justify-start gap-2 mt-1 py-0">
+                    <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" [ngModel]="saveSourceAccountOnTheFly()" (ngModelChange)="saveSourceAccountOnTheFly.set($event)" name="saveSourceAccountOnTheFly" />
+                    <span class="label-text text-[11px] text-primary">บันทึกบัญชีต้นทางไปยังประวัติคู่ค้า ({{ partnerName() }})</span>
+                  </label>
+                }
+              </div>
+              <div class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs">ชื่อบัญชีต้นทาง / ชื่อผู้โอนเงิน</span></div>
+                <input type="text" class="input input-bordered w-full text-sm h-9 min-h-9" placeholder="เช่น บจก. เอบีซี (ต้นทาง)" [ngModel]="sourceAccountName()" (ngModelChange)="sourceAccountName.set($event)" name="sourceAccountName" />
+              </div>
+            </div>
+
+            <!-- Destination Bank Group -->
+            <div class="flex flex-col gap-2 border border-base-200 p-3 rounded-lg bg-base-100">
+              <div class="form-control w-full">
+                <div class="label flex justify-between items-center w-full pb-1">
+                  <span class="label-text font-medium text-xs">ธนาคารปลายทาง / บัญชีรับเงิน</span>
+                  <!-- Quick selector -->
+                  @if (companyBankAccounts().length > 0 || partnerBankAccounts().length > 0) {
+                    <div class="dropdown dropdown-end">
+                      <div tabindex="0" role="button" class="btn btn-xs btn-outline btn-secondary gap-1 py-0 px-2 h-6 min-h-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                        เลือกบัญชี
+                      </div>
+                      <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-72 z-[10] max-h-60 overflow-y-auto border border-base-200">
+                        @if (partnerBankAccounts().length > 0) {
+                          <li class="menu-title text-xs font-bold text-primary">บัญชีของคู่ค้า ({{ partnerName() }})</li>
+                          @for (acc of partnerBankAccounts(); track acc.id) {
+                            <li>
+                              <a (click)="selectPartnerBankAccount(acc, 'destination')" class="text-xs py-1.5 flex flex-col items-start gap-0.5">
+                                <div class="flex items-center gap-1 font-medium">
+                                  @if (getBank(acc.bankName)) {
+                                    <img [src]="'/' + getBank(acc.bankName)?.icon" class="w-3.5 h-3.5 object-contain" />
+                                  }
+                                  <span>{{ acc.bankName }} - {{ acc.accountNo }}</span>
+                                </div>
+                                <span class="text-base-content/60 text-[10px]">{{ acc.accountName }}</span>
+                              </a>
+                            </li>
+                          }
+                        }
+                        @if (companyBankAccounts().length > 0) {
+                          <li class="menu-title text-xs font-bold text-secondary mt-1">บัญชีของบริษัท</li>
+                          @for (acc of companyBankAccounts(); track acc.id) {
+                            <li>
+                              <a (click)="selectCompanyBankAccount(acc, 'destination')" class="text-xs py-1.5 flex flex-col items-start gap-0.5">
+                                <div class="flex items-center gap-1 font-medium">
+                                  @if (getBank(acc.bankName)) {
+                                    <img [src]="'/' + getBank(acc.bankName)?.icon" class="w-3.5 h-3.5 object-contain" />
+                                  }
+                                  <span>{{ acc.bankName }} - {{ acc.accountNo }}</span>
+                                </div>
+                                <span class="text-base-content/60 text-[10px]">{{ acc.accountName }}</span>
+                              </a>
+                            </li>
+                          }
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+                <app-bank-select [value]="destinationBank()" (valueChange)="destinationBank.set($event)" placeholder="เลือกหรือระบุธนาคารปลายทาง"></app-bank-select>
+              </div>
+              <div class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs">เลขที่บัญชีปลายทาง (เฉพาะตัวเลข 10-15 หลัก)</span></div>
+                <input type="text" class="input input-bordered w-full font-mono text-sm h-9 min-h-9" placeholder="เช่น 0201234567" [ngModel]="destinationAccountNo()" (input)="onAccountNoInput($event, 'destination')" name="destinationAccountNo" maxlength="15" />
+                @if (partnerName() && destinationBank() && destinationAccountNo() && destinationAccountNo().length >= 10 && !isPartnerAccountSaved(destinationAccountNo())) {
+                  <label class="label cursor-pointer justify-start gap-2 mt-1 py-0">
+                    <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" [ngModel]="saveDestinationAccountOnTheFly()" (ngModelChange)="saveDestinationAccountOnTheFly.set($event)" name="saveDestinationAccountOnTheFly" />
+                    <span class="label-text text-[11px] text-primary">บันทึกบัญชีปลายทางไปยังประวัติคู่ค้า ({{ partnerName() }})</span>
+                  </label>
+                }
+              </div>
+              <div class="form-control w-full">
+                <div class="label py-1"><span class="label-text text-xs">ชื่อบัญชีปลายทาง / ชื่อผู้รับเงิน / พนักงานรับเงินแทน</span></div>
+                <input type="text" class="input input-bordered w-full text-sm h-9 min-h-9" placeholder="เช่น สมชาย ใจดี (ผู้รับแทน)" [ngModel]="destinationAccountName()" (ngModelChange)="destinationAccountName.set($event)" name="destinationAccountName" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -296,17 +450,11 @@
                 }
                 
                 @if (imagePreview()) {
-                  <div class="group relative inline-block">
-                    <div class="avatar">
-                      <div class="w-12 h-12 rounded border border-base-300 bg-base-200 overflow-hidden cursor-zoom-in">
-                        <img [src]="imagePreview()!" alt="Selected Preview" class="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                    <!-- Zoom popup -->
-                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-64 h-64 pointer-events-none">
-                      <img [src]="imagePreview()!" alt="Selected Zoom" class="w-full h-full object-contain rounded" />
-                    </div>
-                  </div>
+                  <app-image-hover-preview
+                    [imageUrl]="imagePreview()!"
+                    altText="Selected Preview"
+                    imageClass="w-12 h-12 rounded border border-base-300 bg-base-200 cursor-zoom-in object-cover"
+                  ></app-image-hover-preview>
                 }
               </div>
             </div>
@@ -419,12 +567,12 @@
 
         <!-- Form Actions -->
         <div class="flex justify-end gap-4 border-t border-base-200 pt-6 mt-6">
-          <a routerLink="/finance/transactions" class="btn btn-ghost">ยกเลิก</a>
+          <button type="button" class="btn btn-ghost" (click)="cancel()">ยกเลิก</button>
           <button type="submit" class="btn btn-primary px-8" [disabled]="submitting() || !isBalanced">
             @if (submitting()) {
               <span class="loading loading-spinner"></span>
             }
-            บันทึกสมุดรายวัน
+            {{ transactionId() ? 'บันทึกการแก้ไข' : 'บันทึกสมุดรายวัน' }}
           </button>
         </div>
 

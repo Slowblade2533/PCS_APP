@@ -1,0 +1,211 @@
+<div class="p-6 max-w-6xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4 border-base-200">
+    <div>
+      <div class="text-sm breadcrumbs">
+        <ul>
+          <li><a routerLink="/investors">รายชื่อนักลงทุน</a></li>
+          <li class="text-primary font-semibold">รายละเอียดนักลงทุน</li>
+        </ul>
+      </div>
+      <h1 class="text-3xl font-extrabold text-base-content tracking-tight mt-1">
+        {{ investor()?.title }}{{ investor()?.firstName }} {{ investor()?.lastName }}
+      </h1>
+    </div>
+    <div class="flex gap-2">
+      <a [routerLink]="['/investors', investor()?.investorId, 'edit']" class="btn btn-warning btn-sm shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+        </svg>
+        แก้ไขข้อมูล
+      </a>
+      <button class="btn btn-error btn-sm shadow-sm" (click)="deleteInvestor()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+        </svg>
+        ลบนักลงทุน
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="flex justify-center items-center py-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else {
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Column: Profile Card & Bank Accounts -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- Profile Card -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body">
+            <h2 class="card-title text-base-content font-bold border-b pb-2 mb-3">โปรไฟล์นักลงทุน</h2>
+            <div class="space-y-3 text-sm">
+              <div>
+                <span class="text-base-content/50 block text-xs">เลขผู้เสียภาษี / เลขบัตรประชาชน</span>
+                <span class="font-mono font-semibold">{{ investor()?.taxId || '-' }}</span>
+              </div>
+              <div>
+                <span class="text-base-content/50 block text-xs">เบอร์โทรศัพท์</span>
+                <span class="font-semibold">{{ investor()?.phone || '-' }}</span>
+              </div>
+              <div>
+                <span class="text-base-content/50 block text-xs">อีเมล</span>
+                <span class="font-semibold text-primary">{{ investor()?.email || '-' }}</span>
+              </div>
+              <div>
+                <span class="text-base-content/50 block text-xs">ที่อยู่</span>
+                <span class="text-base-content/80">{{ investor()?.address || '-' }}</span>
+              </div>
+              <div>
+                <span class="text-base-content/50 block text-xs">วันที่บันทึกระบบ</span>
+                <span class="font-mono text-xs">{{ investor()?.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bank Accounts Card -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body">
+            <h2 class="card-title text-base-content font-bold border-b pb-2 mb-3">บัญชีธนาคารสำหรับจ่ายคืน</h2>
+            <div class="space-y-3">
+              @for (account of bankAccounts(); track account.bankAccountId) {
+                <div class="flex justify-between items-center bg-base-200/40 p-3 rounded-lg border border-base-200">
+                  <div class="flex items-center gap-3">
+                    @if (getBank(account.bankName)) {
+                      <div class="avatar">
+                        <div class="w-10 h-10 rounded-lg bg-white p-1 border border-base-300 flex items-center justify-center">
+                          <img [src]="'/' + getBank(account.bankName)?.icon" [alt]="account.bankName" class="object-contain w-full h-full" />
+                        </div>
+                      </div>
+                      <div>
+                        <span class="font-semibold text-sm block">{{ getBank(account.bankName)?.fullname }}</span>
+                        <span class="font-mono text-xs text-base-content/60">{{ account.accountNumber }}</span>
+                        <span class="text-xs block text-base-content/50">ประเภท: {{ account.accountType === 'Savings' ? 'ออมทรัพย์' : account.accountType === 'Current' ? 'กระแสรายวัน' : account.accountType === 'Fixed' ? 'ฝากประจำ' : account.accountType }}</span>
+                      </div>
+                    } @else {
+                      <div>
+                        <span class="font-semibold text-sm block">{{ account.bankName }}</span>
+                        <span class="font-mono text-xs text-base-content/60">{{ account.accountNumber }}</span>
+                        <span class="text-xs block text-base-content/50">ประเภท: {{ account.accountType === 'Savings' ? 'ออมทรัพย์' : account.accountType === 'Current' ? 'กระแสรายวัน' : account.accountType === 'Fixed' ? 'ฝากประจำ' : account.accountType }}</span>
+                      </div>
+                    }
+                  </div>
+                  @if (account.isDefault) {
+                    <span class="badge badge-primary badge-sm font-semibold px-2.5 py-1">บัญชีหลัก</span>
+                  }
+                </div>
+              } @empty {
+                <div class="text-center py-6 text-sm text-base-content/40">
+                  ไม่มีข้อมูลบัญชีธนาคาร
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Investments Summary & List -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Overview Stats -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="stat bg-base-100 shadow-xl border border-base-200 rounded-2xl">
+            <div class="stat-title text-xs text-base-content/60 font-semibold">ยอดลงทุนทั้งหมด</div>
+            <div class="stat-value text-2xl font-black text-primary mt-1">
+              ฿{{ getTotalInvested() | number:'1.2-2' }}
+            </div>
+          </div>
+          <div class="stat bg-base-100 shadow-xl border border-base-200 rounded-2xl">
+            <div class="stat-title text-xs text-base-content/60 font-semibold">จำนวนรายการร่วมลงทุน</div>
+            <div class="stat-value text-2xl font-black text-secondary mt-1">
+              {{ investments().length }} รายการ
+            </div>
+          </div>
+        </div>
+
+        <!-- Investments List Card -->
+        <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card-body">
+            <h2 class="card-title text-base-content font-bold border-b pb-2 mb-3">ประวัติการลงทุน</h2>
+            <div class="overflow-x-auto">
+              <table class="table table-compact w-full">
+                <thead>
+                  <tr class="text-base-content/60 text-xs">
+                    <th>ประเภทการลงทุน</th>
+                    <th>ยอดเงินต้น</th>
+                    <th>อัตราดอกเบี้ย</th>
+                    <th>วันที่เริ่มต้น</th>
+                    <th>กำหนดสัญญาคืน</th>
+                    <th>สถานะ</th>
+                    <th class="text-right">ดู</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (inv of investments(); track inv.investmentId) {
+                    <tr class="hover:bg-base-200/40 transition-colors">
+                      <td class="font-bold">
+                        @if (inv.investmentType === 0) {
+                          <span class="text-success flex items-center gap-1">
+                            <span class="badge badge-success badge-xs"></span> หุ้นส่วน (Equity)
+                          </span>
+                        } @else {
+                          <span class="text-info flex items-center gap-1">
+                            <span class="badge badge-info badge-xs"></span> เงินกู้ยืม (Loan)
+                          </span>
+                        }
+                      </td>
+                      <td class="font-mono font-bold text-sm">
+                        ฿{{ inv.principalAmount | number:'1.2-2' }}
+                      </td>
+                      <td class="font-mono text-xs">
+                        {{ inv.investmentType === 1 && inv.interestRate !== null ? (inv.interestRate + '%') : '-' }}
+                      </td>
+                      <td class="font-mono text-xs">
+                        {{ inv.startDate | date:'dd/MM/yyyy' }}
+                      </td>
+                      <td class="font-mono text-xs">
+                        {{ inv.maturityDate ? (inv.maturityDate | date:'dd/MM/yyyy') : '-' }}
+                      </td>
+                      <td>
+                        @switch (inv.status) {
+                          @case (0) {
+                            <span class="badge badge-info badge-sm">กำลังดำเนินการ</span>
+                          }
+                          @case (1) {
+                            <span class="badge badge-success badge-sm">ชำระคืนครบแล้ว</span>
+                          }
+                          @case (2) {
+                            <span class="badge badge-error badge-sm">ผิดนัดชำระ</span>
+                          }
+                          @case (3) {
+                            <span class="badge badge-ghost badge-sm">ยกเลิกสัญญา</span>
+                          }
+                        }
+                      </td>
+                      <td class="text-right">
+                        <a [routerLink]="['/investments', inv.investmentId]" class="btn btn-square btn-ghost btn-xs text-primary">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.43 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </a>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="text-center py-8 text-base-content/40">
+                        ยังไม่มีประวัติการร่วมลงทุน
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

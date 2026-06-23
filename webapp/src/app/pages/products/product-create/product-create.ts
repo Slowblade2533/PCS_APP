@@ -44,7 +44,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
   submitError = signal<string | null>(null);
   variantsComparison = signal<any[]>([]);
 
-  private originalFormValue: any = null;
+  private originalFormValue = signal<any>(null);
 
   readonly apiOrigin = environment.apiUrl;
 
@@ -142,7 +142,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
           }
 
           this.isFormReady.set(true);
-          this.originalFormValue = this.productForm.getRawValue();
+          this.originalFormValue.set(this.productForm.getRawValue());
           this.isModified.set(false); // เริ่มต้นยังไม่ได้แก้ไขอะไร
           this.trackFormChanges();
         },
@@ -163,7 +163,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
         } else if (this.currentMode() === 'edit') {
           const currentFormValue = this.productForm.getRawValue();
           const hasChanged =
-            JSON.stringify(this.originalFormValue) !== JSON.stringify(currentFormValue);
+            JSON.stringify(this.originalFormValue()) !== JSON.stringify(currentFormValue);
           this.isModified.set(hasChanged);
         }
       });
@@ -171,7 +171,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
 
   getComparisonReport() {
     const current = this.productForm.getRawValue();
-    const old = this.originalFormValue || {};
+    const old = this.originalFormValue() || {};
     const getCatName = (id: any) => (id ? `รหัสหมวดหมู่: ${id}` : '-');
     const oldNameTh = (old.productNameTh || '').trim();
     const newNameTh = (current.productNameTh || '').trim();
@@ -241,7 +241,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
   }
 
   getVariantsComparison() {
-    const oldVariants = this.originalFormValue?.variants || [];
+    const oldVariants = this.originalFormValue()?.variants || [];
     const currentVariants = this.productForm.getRawValue().variants || [];
 
     return currentVariants.map((v: any, index: number) => {

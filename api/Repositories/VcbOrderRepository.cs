@@ -144,6 +144,60 @@ public class VcbOrderRepository : IVcbOrderRepository
                 await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: tx, cancellationToken: cancellationToken));
             }
 
+            // Sync Financial Transaction
+            const string syncFinTxSql = @"
+                DECLARE @FinTxId INT;
+                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbOrder' AND ReferenceId = @OrderId;
+
+                IF @FinTxId IS NULL
+                BEGIN
+                    INSERT INTO dbo.FinancialTransactions (
+                        TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
+                        Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
+                        ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
+                        Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
+                        SlipDateTime
+                    )
+                    VALUES (
+                        @OrderDate, 'PURCHASE_VCB', 'VcbOrder', @OrderId, NULL,
+                        N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo, @TotalAmount, 'TRANSFER', NULL, NULL,
+                        NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
+                        'POSTED', @BranchId, GETDATE(), @CreatedBy, @OrderNo, N'VCANBUY',
+                        @OrderDate
+                    );
+                    SET @FinTxId = SCOPE_IDENTITY();
+                END
+                ELSE
+                BEGIN
+                    UPDATE dbo.FinancialTransactions SET
+                        TransactionDate = @OrderDate,
+                        Description = N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo,
+                        TotalAmount = @TotalAmount,
+                        AttachmentUrl = @TransferSlipUrl,
+                        BranchId = @BranchId,
+                        DocumentNo = @OrderNo,
+                        UpdatedAt = GETDATE()
+                    WHERE TransactionId = @FinTxId;
+                END
+
+                DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+
+                INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
+                VALUES 
+                    (@FinTxId, 4, @TotalAmount, 0, N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo),
+                    (@FinTxId, 2, 0, @TotalAmount, N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo);";
+
+            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
+            {
+                OrderId = orderId,
+                OrderNo = dto.OrderNo,
+                OrderDate = dto.OrderDate,
+                TotalAmount = dto.TotalAmount,
+                BranchId = dto.BranchId,
+                TransferSlipUrl = transferSlipUrl,
+                CreatedBy = createdBy
+            }, transaction: tx, cancellationToken: cancellationToken));
+
             await tx.CommitAsync(cancellationToken);
             return orderId;
         }
@@ -213,6 +267,60 @@ public class VcbOrderRepository : IVcbOrderRepository
 
                 await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: tx, cancellationToken: cancellationToken));
             }
+
+            // Sync Financial Transaction
+            const string syncFinTxSql = @"
+                DECLARE @FinTxId INT;
+                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbOrder' AND ReferenceId = @OrderId;
+
+                IF @FinTxId IS NULL
+                BEGIN
+                    INSERT INTO dbo.FinancialTransactions (
+                        TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
+                        Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
+                        ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
+                        Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
+                        SlipDateTime
+                    )
+                    VALUES (
+                        @OrderDate, 'PURCHASE_VCB', 'VcbOrder', @OrderId, NULL,
+                        N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo, @TotalAmount, 'TRANSFER', NULL, NULL,
+                        NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
+                        'POSTED', @BranchId, GETDATE(), @CreatedBy, @OrderNo, N'VCANBUY',
+                        @OrderDate
+                    );
+                    SET @FinTxId = SCOPE_IDENTITY();
+                END
+                ELSE
+                BEGIN
+                    UPDATE dbo.FinancialTransactions SET
+                        TransactionDate = @OrderDate,
+                        Description = N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo,
+                        TotalAmount = @TotalAmount,
+                        AttachmentUrl = @TransferSlipUrl,
+                        BranchId = @BranchId,
+                        DocumentNo = @OrderNo,
+                        UpdatedAt = GETDATE()
+                    WHERE TransactionId = @FinTxId;
+                END
+
+                DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
+
+                INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
+                VALUES 
+                    (@FinTxId, 4, @TotalAmount, 0, N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo),
+                    (@FinTxId, 2, 0, @TotalAmount, N'ชำระเงินใบสั่งซื้อ VCANBUY เลขที่ ' + @OrderNo);";
+
+            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
+            {
+                OrderId = id,
+                OrderNo = dto.OrderNo,
+                OrderDate = dto.OrderDate,
+                TotalAmount = dto.TotalAmount,
+                BranchId = dto.BranchId,
+                TransferSlipUrl = transferSlipUrl,
+                CreatedBy = updatedBy
+            }, transaction: tx, cancellationToken: cancellationToken));
 
             await tx.CommitAsync(cancellationToken);
             return true;

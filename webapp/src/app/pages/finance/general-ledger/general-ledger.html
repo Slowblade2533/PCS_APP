@@ -1,0 +1,93 @@
+<div class="p-6">
+  <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-base-content">บัญชีแยกประเภท (General Ledger)</h1>
+      <p class="text-sm text-base-content/70 mt-1">
+        รายงานการเคลื่อนไหวของแต่ละบัญชีพร้อมยอดยกมาและยอดคงเหลือ
+      </p>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm border border-base-200 mb-6">
+    <div class="card-body p-4 flex flex-col sm:flex-row gap-4 items-end">
+      <div class="form-control w-full sm:max-w-sm">
+        <label class="label"><span class="label-text">บัญชี</span></label>
+        <select class="select select-bordered w-full" [(ngModel)]="selectedAccountId">
+          <option [ngValue]="null">-- เลือกบัญชี --</option>
+          @for (acc of accounts(); track acc.accountId) {
+            <option [ngValue]="acc.accountId">{{ acc.accountCode }} - {{ acc.accountName }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ตั้งแต่วันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateFrom" />
+      </div>
+      <div class="form-control w-full sm:max-w-xs">
+        <label class="label"><span class="label-text">ถึงวันที่</span></label>
+        <input type="date" class="input input-bordered w-full" [(ngModel)]="dateTo" />
+      </div>
+      <button class="btn btn-primary" (click)="loadData()" [disabled]="loading()">
+        @if (loading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } ค้นหา
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error shadow-sm mb-6">
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  <div class="card bg-base-100 shadow-sm border border-base-200">
+    <div class="overflow-x-auto">
+      <table class="table table-sm w-full">
+        <thead class="bg-base-200/50">
+          <tr>
+            <th>วันที่</th>
+            <th>เลขที่อ้างอิง / รายการ</th>
+            <th class="text-right">เดบิต (Dr.)</th>
+            <th class="text-right">เครดิต (Cr.)</th>
+            <th class="text-right">ยอดคงเหลือ (Balance)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading()) {
+          <tr>
+            <td colspan="5" class="text-center py-8">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </td>
+          </tr>
+          } @else if (rows().length === 0) {
+          <tr>
+            <td colspan="5" class="text-center py-8 text-base-content/60">กรุณาเลือกบัญชีและกดค้นหา</td>
+          </tr>
+          } @else {
+            @for (row of rows(); track $index) {
+            <tr class="hover" [class.bg-base-200]="row.isBroughtForward">
+              <td>{{ row.transactionDate | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div [class.font-bold]="row.isBroughtForward">{{ row.memo || '-' }}</div>
+                @if (row.documentNo) {
+                <div class="text-xs text-base-content/70">{{ row.documentNo }}</div>
+                }
+              </td>
+              <td class="text-right text-success font-medium">
+                {{ row.debitAmount > 0 ? (row.debitAmount | number:'1.2-2') : '' }}
+              </td>
+              <td class="text-right text-error font-medium">
+                {{ row.creditAmount > 0 ? (row.creditAmount | number:'1.2-2') : '' }}
+              </td>
+              <td class="text-right font-bold" [class.text-error]="row.runningBalance < 0">
+                {{ row.runningBalance | number:'1.2-2' }}
+              </td>
+            </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

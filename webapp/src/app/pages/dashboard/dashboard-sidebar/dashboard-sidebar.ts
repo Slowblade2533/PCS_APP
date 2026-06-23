@@ -6,6 +6,7 @@ import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
   selector: 'app-dashboard-sidebar',
+  standalone: true,
   imports: [RouterLink, RouterLinkActive],
   templateUrl: './dashboard-sidebar.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -157,8 +157,8 @@
 
         <!-- Pagination -->
         <app-pagination
-          [page]="query.page"
-          [pageSize]="query.pageSize"
+          [page]="query().page"
+          [pageSize]="query().pageSize"
           [totalCount]="result()?.totalCount ?? 0"
           (pageChange)="changePage($event)"
         ></app-pagination>

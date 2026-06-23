@@ -70,6 +70,10 @@ public class FinancialTransactionModel
     public DateTime? SlipDateTime { get; set; }
     public string? OriginBank { get; set; }
     public string? DestinationBank { get; set; }
+    public string? SourceAccountNo { get; set; }
+    public string? DestinationAccountNo { get; set; }
+    public string? SourceAccountName { get; set; }
+    public string? DestinationAccountName { get; set; }
 }
 
 // ─── Financial Ledger Entry (Double-Entry) ────────────────────────────────────
@@ -83,4 +87,30 @@ public class FinancialLedgerEntryModel
     public decimal DebitAmount { get; set; }
     public decimal CreditAmount { get; set; }
     public string? Memo { get; set; }
+}
+
+// ─── Partner Bank Account ─────────────────────────────────────────────────────
+public class PartnerBankAccountModel
+{
+    public int Id { get; set; }
+    public int? SupplierId { get; set; }
+    public string PartnerName { get; set; } = string.Empty;
+    public string BankName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+// ─── Company Bank Account ─────────────────────────────────────────────────────
+public class CompanyBankAccountModel
+{
+    public int Id { get; set; }
+    public string BankName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public int? ChartOfAccountId { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

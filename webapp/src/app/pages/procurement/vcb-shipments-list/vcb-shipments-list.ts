@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import Big from 'big.js';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -36,16 +36,16 @@ export class VcbShipmentsListComponent implements OnInit {
   private readonly procurementService = inject(ProcurementService);
   private readonly swal = inject(SweetAlertService);
 
-  isLoading = false;
+  isLoading = signal(false);
   searchParams: VcbShipmentSearch = {
     page: 1,
     pageSize: 10,
     searchTerm: '',
     status: '',
   };
-  shipments: VcbShipment[] = [];
-  totalCount = 0;
-  totalPages = 0;
+  shipments = signal<VcbShipment[]>([]);
+  totalCount = signal(0);
+  totalPages = signal(0);
 
   filterForm = new FormGroup({
     searchTerm: new FormControl(''),
@@ -84,17 +84,17 @@ export class VcbShipmentsListComponent implements OnInit {
   }
 
   loadShipments(): void {
-    this.isLoading = true;
+    this.isLoading.set(true);
     this.procurementService.getVcbShipments(this.searchParams).subscribe({
       next: (res) => {
-        this.shipments = res.items || [];
-        this.totalCount = res.totalCount || 0;
-        this.totalPages = Math.ceil(this.totalCount / this.searchParams.pageSize);
-        this.isLoading = false;
+        this.shipments.set(res.items || []);
+        this.totalCount.set(res.totalCount || 0);
+        this.totalPages.set(Math.ceil(this.totalCount() / this.searchParams.pageSize));
+        this.isLoading.set(false);
         this.cdr.markForCheck();
       },
       error: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
         this.cdr.markForCheck();
       },
     });

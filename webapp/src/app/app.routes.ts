@@ -251,6 +251,34 @@ export const routes: Routes = [
             (m) => m.TrialBalance,
           ),
       },
+      {
+        path: 'finance/general-journal',
+        loadComponent: () =>
+          import('./pages/finance/general-journal/general-journal').then(
+            (m) => m.GeneralJournal,
+          ),
+      },
+      {
+        path: 'finance/general-ledger',
+        loadComponent: () =>
+          import('./pages/finance/general-ledger/general-ledger').then(
+            (m) => m.GeneralLedger,
+          ),
+      },
+      {
+        path: 'finance/profit-loss',
+        loadComponent: () =>
+          import('./pages/finance/profit-loss/profit-loss').then(
+            (m) => m.ProfitLoss,
+          ),
+      },
+      {
+        path: 'finance/balance-sheet',
+        loadComponent: () =>
+          import('./pages/finance/balance-sheet/balance-sheet').then(
+            (m) => m.BalanceSheet,
+          ),
+      },
 
       // ── Sales ─────────────────────────────────────────────────
       {
@@ -321,6 +349,61 @@ export const routes: Routes = [
             (m) => m.GoodsReceiptCreate,
           ),
       },
+          // ── Investors ────────────────────────────────────────
+          {
+            path: 'investors',
+            loadComponent: () =>
+              import('./pages/investors/investor-list/investor-list').then(m => m.InvestorList),
+            canActivate: [permissionGuard],
+            data: { permission: 'investor:view' },
+          },
+          {
+            path: 'investors/create',
+            loadComponent: () =>
+              import('./pages/investors/investor-form/investor-form').then(m => m.InvestorForm),
+            canActivate: [permissionGuard],
+            data: { permission: 'investor:create' },
+            canDeactivate: [pendingChangesGuard],
+          },
+          {
+            path: 'investors/:id',
+            loadComponent: () =>
+              import('./pages/investors/investor-detail/investor-detail').then(m => m.InvestorDetail),
+            canActivate: [permissionGuard],
+            data: { permission: 'investor:view' },
+          },
+          {
+            path: 'investors/:id/edit',
+            loadComponent: () =>
+              import('./pages/investors/investor-form/investor-form').then(m => m.InvestorForm),
+            canActivate: [permissionGuard],
+            data: { permission: 'investor:edit' },
+            canDeactivate: [pendingChangesGuard],
+          },
+          // ── Investments ────────────────────────────────────────
+          {
+            path: 'investments',
+            loadComponent: () =>
+              import('./pages/investments/investment-list/investment-list').then(m => m.InvestmentList),
+            canActivate: [permissionGuard],
+            data: { permission: 'investment:view' },
+          },
+          {
+            path: 'investments/create',
+            loadComponent: () =>
+              import('./pages/investments/investment-form/investment-form').then(m => m.InvestmentForm),
+            canActivate: [permissionGuard],
+            data: { permission: 'investment:create' },
+            canDeactivate: [pendingChangesGuard],
+          },
+          {
+            path: 'investments/:id',
+            loadComponent: () =>
+              import('./pages/investments/investment-detail/investment-detail').then(m => m.InvestmentDetail),
+            canActivate: [permissionGuard],
+            data: { permission: 'investment:view' },
+            canDeactivate: [pendingChangesGuard],
+          },
     ],
   },
   {

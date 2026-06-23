@@ -18,7 +18,7 @@
     </button>
     <div>
       <h1 class="text-2xl font-bold text-violet-600 dark:text-violet-400">
-        {{ isEditMode ? '📥 แก้ไขใบรับสินค้า VCANBUY' : '📥 สร้างใบรับสินค้า VCANBUY' }}
+        {{ isEditMode() ? '📥 แก้ไขใบรับสินค้า VCANBUY' : '📥 สร้างใบรับสินค้า VCANBUY' }}
       </h1>
       <p class="text-base-content/60 mt-1">รับสินค้าจากจีน แจกแจงหมายเลขกล่อง และอัปเดตสต็อก</p>
     </div>
@@ -26,7 +26,7 @@
 
   <form [formGroup]="shipmentForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-6">
     <!-- โหลดข้อมูลในโหมดแก้ไข -->
-    @if (isSearching && isEditMode) {
+    @if (isSearching() && isEditMode()) {
       <div class="card bg-base-100 shadow-xl border border-base-200">
         <div class="card-body flex items-center justify-center py-12">
           <span class="loading loading-spinner loading-lg text-primary mb-2"></span>
@@ -36,7 +36,7 @@
     }
 
     <!-- ค้นหาออเดอร์อ้างอิง -->
-    @if (!selectedDelivery && !isEditMode) {
+    @if (!selectedDelivery() && !isEditMode()) {
       <div class="card bg-base-100 shadow-xl border border-base-200">
         <div class="card-body">
           <h2 class="card-title text-xl mb-4">1. เลือกบิลขนส่ง VCANBUY อ้างอิง</h2>
@@ -69,7 +69,7 @@
           </div>
 
           <div class="overflow-x-auto relative border border-base-200 rounded-box">
-            @if (isSearching) {
+            @if (isSearching()) {
               <div
                 class="absolute inset-0 bg-base-100/50 backdrop-blur-sm flex items-center justify-center z-10"
               >
@@ -88,7 +88,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (del of searchResults; track del.id) {
+                @for (del of searchResults(); track del.id) {
                   <tr class="hover:bg-base-200/30 transition-colors">
                     <td class="font-bold text-primary">{{ del.deliveryNo }}</td>
                     <td class="text-sm opacity-90 text-info">{{ del.orderNumbers || '-' }}</td>
@@ -106,7 +106,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  @if (!isSearching) {
+                  @if (!isSearching()) {
                     <tr>
                       <td colspan="5" class="text-center py-8 text-base-content/50">
                         ไม่พบข้อมูลออเดอร์ (สถานะรอดำเนินการ)
@@ -120,12 +120,12 @@
 
           <div class="mt-4 flex justify-between items-center">
             <div class="text-sm text-base-content/70">
-              แสดงรายการทั้งหมด <span class="font-bold">{{ totalCount }}</span>
+              แสดงรายการทั้งหมด <span class="font-bold">{{ totalCount() }}</span>
             </div>
             <app-pagination
               [page]="searchParams.page"
               [pageSize]="searchParams.pageSize"
-              [totalCount]="totalCount"
+              [totalCount]="totalCount()"
               (pageChange)="onPageChange($event)"
             >
             </app-pagination>
@@ -134,7 +134,7 @@
       </div>
     }
 
-    @if (selectedDelivery) {
+    @if (selectedDelivery()) {
       <div class="alert alert-success shadow-sm flex justify-between">
         <div class="flex items-center gap-2">
           <svg
@@ -151,17 +151,17 @@
             />
           </svg>
           <div>
-            <h3 class="font-bold">บิลขนส่งอ้างอิง: {{ selectedDelivery.deliveryNo }}</h3>
+            <h3 class="font-bold">บิลขนส่งอ้างอิง: {{ selectedDelivery()?.deliveryNo }}</h3>
           </div>
         </div>
-        @if (!isEditMode) {
+        @if (!isEditMode()) {
           <button
             type="button"
             class="btn btn-sm btn-ghost"
             (click)="
-              selectedDelivery = null;
+              selectedDelivery.set(null);
               shipmentForm.patchValue({ deliveryId: null });
-              searchResults = [];
+              searchResults.set([]);
               items.clear()
             "
           >
@@ -175,7 +175,7 @@
           <div class="card-body p-4">
             <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">ใบสั่งซื้อที่เกี่ยวข้อง (Orders)</h2>
             <div class="flex flex-wrap gap-2">
-              @for (order of selectedDelivery.orders; track order.orderId) {
+              @for (order of selectedDelivery()?.orders; track order.orderId) {
                 <div class="badge badge-primary p-3">{{ order.orderNo }}</div>
               } @empty {
                 <span class="text-sm text-base-content/50">ไม่มีข้อมูลใบสั่งซื้อ</span>
@@ -196,7 +196,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (item of selectedDelivery.items; track item.id) {
+                  @for (item of selectedDelivery()?.items; track item.id) {
                     <tr>
                       <td class="font-bold text-primary">{{ item.packageBoxNo }}</td>
                       <td class="text-center">
@@ -248,7 +248,7 @@
           </div>
 
           <div class="flex flex-wrap gap-2 mb-4">
-            @for (ordItem of availableOrderItems; track ordItem.id) {
+            @for (ordItem of availableOrderItems(); track ordItem.id) {
               @if ((ordItem.remainingQuantity ?? ordItem.quantity) > 0) {
                 <button
                   type="button"
@@ -315,13 +315,13 @@
                     <label class="label-text text-sm font-semibold mb-1.5"
                       >หมายเลขกล่องที่รับ (Box)*</label
                     >
-                    @if (availableSubBoxes.length > 0) {
+                    @if (availableSubBoxes().length > 0) {
                       <select
                         formControlName="boxNumbers"
                         class="select select-bordered focus:select-primary w-full"
                       >
                         <option value="" disabled selected>เลือกกล่องที่รับ (CX...)</option>
-                        @for (box of availableSubBoxes; track box) {
+                        @for (box of availableSubBoxes(); track box) {
                           <option [value]="box">{{ box }}</option>
                         }
                       </select>
@@ -440,8 +440,8 @@
 
       <div class="flex justify-end gap-4 mt-4">
         <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting">
-          @if (isSubmitting) {
+        <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting()">
+          @if (isSubmitting()) {
             <span class="loading loading-spinner loading-sm"></span>
           }
           บันทึกใบรับสินค้า

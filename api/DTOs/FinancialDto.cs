@@ -133,6 +133,10 @@ public class FinancialTransactionDto
     public DateTime? SlipDateTime { get; set; }
     public string? OriginBank { get; set; }
     public string? DestinationBank { get; set; }
+    public string? SourceAccountNo { get; set; }
+    public string? DestinationAccountNo { get; set; }
+    public string? SourceAccountName { get; set; }
+    public string? DestinationAccountName { get; set; }
 
     public List<FinancialLedgerEntryDto> LedgerEntries { get; set; } = new();
 }
@@ -208,6 +212,20 @@ public class FinancialTransactionCreateDto
     [MaxLength(100)]
     public string? DestinationBank { get; set; }
 
+    [MaxLength(20)]
+    [RegularExpression(@"^[0-9]{10,15}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลข 10-15 หลักเท่านั้น")]
+    public string? SourceAccountNo { get; set; }
+
+    [MaxLength(20)]
+    [RegularExpression(@"^[0-9]{10,15}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลข 10-15 หลักเท่านั้น")]
+    public string? DestinationAccountNo { get; set; }
+
+    [MaxLength(255)]
+    public string? SourceAccountName { get; set; }
+
+    [MaxLength(255)]
+    public string? DestinationAccountName { get; set; }
+
     [Required, MinLength(2, ErrorMessage = "ต้องมีรายการบัญชีอย่างน้อย 2 รายการ (Debit + Credit)")]
     public List<LedgerEntryCreateDto> LedgerEntries { get; set; } = new();
 }
@@ -245,4 +263,148 @@ public class TrialBalanceRowDto
     public decimal TotalDebit { get; set; }
     public decimal TotalCredit { get; set; }
     public decimal Balance { get; set; }        // TotalDebit - TotalCredit
+}
+
+// ─── General Journal (สมุดรายวันทั่วไป) ──────────────────────────────────────
+public class GeneralJournalRowDto
+{
+    public long EntryId { get; set; }
+    public int TransactionId { get; set; }
+    public DateOnly TransactionDate { get; set; }
+    public string? DocumentNo { get; set; }
+    public string TransactionType { get; set; } = string.Empty;
+    public string? TransactionTypeLabel { get; set; }
+    public string? Memo { get; set; }
+    public int AccountId { get; set; }
+    public string AccountCode { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public decimal DebitAmount { get; set; }
+    public decimal CreditAmount { get; set; }
+}
+
+// ─── General Ledger (บัญชีแยกประเภท) ───────────────────────────────────────
+public class GeneralLedgerRowDto
+{
+    public DateOnly? TransactionDate { get; set; }
+    public string? DocumentNo { get; set; }
+    public string? Memo { get; set; }
+    public decimal DebitAmount { get; set; }
+    public decimal CreditAmount { get; set; }
+    public decimal RunningBalance { get; set; }
+    public bool IsBroughtForward { get; set; }
+}
+
+// ─── Profit & Loss (งบกำไรขาดทุน) ─────────────────────────────────────────
+public class ProfitAndLossReportDto
+{
+    public DateOnly? DateFrom { get; set; }
+    public DateOnly? DateTo { get; set; }
+    public List<ProfitAndLossLineDto> RevenueLines { get; set; } = new();
+    public decimal TotalRevenue { get; set; }
+    public List<ProfitAndLossLineDto> ExpenseLines { get; set; } = new();
+    public decimal TotalExpense { get; set; }
+    public decimal NetProfit { get; set; }
+}
+
+public class ProfitAndLossLineDto
+{
+    public int AccountId { get; set; }
+    public string AccountCode { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public decimal Balance { get; set; } // Positive usually means normal balance
+}
+
+// ─── Balance Sheet (งบดุล) ────────────────────────────────────────────────
+public class BalanceSheetReportDto
+{
+    public DateOnly AsOfDate { get; set; }
+    
+    public List<BalanceSheetLineDto> AssetLines { get; set; } = new();
+    public decimal TotalAssets { get; set; }
+    
+    public List<BalanceSheetLineDto> LiabilityLines { get; set; } = new();
+    public decimal TotalLiabilities { get; set; }
+    
+    public List<BalanceSheetLineDto> EquityLines { get; set; } = new();
+    public decimal TotalEquity { get; set; }
+    
+    public decimal TotalLiabilitiesAndEquity { get; set; }
+}
+
+public class BalanceSheetLineDto
+{
+    public int AccountId { get; set; }
+    public string AccountCode { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public decimal Balance { get; set; }
+}
+
+// ─── Partner Bank Account DTOs ────────────────────────────────────────────────
+public class PartnerBankAccountDto
+{
+    public int Id { get; set; }
+    public int? SupplierId { get; set; }
+    public string PartnerName { get; set; } = string.Empty;
+    public string BankName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class PartnerBankAccountCreateDto
+{
+    public int? SupplierId { get; set; }
+
+    [Required]
+    [MaxLength(255)]
+    public string PartnerName { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
+    public string BankName { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(20)]
+    [RegularExpression(@"^[0-9]{10,15}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลข 10-15 หลักเท่านั้น")]
+    public string AccountNo { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(255)]
+    public string AccountName { get; set; } = string.Empty;
+
+    public bool IsDefault { get; set; } = false;
+    public bool IsActive { get; set; } = true;
+}
+
+// ─── Company Bank Account DTOs ────────────────────────────────────────────────
+public class CompanyBankAccountDto
+{
+    public int Id { get; set; }
+    public string BankName { get; set; } = string.Empty;
+    public string AccountNo { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public int? ChartOfAccountId { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CompanyBankAccountCreateDto
+{
+    [Required]
+    [MaxLength(50)]
+    public string BankName { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(20)]
+    [RegularExpression(@"^[0-9]{10,15}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลข 10-15 หลักเท่านั้น")]
+    public string AccountNo { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(255)]
+    public string AccountName { get; set; } = string.Empty;
+
+    public int? ChartOfAccountId { get; set; }
+    public bool IsActive { get; set; } = true;
 }
