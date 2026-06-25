@@ -16,6 +16,8 @@ namespace PCS_API.Models
         public string? ContractUrl { get; set; }
         public int? CompanyBankAccountId { get; set; }
         public bool IsCash { get; set; }
+        public string? PaymentProofUrl { get; set; }
+        public Guid? InvestorBankAccountId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

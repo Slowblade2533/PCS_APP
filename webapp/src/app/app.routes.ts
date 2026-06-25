@@ -214,6 +214,8 @@ export const routes: Routes = [
           import('./pages/finance/chart-of-accounts/chart-of-accounts').then(
             (m) => m.ChartOfAccountsList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'finance:view' },
       },
       {
         path: 'finance/tax-invoices',
@@ -221,6 +223,8 @@ export const routes: Routes = [
           import('./pages/finance/tax-invoices-list/tax-invoices-list').then(
             (m) => m.TaxInvoicesList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'finance:view' },
       },
       {
         path: 'finance/transactions',
@@ -228,6 +232,8 @@ export const routes: Routes = [
           import('./pages/finance/transactions-list/transactions-list').then(
             (m) => m.TransactionsList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'finance:view' },
       },
       {
         path: 'finance/transactions/create',
@@ -235,6 +241,8 @@ export const routes: Routes = [
           import('./pages/finance/transaction-create/transaction-create').then(
             (m) => m.TransactionCreate,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'finance:manage' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -243,6 +251,8 @@ export const routes: Routes = [
           import('./pages/finance/transaction-create/transaction-create').then(
             (m) => m.TransactionCreate,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'finance:manage' },
       },
       {
         path: 'finance/trial-balance',
@@ -250,6 +260,8 @@ export const routes: Routes = [
           import('./pages/finance/trial-balance/trial-balance').then(
             (m) => m.TrialBalance,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'report:view' },
       },
       {
         path: 'finance/general-journal',
@@ -257,6 +269,8 @@ export const routes: Routes = [
           import('./pages/finance/general-journal/general-journal').then(
             (m) => m.GeneralJournal,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'report:view' },
       },
       {
         path: 'finance/general-ledger',
@@ -264,6 +278,8 @@ export const routes: Routes = [
           import('./pages/finance/general-ledger/general-ledger').then(
             (m) => m.GeneralLedger,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'report:view' },
       },
       {
         path: 'finance/profit-loss',
@@ -271,6 +287,8 @@ export const routes: Routes = [
           import('./pages/finance/profit-loss/profit-loss').then(
             (m) => m.ProfitLoss,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'report:view' },
       },
       {
         path: 'finance/balance-sheet',
@@ -278,6 +296,8 @@ export const routes: Routes = [
           import('./pages/finance/balance-sheet/balance-sheet').then(
             (m) => m.BalanceSheet,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'report:view' },
       },
 
       // ── Sales ─────────────────────────────────────────────────
@@ -402,6 +422,14 @@ export const routes: Routes = [
               import('./pages/investments/investment-detail/investment-detail').then(m => m.InvestmentDetail),
             canActivate: [permissionGuard],
             data: { permission: 'investment:view' },
+            canDeactivate: [pendingChangesGuard],
+          },
+          {
+            path: 'investments/:id/edit',
+            loadComponent: () =>
+              import('./pages/investments/investment-form/investment-form').then(m => m.InvestmentForm),
+            canActivate: [permissionGuard],
+            data: { permission: 'investment:edit' },
             canDeactivate: [pendingChangesGuard],
           },
     ],

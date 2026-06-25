@@ -29,8 +29,8 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
     public async Task<Guid> CreateAsync(InvestmentModel model, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = @"INSERT INTO Investment (InvestmentId, InvestorId, InvestmentType, PrincipalAmount, Currency, InterestRate, StartDate, MaturityDate, Status, ContractUrl, CompanyBankAccountId, IsCash, CreatedAt, UpdatedAt)
-                      VALUES (@InvestmentId, @InvestorId, @InvestmentType, @PrincipalAmount, @Currency, @InterestRate, @StartDate, @MaturityDate, @Status, @ContractUrl, @CompanyBankAccountId, @IsCash, @CreatedAt, @UpdatedAt);
+        var query = @"INSERT INTO Investment (InvestmentId, InvestorId, InvestmentType, PrincipalAmount, Currency, InterestRate, StartDate, MaturityDate, Status, ContractUrl, PaymentProofUrl, CompanyBankAccountId, IsCash, InvestorBankAccountId, CreatedAt, UpdatedAt)
+                      VALUES (@InvestmentId, @InvestorId, @InvestmentType, @PrincipalAmount, @Currency, @InterestRate, @StartDate, @MaturityDate, @Status, @ContractUrl, @PaymentProofUrl, @CompanyBankAccountId, @IsCash, @InvestorBankAccountId, @CreatedAt, @UpdatedAt);
                       SELECT @InvestmentId;";
         var parameters = new
         {
@@ -44,8 +44,10 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
             model.MaturityDate,
             model.Status,
             model.ContractUrl,
+            model.PaymentProofUrl,
             model.CompanyBankAccountId,
             model.IsCash,
+            model.InvestorBankAccountId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -59,7 +61,7 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
         using var conn = connectionFactory.CreateConnection();
         var query = @"UPDATE Investment SET InvestorId = @InvestorId, InvestmentType = @InvestmentType, PrincipalAmount = @PrincipalAmount,
                       Currency = @Currency, InterestRate = @InterestRate, StartDate = @StartDate, MaturityDate = @MaturityDate,
-                      Status = @Status, ContractUrl = @ContractUrl, CompanyBankAccountId = @CompanyBankAccountId, IsCash = @IsCash, UpdatedAt = @UpdatedAt WHERE InvestmentId = @InvestmentId";
+                      Status = @Status, ContractUrl = @ContractUrl, PaymentProofUrl = @PaymentProofUrl, CompanyBankAccountId = @CompanyBankAccountId, IsCash = @IsCash, InvestorBankAccountId = @InvestorBankAccountId, UpdatedAt = @UpdatedAt WHERE InvestmentId = @InvestmentId";
         var parameters = new
         {
             model.InvestmentId,
@@ -72,13 +74,117 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
             model.MaturityDate,
             model.Status,
             model.ContractUrl,
+            model.PaymentProofUrl,
             model.CompanyBankAccountId,
             model.IsCash,
+            model.InvestorBankAccountId,
             UpdatedAt = DateTime.UtcNow
         };
         var command = new CommandDefinition(query, parameters, cancellationToken: cancellationToken);
         var rows = await conn.ExecuteAsync(command);
         return rows > 0;
+    }
+
+    public async Task<bool> UpdateInvestmentAsync(InvestmentModel model, List<InvestmentScheduleModel> schedules, List<InvestmentInterestScheduleModel> interestSchedules, CancellationToken cancellationToken = default)
+    {
+        using var conn = connectionFactory.CreateConnection();
+        conn.Open();
+        using var transaction = conn.BeginTransaction();
+        try
+        {
+            // 1. Update Investment
+            var queryUpdate = @"UPDATE Investment SET InvestorId = @InvestorId, InvestmentType = @InvestmentType, PrincipalAmount = @PrincipalAmount,
+                               Currency = @Currency, InterestRate = @InterestRate, StartDate = @StartDate, MaturityDate = @MaturityDate,
+                               Status = @Status, ContractUrl = @ContractUrl, PaymentProofUrl = @PaymentProofUrl, CompanyBankAccountId = @CompanyBankAccountId, IsCash = @IsCash, InvestorBankAccountId = @InvestorBankAccountId, UpdatedAt = @UpdatedAt WHERE InvestmentId = @InvestmentId";
+            var parameters = new
+            {
+                model.InvestmentId,
+                model.InvestorId,
+                model.InvestmentType,
+                model.PrincipalAmount,
+                model.Currency,
+                model.InterestRate,
+                model.StartDate,
+                model.MaturityDate,
+                model.Status,
+                model.ContractUrl,
+                model.PaymentProofUrl,
+                model.CompanyBankAccountId,
+                model.IsCash,
+                model.InvestorBankAccountId,
+                UpdatedAt = DateTime.UtcNow
+            };
+            var cmdUpdate = new CommandDefinition(queryUpdate, parameters, transaction, cancellationToken: cancellationToken);
+            await conn.ExecuteAsync(cmdUpdate);
+
+            // 2. Delete existing InterestSchedules and recreate
+            var deleteInterestQuery = "DELETE FROM InvestmentInterestSchedule WHERE InvestmentId = @InvestmentId";
+            var cmdDeleteInterest = new CommandDefinition(deleteInterestQuery, new { model.InvestmentId }, transaction, cancellationToken: cancellationToken);
+            await conn.ExecuteAsync(cmdDeleteInterest);
+
+            if (interestSchedules != null && interestSchedules.Count > 0)
+            {
+                var insertInterestQuery = @"INSERT INTO InvestmentInterestSchedule (ScheduleId, InvestmentId, StartMonth, EndMonth, InterestRate, CreatedAt)
+                                            VALUES (@ScheduleId, @InvestmentId, @StartMonth, @EndMonth, @InterestRate, @CreatedAt)";
+                var interestList = interestSchedules.Select(ins => new
+                {
+                    ScheduleId = ins.ScheduleId == Guid.Empty ? Guid.NewGuid() : ins.ScheduleId,
+                    InvestmentId = model.InvestmentId,
+                    ins.StartMonth,
+                    ins.EndMonth,
+                    ins.InterestRate,
+                    CreatedAt = DateTime.UtcNow
+                }).ToList();
+                var cmdInsertInterest = new CommandDefinition(insertInterestQuery, interestList, transaction, cancellationToken: cancellationToken);
+                await conn.ExecuteAsync(cmdInsertInterest);
+            }
+
+            // 3. Update schedules
+            var existingSchedules = (await conn.QueryAsync<InvestmentScheduleModel>(
+                new CommandDefinition("SELECT * FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId", new { model.InvestmentId }, transaction, cancellationToken: cancellationToken))).ToList();
+
+            bool hasPaidSchedules = existingSchedules.Any(s => s.Status == 1);
+
+            if (!hasPaidSchedules)
+            {
+                var deleteSchedulesQuery = "DELETE FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId";
+                var cmdDeleteSchedules = new CommandDefinition(deleteSchedulesQuery, new { model.InvestmentId }, transaction, cancellationToken: cancellationToken);
+                await conn.ExecuteAsync(cmdDeleteSchedules);
+
+                if (schedules != null && schedules.Count > 0)
+                {
+                    var insertSchedulesQuery = @"INSERT INTO InvestmentSchedule (ScheduleId, InvestmentId, InstallmentNumber, DueDate, PrincipalAmount, InterestAmount, PaidAmount, Status, PaymentDate, CompanyBankAccountId, IsCash, SlipUrl, TransactionId, CreatedAt)
+                                                VALUES (@ScheduleId, @InvestmentId, @InstallmentNumber, @DueDate, @PrincipalAmount, @InterestAmount, @PaidAmount, @Status, @PaymentDate, @CompanyBankAccountId, @IsCash, @SlipUrl, @TransactionId, @CreatedAt)";
+                    var schedulesList = schedules.Select(s => new
+                    {
+                        ScheduleId = s.ScheduleId == Guid.Empty ? Guid.NewGuid() : s.ScheduleId,
+                        InvestmentId = model.InvestmentId,
+                        s.InstallmentNumber,
+                        s.DueDate,
+                        s.PrincipalAmount,
+                        s.InterestAmount,
+                        s.PaidAmount,
+                        s.Status,
+                        s.PaymentDate,
+                        s.CompanyBankAccountId,
+                        s.IsCash,
+                        s.SlipUrl,
+                        s.TransactionId,
+                        CreatedAt = DateTime.UtcNow
+                    }).ToList();
+                    var cmdInsertSchedules = new CommandDefinition(insertSchedulesQuery, schedulesList, transaction, cancellationToken: cancellationToken);
+                    await conn.ExecuteAsync(cmdInsertSchedules);
+                }
+            }
+
+            transaction.Commit();
+            return true;
+        }
+        catch (Exception)
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public async Task<bool> DeleteAsync(Guid investmentId, CancellationToken cancellationToken = default)

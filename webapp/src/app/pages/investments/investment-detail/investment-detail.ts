@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { environment } from '../../../../environments/environment';
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { CompanyBankAccount } from '../../../shared/models/financial.models';
 import { Investment, InvestmentInterestSchedule, InvestmentSchedule } from '../../../shared/models/investment.models';
 import { Investor, InvestorBankAccount } from '../../../shared/models/investor.models';
@@ -13,11 +15,31 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
 @Component({
   selector: 'app-investment-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ImageHoverPreview],
   templateUrl: './investment-detail.html',
   styleUrl: './investment-detail.css',
 })
 export class InvestmentDetail implements OnInit {
+  apiOrigin = environment.apiUrl.replace('/api', '');
+
+  isPdf(url: string | null | undefined): boolean {
+    if (!url) return false;
+    return url.toLowerCase().endsWith('.pdf');
+  }
+
+  isImage(url: string | null | undefined): boolean {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif');
+  }
+
+  getFileUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `${this.apiOrigin}${url}`;
+  }
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);

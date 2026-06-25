@@ -115,12 +115,20 @@ export class FinancialService {
     return this.http.delete<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/partner/${id}`);
   }
 
-  getCompanyBankAccounts(): Observable<CompanyBankAccount[]> {
-    return this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`);
+  getCompanyBankAccounts(activeOnly: boolean = false): Observable<CompanyBankAccount[]> {
+    let params = new HttpParams();
+    if (activeOnly) {
+      params = params.set('activeOnly', 'true');
+    }
+    return this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`, { params });
   }
 
   saveCompanyBankAccount(payload: CompanyBankAccountCreatePayload): Observable<{ value: number }> {
     return this.http.post<{ value: number }>(`${environment.apiUrl}/bank-accounts/company`, payload);
+  }
+
+  updateCompanyBankAccount(id: number, payload: CompanyBankAccountCreatePayload): Observable<{ value: boolean }> {
+    return this.http.put<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/company/${id}`, payload);
   }
 
   deleteCompanyBankAccount(id: number): Observable<{ value: boolean }> {

@@ -287,6 +287,7 @@ export interface CompanyBankAccount {
   accountName: string;
   chartOfAccountId?: number;
   isActive: boolean;
+  accountType: string;
   createdAt: string;
 }
 
@@ -295,4 +296,6 @@ export interface CompanyBankAccountCreatePayload {
   accountNo: string;
   accountName: string;
   chartOfAccountId?: number;
+  isActive?: boolean;
+  accountType: string;
 }

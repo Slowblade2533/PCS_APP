@@ -15,6 +15,8 @@ namespace PCS_API.DTOs
         public DateTime? MaturityDate { get; set; }
         public int Status { get; set; } // 0 = Active, 1 = Repaid, 2 = Defaulted, 3 = Cancelled
         public string? ContractUrl { get; set; }
+        public string? PaymentProofUrl { get; set; }
+        public Guid? InvestorBankAccountId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
@@ -59,8 +61,10 @@ namespace PCS_API.DTOs
         public DateTime StartDate { get; set; }
         public DateTime? MaturityDate { get; set; }
         public string? ContractUrl { get; set; }
+        public string? PaymentProofUrl { get; set; }
         public int? CompanyBankAccountId { get; set; }
         public bool IsCash { get; set; }
+        public Guid? InvestorBankAccountId { get; set; }
 
         public List<InvestmentInterestScheduleCreateDto> InterestSchedules { get; set; } = new();
         public List<InvestmentScheduleCreateDto> Schedules { get; set; } = new();

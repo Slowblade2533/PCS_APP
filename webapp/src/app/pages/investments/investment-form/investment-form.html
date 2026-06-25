@@ -2,11 +2,25 @@
   <!-- Header -->
   <div class="flex justify-between items-center">
     <div>
-      <h1 class="text-3xl font-extrabold text-base-content tracking-tight">บันทึกสัญญาร่วมลงทุน / เงินกู้ยืมใหม่</h1>
-      <p class="text-sm text-base-content/60">บันทึกวงเงินสัญญา แหล่งทุน อัตราดอกเบี้ย พร้อมตารางคำนวณงวดชำระคืน</p>
+      <h1 class="text-3xl font-extrabold text-base-content tracking-tight">
+        {{ isEditMode() ? 'แก้ไขสัญญาการลงทุน / เงินกู้ยืม' : 'บันทึกสัญญาร่วมลงทุน / เงินกู้ยืมใหม่' }}
+      </h1>
+      <p class="text-sm text-base-content/60">
+        {{ isEditMode() ? 'แก้ไขวงเงินสัญญา แหล่งทุน อัตราดอกเบี้ย หรือตารางงวดการผ่อนชำระ' : 'บันทึกวงเงินสัญญา แหล่งทุน อัตราดอกเบี้ย พร้อมตารางคำนวณงวดชำระคืน' }}
+      </p>
     </div>
-    <a routerLink="/investments" class="btn btn-outline btn-sm">ย้อนกลับ</a>
+    <a [routerLink]="isEditMode() ? ['/investments', investmentId()] : ['/investments']" class="btn btn-outline btn-sm">ย้อนกลับ</a>
   </div>
+
+  @if (hasPaidSchedules()) {
+    <div class="alert alert-warning shadow-md">
+      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6 text-warning" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+      <div>
+        <h3 class="font-bold text-sm">สัญญานี้มีบางงวดที่จ่ายชำระเงินแล้ว</h3>
+        <p class="text-xs">สามารถแก้ไขได้เฉพาะข้อมูลบัญชีธนาคารและเอกสารแนบเท่านั้น ระบบไม่อนุญาตให้แก้ไขเงินต้น ดอกเบี้ย วันที่ หรือคำนวณตารางงวดใหม่เพื่อป้องกันปัญหางบการเงินไม่สอดคล้อง</p>
+      </div>
+    </div>
+  }
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
     <!-- Main Info Card -->
@@ -81,14 +95,57 @@
             </div>
           </div>
 
-          <!-- Bank Account Destination -->
+          <!-- Bank Account Destination / Origin -->
           @if (!form.get('isCash')?.value) {
+            <!-- Investor Bank Account Origin -->
+            <div class="form-control w-full">
+              <label class="label">
+                <span class="label-text font-semibold">
+                  บัญชีธนาคารต้นทางของผู้ลงทุน
+                  @if (investorBankAccounts().length > 0) {
+                    <span class="text-error">*</span>
+                  }
+                </span>
+              </label>
+              <select formControlName="investorBankAccountId" class="select select-bordered w-full bg-base-100 font-medium">
+                @if (investorBankAccounts().length === 0) {
+                  <option value="">(ผู้ลงทุนรายนี้ไม่มีข้อมูลบัญชีธนาคาร)</option>
+                } @else {
+                  <option value="">เลือกบัญชีโอนออก...</option>
+                  @for (bank of investorBankAccounts(); track bank.bankAccountId) {
+                    <option [value]="bank.bankAccountId">{{ bank.bankName }} - {{ bank.accountNumber }} {{ bank.isDefault ? '(บัญชีหลัก)' : '' }}</option>
+                  }
+                }
+              </select>
+              @if (investorBankAccounts().length === 0 && form.get('investorId')?.value) {
+                <span class="text-xs text-amber-500 font-medium mt-1 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+                  ผู้ร่วมลงทุนรายนี้ยังไม่ได้ลงทะเบียนบัญชีธนาคาร
+                </span>
+              }
+              @if (form.get('investorBankAccountId')?.touched && form.get('investorBankAccountId')?.invalid) {
+                <span class="text-xs text-error mt-1">กรุณาเลือกบัญชีธนาคารต้นทางของผู้ลงทุน</span>
+              }
+            </div>
+
+            <!-- Bank Account Destination -->
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-semibold">บัญชีธนาคารบริษัทที่รับโอน <span class="text-error">*</span></span></label>
-              <select formControlName="companyBankAccountId" class="select select-bordered w-full bg-base-100">
+              <select formControlName="companyBankAccountId" class="select select-bordered w-full bg-base-100 font-medium">
                 <option value="">เลือกบัญชีรับเงินโอน...</option>
-                @for (bank of companyBankAccounts(); track bank.id) {
-                  <option [value]="bank.id">{{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})</option>
+                @if (businessAccounts().length > 0) {
+                  <optgroup label="บัญชีชื่อร้าน / บริษัท / หจก">
+                    @for (bank of businessAccounts(); track bank.id) {
+                      <option [value]="bank.id">{{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})</option>
+                    }
+                  </optgroup>
+                }
+                @if (personalAccounts().length > 0) {
+                  <optgroup label="บัญชีบุคคล (เจ้าของ / หุ้นส่วน / พนักงาน)">
+                    @for (bank of personalAccounts(); track bank.id) {
+                      <option [value]="bank.id">{{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})</option>
+                    }
+                  </optgroup>
                 }
               </select>
               @if (form.get('companyBankAccountId')?.touched && form.get('companyBankAccountId')?.invalid) {
@@ -101,11 +158,11 @@
           <div class="form-control w-full">
             <label class="label"><span class="label-text font-semibold">เอกสารใบสัญญาเงินกู้ / ร่วมทุน (PDF หรือรูปภาพ)</span></label>
             <div class="flex flex-col gap-2">
-              <input type="file" class="file-input file-input-bordered file-input-sm w-full" (change)="onFileUpload($event)" accept="image/*,application/pdf" />
-              @if (isUploading()) {
+              <input #contractInput type="file" class="file-input file-input-bordered file-input-sm w-full" (change)="onContractUpload($event)" accept="image/*,application/pdf" />
+              @if (isUploadingContract()) {
                 <div class="flex items-center gap-2 text-xs text-primary mt-1">
                   <span class="loading loading-spinner loading-xs"></span>
-                  กำลังอัปโหลดไฟล์...
+                  กำลังอัปโหลดเอกสารสัญญา...
                 </div>
               }
               @if (form.get('contractUrl')?.value) {
@@ -115,6 +172,144 @@
                   </svg>
                   อัปโหลดสัญญาแนบแล้ว
                 </div>
+
+                @if (isImage(form.get('contractUrl')?.value)) {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <app-image-hover-preview
+                      [imageUrl]="getFileUrl(form.get('contractUrl')?.value)"
+                      altText="Contract Preview"
+                      imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
+                    ></app-image-hover-preview>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">ตัวอย่างสัญญา (รูปภาพ)</span>
+                      <a [href]="getFileUrl(form.get('contractUrl')?.value)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                        เปิดในแท็บใหม่
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearContract(contractInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                } @else if (isPdf(form.get('contractUrl')?.value)) {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">เอกสารสัญญา (PDF)</span>
+                      <a [href]="getFileUrl(form.get('contractUrl')?.value)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        กดเพื่อดูเนื้อหา
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearContract(contractInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">ไฟล์สัญญาแนบ</span>
+                      <a [href]="getFileUrl(form.get('contractUrl')?.value)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        ดูเนื้อหาไฟล์
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearContract(contractInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- Payment Proof Upload -->
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-semibold">หลักฐานการรับเงินลงทุน (รูปภาพหรือ PDF)</span></label>
+            <div class="flex flex-col gap-2">
+              <input #paymentProofInput type="file" class="file-input file-input-bordered file-input-sm w-full" (change)="onPaymentProofUpload($event)" accept="image/*,application/pdf" />
+              @if (isUploadingPaymentProof()) {
+                <div class="flex items-center gap-2 text-xs text-primary mt-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  กำลังอัปโหลดหลักฐานการรับเงิน...
+                </div>
+              }
+              @if (form.get('paymentProofUrl')?.value) {
+                <div class="text-xs text-success flex items-center gap-1 font-semibold">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  อัปโหลดหลักฐานการรับเงินแล้ว
+                </div>
+
+                @if (isImage(form.get('paymentProofUrl')?.value)) {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <app-image-hover-preview
+                      [imageUrl]="getFileUrl(form.get('paymentProofUrl')?.value)"
+                      altText="Payment Proof Preview"
+                      imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
+                    ></app-image-hover-preview>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">ตัวอย่างหลักฐาน (รูปภาพ)</span>
+                      <a [href]="getFileUrl(form.get('paymentProofUrl')?.value)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                        เปิดในแท็บใหม่
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearPaymentProof(paymentProofInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                } @else if (isPdf(form.get('paymentProofUrl')?.value)) {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">หลักฐานการรับเงิน (PDF)</span>
+                      <a [href]="getFileUrl(form.get('paymentProofUrl')?.value)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        กดเพื่อดูเนื้อหา
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearPaymentProof(paymentProofInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="flex items-center gap-3 mt-1 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-semibold text-base-content/80">ไฟล์หลักฐานแนบ</span>
+                      <a [href]="getFileUrl(form.get('paymentProofUrl')?.value)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        ดูเนื้อหาไฟล์
+                      </a>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-circle btn-xs text-error hover:bg-error/10 ml-2" title="ลบไฟล์แนบ" (click)="clearPaymentProof(paymentProofInput)">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                }
               }
             </div>
           </div>
@@ -257,7 +452,7 @@
 
     <!-- Action Buttons -->
     <div class="flex justify-end gap-3 mt-6">
-      <a routerLink="/investments" class="btn btn-outline">ยกเลิก</a>
+      <a [routerLink]="isEditMode() ? ['/investments', investmentId()] : ['/investments']" class="btn btn-outline">ยกเลิก</a>
       <button type="submit" class="btn btn-primary shadow-md" [disabled]="isLoading() || isUploading()">
         @if (isLoading()) {
           <span class="loading loading-spinner"></span>

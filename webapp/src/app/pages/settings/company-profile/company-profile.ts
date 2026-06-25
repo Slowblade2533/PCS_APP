@@ -6,11 +6,14 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { forkJoin, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
+import { CompanyBankAccount } from '../../../shared/models/financial.models';
+import { BankSelectComponent } from '../../../shared/components/bank-select/bank-select';
+import { bankLists, Bank } from '../../../shared/constants/banks.constants';
 
 @Component({
   selector: 'app-company-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, BankSelectComponent],
   templateUrl: './company-profile.html',
 })
 export class CompanyProfile implements OnInit {
@@ -21,6 +24,10 @@ export class CompanyProfile implements OnInit {
 
   isLoading = signal(false);
   isSaving = signal(false);
+  companyBankAccounts = signal<CompanyBankAccount[]>([]);
+  showBankForm = signal(false);
+  editingBankId = signal<number | null>(null);
+  bankForm: FormGroup;
 
   stagedLogoFile = signal<File | null>(null);
   stagedLogoPreviewUrl = signal<string | null>(null);
@@ -50,10 +57,19 @@ export class CompanyProfile implements OnInit {
       email: [''],
       logoUrl: [null],
     });
+
+    this.bankForm = this.fb.group({
+      bankName: ['', Validators.required],
+      accountNo: ['', [Validators.required, Validators.pattern(/^[0-9\-]{10,20}$/)]],
+      accountName: ['', Validators.required],
+      accountType: ['Business', Validators.required],
+      isActive: [true]
+    });
   }
 
   ngOnInit(): void {
     this.loadProfile();
+    this.loadBankAccounts();
   }
 
   loadProfile() {
@@ -192,5 +208,111 @@ export class CompanyProfile implements OnInit {
     } else {
       runSave(null, null);
     }
+  }
+
+  loadBankAccounts() {
+    this.http
+      .get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.companyBankAccounts.set(data);
+        },
+        error: (err) => {
+          console.error('Failed to load bank accounts', err);
+        }
+      });
+  }
+
+  openAddBankForm() {
+    this.editingBankId.set(null);
+    this.bankForm.reset({
+      bankName: '',
+      accountNo: '',
+      accountName: '',
+      accountType: 'Business',
+      isActive: true
+    });
+    this.showBankForm.set(true);
+  }
+
+  openEditBankForm(bank: CompanyBankAccount) {
+    this.editingBankId.set(bank.id);
+    this.bankForm.patchValue({
+      bankName: bank.bankName,
+      accountNo: bank.accountNo,
+      accountName: bank.accountName,
+      accountType: bank.accountType,
+      isActive: bank.isActive
+    });
+    this.showBankForm.set(true);
+  }
+
+  saveBankAccount() {
+    if (this.bankForm.invalid) {
+      this.bankForm.markAllAsTouched();
+      return;
+    }
+
+    const payload = this.bankForm.value;
+    const editingId = this.editingBankId();
+
+    if (editingId !== null) {
+      this.http
+        .put(`${environment.apiUrl}/bank-accounts/company/${editingId}`, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.swal.success('แก้ไขบัญชีธนาคารสำเร็จ');
+            this.showBankForm.set(false);
+            this.editingBankId.set(null);
+            this.loadBankAccounts();
+          },
+          error: (err) => {
+            console.error('Failed to update bank account', err);
+            this.swal.error(err.error?.message || 'แก้ไขบัญชีธนาคารล้มเหลว');
+          }
+        });
+    } else {
+      this.http
+        .post(`${environment.apiUrl}/bank-accounts/company`, payload)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.swal.success('เพิ่มบัญชีธนาคารสำเร็จ');
+            this.showBankForm.set(false);
+            this.loadBankAccounts();
+          },
+          error: (err) => {
+            console.error('Failed to create bank account', err);
+            this.swal.error(err.error?.message || 'เพิ่มบัญชีธนาคารล้มเหลว');
+          }
+        });
+    }
+  }
+
+  deleteBankAccount(id: number) {
+    this.swal.confirm('ยืนยันการลบบัญชีธนาคารนี้หรือไม่?', 'ลบ', 'ยกเลิก').then((result) => {
+      if (result.isConfirmed) {
+        this.http
+          .delete(`${environment.apiUrl}/bank-accounts/company/${id}`)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.swal.success('ลบบัญชีธนาคารสำเร็จ');
+              this.loadBankAccounts();
+            },
+            error: (err) => {
+              console.error('Failed to delete bank account', err);
+              this.swal.error('ลบบัญชีธนาคารล้มเหลว');
+            }
+          });
+      }
+    });
+  }
+
+  getBankInfo(bankName: string): Bank | null {
+    if (!bankName) return null;
+    return bankLists[bankName] || null;
   }
 }

@@ -183,7 +183,7 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> UploadTransactionAttachment(IFormFile file)
     {
-        var (isSuccess, result) = await SaveAttachmentAsync(file, "transactions");
+        var (isSuccess, result) = await SaveAttachmentAsync(file, "temp");
         if (!isSuccess) return BadRequest(new { message = result });
         return Ok(new { imageUrl = result });
     }

@@ -103,6 +103,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CanCreateInvestments", p => p.Requirements.Add(new PermissionRequirementHandler("investment:create")));
     options.AddPolicy("CanEditInvestments", p => p.Requirements.Add(new PermissionRequirementHandler("investment:edit")));
 
+    // Finance
+    options.AddPolicy("CanViewFinancials", p => p.Requirements.Add(new PermissionRequirementHandler("finance:view")));
+    options.AddPolicy("CanManageFinancials", p => p.Requirements.Add(new PermissionRequirementHandler("finance:manage")));
+
+    // Bank Accounts
+    options.AddPolicy("CanViewBankAccounts", p => p.Requirements.Add(new PermissionRequirementHandler("bank_account:view")));
+    options.AddPolicy("CanManageBankAccounts", p => p.Requirements.Add(new PermissionRequirementHandler("bank_account:manage")));
+
     // Policy for authenticated access to protected static files (uploaded images)
     options.AddPolicy("AuthenticatedOnly", p => p.RequireAuthenticatedUser());
 });
@@ -148,6 +156,7 @@ builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
 builder.Services.AddSingleton<ImageCleanupChannel>();
 builder.Services.AddHostedService<ImageCleanupBackgroundService>();
+builder.Services.AddHostedService<TempFileCleanupBackgroundService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

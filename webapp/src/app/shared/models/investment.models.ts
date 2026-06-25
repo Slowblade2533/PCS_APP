@@ -10,8 +10,10 @@ export interface Investment {
   maturityDate?: string;
   status: number; // 0 = Active, 1 = Repaid, 2 = Defaulted, 3 = Cancelled
   contractUrl?: string;
+  paymentProofUrl?: string;
   companyBankAccountId?: number;
   isCash: boolean;
+  investorBankAccountId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,8 +58,10 @@ export interface InvestmentCreateRequest {
   startDate: string;
   maturityDate?: string;
   contractUrl?: string;
+  paymentProofUrl?: string;
   companyBankAccountId?: number;
   isCash: boolean;
+  investorBankAccountId?: string;
   schedules: {
     installmentNumber: number;
     dueDate: string;

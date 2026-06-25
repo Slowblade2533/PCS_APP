@@ -14,6 +14,7 @@ public interface IInvestmentRepository
     Task<InvestmentModel?> GetByIdAsync(Guid investmentId, CancellationToken cancellationToken = default);
     Task<Guid> CreateAsync(InvestmentModel model, CancellationToken cancellationToken = default);
     Task<bool> UpdateAsync(InvestmentModel model, CancellationToken cancellationToken = default);
+    Task<bool> UpdateInvestmentAsync(InvestmentModel model, List<InvestmentScheduleModel> schedules, List<InvestmentInterestScheduleModel> interestSchedules, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid investmentId, CancellationToken cancellationToken = default);
 
     // Schedule (Installment) methods

@@ -112,5 +112,6 @@ public class CompanyBankAccountModel
     public string AccountName { get; set; } = string.Empty;
     public int? ChartOfAccountId { get; set; }
     public bool IsActive { get; set; }
+    public string AccountType { get; set; } = "Business";
     public DateTime CreatedAt { get; set; }
 }

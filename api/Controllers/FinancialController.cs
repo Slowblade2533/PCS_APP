@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Repositories;
+using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
@@ -22,6 +23,7 @@ public class FinancialController : ControllerBase
 
     // ─── Chart of Accounts ────────────────────────────────────────────────────
     [HttpGet("accounts")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetAccounts()
     {
         var accounts = await _financialRepo.GetAllAccountsAsync();
@@ -29,6 +31,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("accounts/{id}")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetAccount(int id)
     {
         var account = await _financialRepo.GetAccountByIdAsync(id);
@@ -36,6 +39,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("accounts")]
+    [Authorize(Policy = "CanManageFinancials")]
     public async Task<IActionResult> CreateAccount([FromBody] ChartOfAccountCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -45,6 +49,7 @@ public class FinancialController : ControllerBase
 
     // ─── Tax Invoices ─────────────────────────────────────────────────────────
     [HttpGet("tax-invoices")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetTaxInvoices([FromQuery] TaxInvoiceSearchDto search, CancellationToken ct)
     {
         var result = await _financialRepo.GetTaxInvoicesPagedAsync(search, ct);
@@ -52,6 +57,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("tax-invoices/{id}")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetTaxInvoice(int id)
     {
         var result = await _financialRepo.GetTaxInvoiceByIdAsync(id);
@@ -59,6 +65,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("tax-invoices")]
+    [Authorize(Policy = "CanManageFinancials")]
     public async Task<IActionResult> CreateTaxInvoice([FromBody] TaxInvoiceCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -68,6 +75,7 @@ public class FinancialController : ControllerBase
 
     // ─── Financial Transactions ────────────────────────────────────────────────
     [HttpGet("transactions")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetTransactions([FromQuery] FinancialTransactionSearchDto search, CancellationToken ct)
     {
         var result = await _financialRepo.GetTransactionsPagedAsync(search, ct);
@@ -75,6 +83,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("transactions/{id}")]
+    [Authorize(Policy = "CanViewFinancials")]
     public async Task<IActionResult> GetTransaction(int id)
     {
         var result = await _financialRepo.GetTransactionByIdAsync(id);
@@ -82,9 +91,13 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPost("transactions")]
+    [Authorize(Policy = "CanManageFinancials")]
     public async Task<IActionResult> CreateTransaction([FromBody] FinancialTransactionCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        dto.AttachmentUrl = AttachmentHelper.CommitAttachment(dto.AttachmentUrl, webRoot, "transactions");
 
         try
         {
@@ -104,9 +117,13 @@ public class FinancialController : ControllerBase
     }
 
     [HttpPut("transactions/{id}")]
+    [Authorize(Policy = "CanManageFinancials")]
     public async Task<IActionResult> UpdateTransaction(int id, [FromBody] FinancialTransactionCreateDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        dto.AttachmentUrl = AttachmentHelper.CommitAttachment(dto.AttachmentUrl, webRoot, "transactions");
 
         try
         {
@@ -150,6 +167,7 @@ public class FinancialController : ControllerBase
 
     // ─── Reports ──────────────────────────────────────────────────────────────
     [HttpGet("reports/trial-balance")]
+    [Authorize(Policy = "CanViewReport")]
     public async Task<IActionResult> GetTrialBalance([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
     {
         var result = await _financialRepo.GetTrialBalanceAsync(dateFrom, dateTo);
@@ -157,6 +175,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("reports/general-journal")]
+    [Authorize(Policy = "CanViewReport")]
     public async Task<IActionResult> GetGeneralJournal([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
     {
         var result = await _financialRepo.GetGeneralJournalAsync(dateFrom, dateTo);
@@ -164,6 +183,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("reports/general-ledger")]
+    [Authorize(Policy = "CanViewReport")]
     public async Task<IActionResult> GetGeneralLedger([FromQuery] int accountId, [FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
     {
         if (accountId <= 0) return BadRequest("AccountId is required.");
@@ -172,6 +192,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("reports/profit-loss")]
+    [Authorize(Policy = "CanViewReport")]
     public async Task<IActionResult> GetProfitAndLoss([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo)
     {
         var result = await _financialRepo.GetProfitAndLossAsync(dateFrom, dateTo);
@@ -179,6 +200,7 @@ public class FinancialController : ControllerBase
     }
 
     [HttpGet("reports/balance-sheet")]
+    [Authorize(Policy = "CanViewReport")]
     public async Task<IActionResult> GetBalanceSheet([FromQuery] DateOnly asOfDate)
     {
         if (asOfDate == default) asOfDate = DateOnly.FromDateTime(DateTime.Today);

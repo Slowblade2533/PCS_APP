@@ -19,6 +19,14 @@
       <p class="text-sm text-base-content/60 mt-1">ดูรายละเอียด ยอดชำระคืน ตารางคำนวณเงินปันผล/ดอกเบี้ย และบันทึกประวัติการจ่ายชำระเงินคืน</p>
     </div>
     <div class="flex gap-2">
+      @if (investment()?.status === 0) {
+        <a [routerLink]="['/investments', investmentId, 'edit']" class="btn btn-primary btn-outline">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+          </svg>
+          แก้ไขข้อมูลสัญญา
+        </a>
+      }
       <a routerLink="/investments" class="btn btn-outline hover:bg-base-200">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -96,14 +104,110 @@
               </div>
 
               @if (investment()?.contractUrl) {
-                <div class="md:col-span-2">
-                  <span class="text-xs text-base-content/50 block font-semibold">เอกสารแนบสัญญา / ไฟล์หลักฐาน</span>
-                  <a [href]="investment()?.contractUrl" target="_blank" class="btn btn-outline btn-xs btn-primary mt-1 gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
-                    ดาวน์โหลดเอกสารสัญญา
-                  </a>
+                <div>
+                  <span class="text-xs text-base-content/50 block font-semibold mb-1">เอกสารใบสัญญาเงินกู้ / ร่วมทุน</span>
+                  @if (isImage(investment()?.contractUrl)) {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <app-image-hover-preview
+                        [imageUrl]="getFileUrl(investment()?.contractUrl)"
+                        altText="Contract Preview"
+                        imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
+                      ></app-image-hover-preview>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">ตัวอย่างสัญญา (รูปภาพ)</span>
+                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                          เปิดในแท็บใหม่
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                        </a>
+                      </div>
+                    </div>
+                  } @else if (isPdf(investment()?.contractUrl)) {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">เอกสารสัญญา (PDF)</span>
+                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          </svg>
+                          กดเพื่อดูเนื้อหา
+                        </a>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">ไฟล์สัญญาแนบ</span>
+                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                          ดูเนื้อหาไฟล์
+                        </a>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (investment()?.paymentProofUrl) {
+                <div>
+                  <span class="text-xs text-base-content/50 block font-semibold mb-1">หลักฐานการรับเงินลงทุน</span>
+                  @if (isImage(investment()?.paymentProofUrl)) {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <app-image-hover-preview
+                        [imageUrl]="getFileUrl(investment()?.paymentProofUrl)"
+                        altText="Payment Proof Preview"
+                        imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
+                      ></app-image-hover-preview>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">ตัวอย่างหลักฐาน (รูปภาพ)</span>
+                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                          เปิดในแท็บใหม่
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                        </a>
+                      </div>
+                    </div>
+                  } @else if (isPdf(investment()?.paymentProofUrl)) {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">หลักฐานการรับเงิน (PDF)</span>
+                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          </svg>
+                          กดเพื่อดูเนื้อหา
+                        </a>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs font-semibold text-base-content/80">ไฟล์หลักฐานแนบ</span>
+                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                          ดูเนื้อหาไฟล์
+                        </a>
+                      </div>
+                    </div>
+                  }
                 </div>
               }
             </div>

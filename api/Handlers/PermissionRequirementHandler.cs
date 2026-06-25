@@ -25,12 +25,10 @@ public class PermissionHandler(IHttpContextAccessor httpContextAccessor) : Autho
                 return Task.CompletedTask;
             }
         }
-        else
+
+        if (context.User.HasClaim("permission", requirement.Permission))
         {
-            if (context.User.HasClaim("permission", requirement.Permission))
-            {
-                context.Succeed(requirement);
-            }
+            context.Succeed(requirement);
         }
 
         return Task.CompletedTask;

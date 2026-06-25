@@ -39,8 +39,10 @@ namespace PCS_API.Controllers
                 inv.MaturityDate,
                 inv.Status,
                 inv.ContractUrl,
+                inv.PaymentProofUrl,
                 inv.CompanyBankAccountId,
                 inv.IsCash,
+                inv.InvestorBankAccountId,
                 inv.CreatedAt,
                 inv.UpdatedAt
             }).ToList();
@@ -74,8 +76,10 @@ namespace PCS_API.Controllers
                     inv.MaturityDate,
                     inv.Status,
                     inv.ContractUrl,
+                    inv.PaymentProofUrl,
                     inv.CompanyBankAccountId,
                     inv.IsCash,
+                    inv.InvestorBankAccountId,
                     inv.CreatedAt,
                     inv.UpdatedAt
                 },
@@ -123,8 +127,10 @@ namespace PCS_API.Controllers
                 StartDate = request.StartDate,
                 MaturityDate = request.MaturityDate,
                 ContractUrl = request.ContractUrl,
+                PaymentProofUrl = request.PaymentProofUrl,
                 CompanyBankAccountId = request.CompanyBankAccountId,
-                IsCash = request.IsCash
+                IsCash = request.IsCash,
+                InvestorBankAccountId = request.InvestorBankAccountId
             };
 
             var schedules = request.Schedules.Select(s => new InvestmentScheduleModel
@@ -147,6 +153,68 @@ namespace PCS_API.Controllers
             {
                 var newId = await investmentService.CreateAsync(model, schedules, interestSchedules, cancellationToken);
                 return Ok(new { InvestmentId = newId });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Policy = "CanEditInvestments")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] InvestmentCreateDto request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var existing = await investmentService.GetByIdAsync(id, cancellationToken);
+            if (existing == null) return NotFound();
+
+            if (existing.Status != 0)
+            {
+                return BadRequest(new { Message = "สัญญานี้ไม่ได้อยู่ในสถานะกำลังดำเนินการ (Active) จึงไม่สามารถแก้ไขได้" });
+            }
+
+            var model = new InvestmentModel
+            {
+                InvestmentId = id,
+                InvestorId = request.InvestorId,
+                InvestmentType = request.InvestmentType,
+                PrincipalAmount = request.PrincipalAmount,
+                Currency = request.Currency,
+                InterestRate = request.InterestRate,
+                StartDate = request.StartDate,
+                MaturityDate = request.MaturityDate,
+                Status = existing.Status,
+                ContractUrl = request.ContractUrl,
+                PaymentProofUrl = request.PaymentProofUrl,
+                CompanyBankAccountId = request.CompanyBankAccountId,
+                IsCash = request.IsCash,
+                InvestorBankAccountId = request.InvestorBankAccountId
+            };
+
+            var schedules = request.Schedules.Select(s => new InvestmentScheduleModel
+            {
+                InvestmentId = id,
+                InstallmentNumber = s.InstallmentNumber,
+                DueDate = s.DueDate,
+                PrincipalAmount = s.PrincipalAmount,
+                InterestAmount = s.InterestAmount,
+                Status = 0
+            }).ToList();
+
+            var interestSchedules = request.InterestSchedules.Select(ins => new InvestmentInterestScheduleModel
+            {
+                InvestmentId = id,
+                StartMonth = ins.StartMonth,
+                EndMonth = ins.EndMonth,
+                InterestRate = ins.InterestRate
+            }).ToList();
+
+            try
+            {
+                var success = await investmentService.UpdateAsync(model, schedules, interestSchedules, cancellationToken);
+                if (!success) return NotFound();
+                return Ok(new { Success = true });
             }
             catch (ArgumentException ex)
             {

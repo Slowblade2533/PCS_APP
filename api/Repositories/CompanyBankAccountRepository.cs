@@ -33,12 +33,22 @@ public class CompanyBankAccountRepository : ICompanyBankAccountRepository
         return await conn.QueryFirstOrDefaultAsync<CompanyBankAccountModel>(command);
     }
 
+    public async Task<IEnumerable<CompanyBankAccountModel>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        string sql = @"
+            SELECT * FROM dbo.CompanyBankAccounts 
+            ORDER BY Id DESC;";
+        var command = new CommandDefinition(sql, cancellationToken: cancellationToken);
+        return await conn.QueryAsync<CompanyBankAccountModel>(command);
+    }
+
     public async Task<int> CreateAsync(CompanyBankAccountModel model, CancellationToken cancellationToken = default)
     {
         using var conn = _connectionFactory.CreateConnection();
         string sql = @"
-            INSERT INTO dbo.CompanyBankAccounts (BankName, AccountNo, AccountName, ChartOfAccountId, IsActive, CreatedAt)
-            VALUES (@BankName, @AccountNo, @AccountName, @ChartOfAccountId, @IsActive, GETDATE());
+            INSERT INTO dbo.CompanyBankAccounts (BankName, AccountNo, AccountName, ChartOfAccountId, IsActive, AccountType, CreatedAt)
+            VALUES (@BankName, @AccountNo, @AccountName, @ChartOfAccountId, @IsActive, @AccountType, GETDATE());
             SELECT CAST(SCOPE_IDENTITY() as int);";
 
         var command = new CommandDefinition(sql, model, cancellationToken: cancellationToken);
@@ -54,7 +64,8 @@ public class CompanyBankAccountRepository : ICompanyBankAccountRepository
                 AccountNo = @AccountNo,
                 AccountName = @AccountName,
                 ChartOfAccountId = @ChartOfAccountId,
-                IsActive = @IsActive
+                IsActive = @IsActive,
+                AccountType = @AccountType
             WHERE Id = @Id;";
 
         var command = new CommandDefinition(sql, model, cancellationToken: cancellationToken);

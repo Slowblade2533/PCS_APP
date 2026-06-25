@@ -21,6 +21,10 @@ export class InvestmentService {
     return this.http.post<{ investmentId: string }>(this.apiUrl, payload);
   }
 
+  updateInvestment(id: string, payload: InvestmentCreateRequest): Observable<{ success: boolean }> {
+    return this.http.put<{ success: boolean }>(`${this.apiUrl}/${id}`, payload);
+  }
+
   deleteInvestment(id: string): Observable<{ success: boolean }> {
     return this.http.delete<{ success: boolean }>(`${this.apiUrl}/${id}`);
   }

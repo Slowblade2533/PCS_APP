@@ -387,6 +387,7 @@ public class CompanyBankAccountDto
     public string AccountName { get; set; } = string.Empty;
     public int? ChartOfAccountId { get; set; }
     public bool IsActive { get; set; }
+    public string AccountType { get; set; } = "Business";
     public DateTime CreatedAt { get; set; }
 }
 
@@ -398,7 +399,7 @@ public class CompanyBankAccountCreateDto
 
     [Required]
     [MaxLength(20)]
-    [RegularExpression(@"^[0-9]{10,15}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลข 10-15 หลักเท่านั้น")]
+    [RegularExpression(@"^[0-9\-]{10,20}$", ErrorMessage = "เลขที่บัญชีต้องประกอบด้วยตัวเลขหรือขีด 10-20 หลัก")]
     public string AccountNo { get; set; } = string.Empty;
 
     [Required]
@@ -407,4 +408,8 @@ public class CompanyBankAccountCreateDto
 
     public int? ChartOfAccountId { get; set; }
     public bool IsActive { get; set; } = true;
+
+    [Required]
+    [MaxLength(50)]
+    public string AccountType { get; set; } = "Business";
 }
