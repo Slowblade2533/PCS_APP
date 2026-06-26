@@ -1,4 +1,3 @@
-using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
 using Dapper;
 using PCS_API.Models;
@@ -6,14 +5,8 @@ using System.Data;
 
 namespace PCS_API.Repositories;
 
-public class StockRepository : IStockRepository
+public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-    public StockRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<int> CreateTransactionAsync(StockTransactionModel tx, IDbTransaction transaction)
     {
         var conn = transaction.Connection!;
@@ -27,7 +20,7 @@ public class StockRepository : IStockRepository
 
     public async Task<PagedResultDto<StockDto>> GetStocksPagedAsync(StockSearchDto search, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
 
         string whereClause = "WHERE 1=1";
         var parameters = new DynamicParameters();
@@ -99,7 +92,7 @@ public class StockRepository : IStockRepository
 
     public async Task<PagedResultDto<StockTransactionHistoryDto>> GetTransactionsAsync(string? transactionType, PaginationParamsDto @params, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var parameters = new DynamicParameters();
 
         parameters.Add("Offset", @params.GetSafeOffset());
@@ -169,7 +162,7 @@ public class StockRepository : IStockRepository
 
             if (stock == null)
             {
-                throw new KeyNotFoundException("ไม่พบข้อมูลสต็อกสำหรับสินค้านี้");
+                throw new KeyNotFoundException("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธชเธ•เนเธญเธเธชเธณเธซเธฃเธฑเธเธชเธดเธเธเนเธฒเธเธตเน");
             }
 
             int beforeQuantity;
@@ -183,10 +176,10 @@ public class StockRepository : IStockRepository
                 newQuantity = stock.ReservedQuantity + qtyChange;
                 
                 if (newQuantity < 0)
-                    throw new InvalidOperationException("ยอดจองติดลบไม่ได้");
+                    throw new InvalidOperationException("เธขเธญเธ”เธเธญเธเธ•เธดเธ”เธฅเธเนเธกเนเนเธ”เน");
                     
                 if (stock.CurrentQuantity - newQuantity < 0)
-                    throw new InvalidOperationException($"จองสต็อกเกินจำนวน Available (Current={stock.CurrentQuantity}, NewReserved={newQuantity})");
+                    throw new InvalidOperationException($"เธเธญเธเธชเธ•เนเธญเธเน€เธเธดเธเธเธณเธเธงเธ Available (Current={stock.CurrentQuantity}, NewReserved={newQuantity})");
 
                 updateQuery = @"
                     UPDATE dbo.Stocks
@@ -204,13 +197,13 @@ public class StockRepository : IStockRepository
 
                 if (newQuantity < 0)
                 {
-                    throw new InvalidOperationException("สต็อกไม่เพียงพอ (CurrentQuantity จะติดลบ)");
+                    throw new InvalidOperationException("เธชเธ•เนเธญเธเนเธกเนเน€เธเธตเธขเธเธเธญ (CurrentQuantity เธเธฐเธ•เธดเธ”เธฅเธ)");
                 }
 
                 if (newQuantity < stock.ReservedQuantity)
                 {
                     throw new InvalidOperationException(
-                        $"สต็อกไม่เพียงพอ AvailableQuantity จะติดลบ " +
+                        $"เธชเธ•เนเธญเธเนเธกเนเน€เธเธตเธขเธเธเธญ AvailableQuantity เธเธฐเธ•เธดเธ”เธฅเธ " +
                         $"(CurrentQuantity={newQuantity}, ReservedQuantity={stock.ReservedQuantity})");
                 }
 
@@ -230,7 +223,7 @@ public class StockRepository : IStockRepository
             }
         }
 
-        throw new InvalidOperationException("ข้อมูลสต็อกถูกแก้ไขโดยผู้ใช้อื่น กรุณาลองใหม่อีกครั้ง");
+        throw new InvalidOperationException("เธเนเธญเธกเธนเธฅเธชเธ•เนเธญเธเธ–เธนเธเนเธเนเนเธเนเธ”เธขเธเธนเนเนเธเนเธญเธทเนเธ เธเธฃเธธเธ“เธฒเธฅเธญเธเนเธซเธกเนเธญเธตเธเธเธฃเธฑเนเธ");
     }
 
     public async Task<bool> VariantExistsAsync(int variantId, IDbTransaction transaction)
@@ -245,5 +238,13 @@ public class StockRepository : IStockRepository
         var conn = transaction.Connection!;
         const string sql = @"SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.StockTransactions WHERE RequestId = @requestId) THEN 1 ELSE 0 END";
         return await conn.ExecuteScalarAsync<bool>(sql, new { requestId }, transaction);
+    }
+    public async Task InsertStockAsync(int variantId, int currentQuantity, int reorderPoint, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string stockSql = @"
+            INSERT INTO dbo.Stocks (VariantId, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
+            VALUES (@VariantId, @CurrentQuantity, 0, @ReorderPoint, GETDATE());";
+        await Dapper.SqlMapper.ExecuteAsync(conn, new Dapper.CommandDefinition(stockSql, new { VariantId = variantId, CurrentQuantity = currentQuantity, ReorderPoint = reorderPoint }, transaction: transaction, cancellationToken: cancellationToken));
     }
 }

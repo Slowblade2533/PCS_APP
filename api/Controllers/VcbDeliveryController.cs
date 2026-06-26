@@ -7,8 +7,8 @@ using System.Security.Claims;
 
 namespace PCS_API.Controllers;
 
+[Route("api/vcb-deliveries")]
 [ApiController]
-[Route("api/[controller]")]
 [Authorize]
 public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBase
 {
@@ -23,7 +23,9 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         var delivery = await service.GetByIdAsync(id, cancellationToken);
-        if (delivery == null) return NotFound(new { error = "ไม่พบข้อมูลใบสั่งส่งของ" });
+        if (delivery == null)
+            return NotFound(new { error = "ไม่พบข้อมูลใบสั่งส่งของ" });
+
         return Ok(delivery);
     }
 
@@ -41,7 +43,8 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
                 PropertyNameCaseInsensitive = true,
                 NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
             });
-            if (dto == null) return BadRequest(new { error = "ข้อมูลไม่ถูกต้อง (Invalid data format)" });
+            if (dto == null) 
+                return BadRequest(new { error = "ข้อมูลไม่ถูกต้อง (Invalid data format)" });
 
             var slipFile = form.Files.GetFile("slipFile");
 
@@ -70,14 +73,15 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
                 PropertyNameCaseInsensitive = true,
                 NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
             });
-            if (dto == null) return BadRequest(new { error = "ข้อมูลไม่ถูกต้อง (Invalid data format)" });
+            if (dto == null) 
+                return BadRequest(new { error = "ข้อมูลไม่ถูกต้อง (Invalid data format)" });
 
             var slipFile = form.Files.GetFile("slipFile");
 
             int currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
-            bool success = await service.UpdateAsync(id, dto, slipFile, currentUserId, cancellationToken);
-
-            if (!success) return NotFound(new { error = "ไม่พบข้อมูลใบสั่งส่งของ" });
+            var result = await service.UpdateAsync(id, dto, slipFile, currentUserId, cancellationToken);
+            if (!result.IsSuccess) 
+                return NotFound(new { error = result.ErrorMessage ?? "ไม่พบข้อมูลใบสั่งส่งของ" });
 
             return Ok(new { message = "แก้ไขใบสั่งส่งของสำเร็จ", id });
         }
@@ -90,12 +94,15 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] VcbDeliveryUpdateStatusDto req, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(req.Status)) return BadRequest(new { error = "สถานะไม่ถูกต้อง" });
+        if (string.IsNullOrEmpty(req.Status)) 
+            return BadRequest(new { error = "สถานะไม่ถูกต้อง" });
 
         int currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
-        bool success = await service.UpdateStatusAsync(id, req.Status, currentUserId, cancellationToken);
+        var result = await service.UpdateStatusAsync(id, req.Status, currentUserId, cancellationToken);
         
-        if (!success) return NotFound(new { error = "ไม่พบข้อมูลใบสั่งส่งของ" });
+        if (!result.IsSuccess) 
+            return NotFound(new { error = result.ErrorMessage ?? "ไม่พบข้อมูลใบสั่งส่งของ" });
+
         return Ok(new { message = "อัปเดตสถานะสำเร็จ" });
     }
 }

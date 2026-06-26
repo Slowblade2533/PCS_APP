@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -8,9 +7,9 @@ using System.Text.Json;
 
 namespace PCS_API.Controllers;
 
-[Authorize]
+[Route("api/vcb-orders")]
 [ApiController]
-[Route("api/[controller]")]
+[Authorize]
 public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
 {
     private int GetCurrentUserId()
@@ -29,7 +28,9 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await orderService.GetByIdAsync(id, cancellationToken);
-        if (!result.IsSuccess) return NotFound(result);
+        if (!result.IsSuccess) 
+            return NotFound(result);
+
         return Ok(result);
     }
 
@@ -47,8 +48,8 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
                 PropertyNameCaseInsensitive = true,
                 NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
             });
-            if (dto == null) return BadRequest(ResultDto<int>.Failure("ข้อมูลไม่ถูกต้อง (Invalid data format)"));
-
+            if (dto == null) 
+                return BadRequest(ResultDto<int>.Failure("ข้อมูลไม่ถูกต้อง (Invalid data format)"));
             if (string.IsNullOrEmpty(dto.OrderNo))
                 return BadRequest(ResultDto<int>.Failure("กรุณาระบุเลขที่ออเดอร์"));
             if (dto.Items == null || !dto.Items.Any())
@@ -57,7 +58,8 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
             var slipFile = form.Files.GetFile("slipFile");
             int userId = GetCurrentUserId();
             var result = await orderService.CreateAsync(dto, slipFile, userId, cancellationToken);
-            if (!result.IsSuccess) return BadRequest(result);
+            if (!result.IsSuccess) 
+                return BadRequest(result);
 
             return Ok(result);
         }
@@ -81,8 +83,8 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
                 PropertyNameCaseInsensitive = true,
                 NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
             });
-            if (dto == null) return BadRequest(ResultDto<bool>.Failure("ข้อมูลไม่ถูกต้อง (Invalid data format)"));
-
+            if (dto == null) 
+                return BadRequest(ResultDto<bool>.Failure("ข้อมูลไม่ถูกต้อง (Invalid data format)"));
             if (string.IsNullOrEmpty(dto.OrderNo))
                 return BadRequest(ResultDto<bool>.Failure("กรุณาระบุเลขที่ออเดอร์"));
             if (dto.Items == null || !dto.Items.Any())
@@ -91,7 +93,8 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
             var slipFile = form.Files.GetFile("slipFile");
             int userId = GetCurrentUserId();
             var result = await orderService.UpdateAsync(id, dto, slipFile, userId, cancellationToken);
-            if (!result.IsSuccess) return BadRequest(result);
+            if (!result.IsSuccess) 
+                return BadRequest(result);
 
             return Ok(result);
         }
@@ -104,10 +107,13 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(status)) return BadRequest("กรุณาระบุสถานะ");
+        if (string.IsNullOrEmpty(status)) 
+            return BadRequest("กรุณาระบุสถานะ");
 
-        var result = await orderService.UpdateStatusAsync(id, status, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        int userId = GetCurrentUserId();
+        var result = await orderService.UpdateStatusAsync(id, status, userId, cancellationToken);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }

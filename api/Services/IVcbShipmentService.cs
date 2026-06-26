@@ -8,5 +8,5 @@ public interface IVcbShipmentService
     Task<ResultDto<VcbShipmentDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<ResultDto<int>> CreateAsync(VcbShipmentCreateDto dto, int currentUserId, CancellationToken cancellationToken = default);
     Task<ResultDto<bool>> UpdateStatusAsync(int id, string status, int currentUserId, CancellationToken cancellationToken = default);
-    Task<ResultDto<bool>> UpdateAsync(int id, VcbShipmentCreateDto dto, CancellationToken cancellationToken = default);
+    Task<ResultDto<bool>> UpdateAsync(int id, VcbShipmentCreateDto dto, int currentUserId, bool isSuperuser, CancellationToken cancellationToken = default);
 }

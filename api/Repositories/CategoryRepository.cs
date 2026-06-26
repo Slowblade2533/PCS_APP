@@ -28,7 +28,7 @@ public class CategoryRepository(ISqlConnectionFactory connectionFactory) : ICate
                 FROM dbo.Categories c
                 INNER JOIN CategoryCTE cte ON c.ParentId = cte.CategoryId
             )
-            SELECT * FROM CategoryCTE
+            SELECT CategoryId, CategoryName, Description, ParentId, SortOrder, IsActive, FullPath, Level, ParentName FROM CategoryCTE
             WHERE (@SearchTerm IS NULL OR 
                    CategoryName LIKE '%' + @SearchTerm + '%' OR 
                    FullPath LIKE '%' + @SearchTerm + '%')
@@ -62,7 +62,7 @@ public class CategoryRepository(ISqlConnectionFactory connectionFactory) : ICate
                 FROM dbo.Categories c
                 INNER JOIN CategoryCTE cte ON c.ParentId = cte.CategoryId
             )
-            SELECT * FROM CategoryCTE WHERE CategoryId = @Id;
+            SELECT CategoryId, CategoryName, Description, ParentId, SortOrder, IsActive, FullPath, Level, ParentName FROM CategoryCTE WHERE CategoryId = @Id;
         ";
         
         return await conn.QuerySingleOrDefaultAsync<CategoryModel>(query, new { Id = id });

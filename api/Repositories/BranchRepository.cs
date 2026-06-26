@@ -5,32 +5,25 @@ using System.Threading.Tasks;
 
 namespace PCS_API.Repositories;
 
-public class BranchRepository : IBranchRepository
+public class BranchRepository(ISqlConnectionFactory connectionFactory) : IBranchRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-
-    public BranchRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<IEnumerable<BranchDto>> GetAllActiveAsync()
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         const string sql = "SELECT Id, BranchCode, BranchName, IsActive FROM dbo.Branches WHERE IsActive = 1 ORDER BY BranchName";
         return await conn.QueryAsync<BranchDto>(sql);
     }
 
     public async Task<BranchDetailDto?> GetByIdAsync(int id)
     {
-        using var conn = _connectionFactory.CreateConnection();
-        const string sql = "SELECT * FROM dbo.Branches WHERE Id = @Id";
+        using var conn = connectionFactory.CreateConnection();
+        const string sql = "SELECT Id, BranchCode, BranchName, Address, TaxId, RegistrationName, CompanyType, Phone, Email, LogoUrl, IsVatRegistered, VatDocumentUrl, EntityType, IsActive FROM dbo.Branches WHERE Id = @Id";
         return await conn.QueryFirstOrDefaultAsync<BranchDetailDto>(sql, new { Id = id });
     }
 
     public async Task<bool> UpdateAsync(int id, BranchUpdateDto dto)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         const string sql = @"
             UPDATE dbo.Branches 
             SET BranchCode = @BranchCode, BranchName = @BranchName, Address = @Address, TaxId = @TaxId, 

@@ -4,20 +4,13 @@ using PCS_API.Models;
 
 namespace PCS_API.Repositories;
 
-public class SupplierRepository : ISupplierRepository
+public class SupplierRepository(ISqlConnectionFactory connectionFactory) : ISupplierRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-
-    public SupplierRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<SupplierModel?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var command = new CommandDefinition(
-            "SELECT * FROM dbo.Suppliers WHERE Id = @Id",
+            "SELECT Id, SupplierCode, SupplierName, ContactName, Phone, Email, Address, TaxId, IsActive, CreatedAt, UpdatedAt FROM dbo.Suppliers WHERE Id = @Id",
             new { Id = id },
             cancellationToken: cancellationToken);
         return await conn.QueryFirstOrDefaultAsync<SupplierModel>(command);
@@ -25,7 +18,7 @@ public class SupplierRepository : ISupplierRepository
 
     public async Task<PagedResultDto<SupplierDto>> GetPagedAsync(SupplierSearchDto search, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var parameters = new DynamicParameters();
         string whereClause = "WHERE 1=1";
 
@@ -44,7 +37,7 @@ public class SupplierRepository : ISupplierRepository
         string sql = $@"
             SELECT COUNT(*) FROM dbo.Suppliers {whereClause};
 
-            SELECT * FROM dbo.Suppliers
+            SELECT Id, SupplierCode, SupplierName, ContactName, Phone, Email, Address, TaxId, IsActive, CreatedAt, UpdatedAt FROM dbo.Suppliers
             {whereClause}
             ORDER BY Id DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
@@ -68,7 +61,7 @@ public class SupplierRepository : ISupplierRepository
 
     public async Task<int> CreateAsync(SupplierModel model, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = @"
             INSERT INTO dbo.Suppliers (SupplierCode, SupplierName, ContactName, Phone, Email, Address, TaxId, IsActive, CreatedAt, UpdatedAt)
             VALUES (@SupplierCode, @SupplierName, @ContactName, @Phone, @Email, @Address, @TaxId, @IsActive, GETDATE(), GETDATE());
@@ -80,7 +73,7 @@ public class SupplierRepository : ISupplierRepository
 
     public async Task<bool> UpdateAsync(SupplierModel model, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = @"
             UPDATE dbo.Suppliers
             SET SupplierCode = @SupplierCode,
@@ -101,7 +94,7 @@ public class SupplierRepository : ISupplierRepository
 
     public async Task<bool> ExistsByCodeAsync(string code, int? excludeId = null, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.Suppliers WHERE SupplierCode = @Code";
         if (excludeId.HasValue)
         {

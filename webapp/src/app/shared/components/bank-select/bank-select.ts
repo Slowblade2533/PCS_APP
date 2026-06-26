@@ -8,19 +8,21 @@ import { bankLists, Bank } from '../../constants/banks.constants';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './bank-select.html',
-  styles: [`
-    :host {
-      display: block;
-      width: 100%;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+      }
+    `,
+  ],
 })
 export class BankSelectComponent {
   value = model<string>('');
   @Input() placeholder: string = 'เลือกธนาคาร';
 
   banks = Object.values(bankLists);
-  
+
   isOpen = signal(false);
   searchQuery = signal('');
   forceCustomText = signal(false);
@@ -28,43 +30,44 @@ export class BankSelectComponent {
   isCustomText = computed(() => {
     if (this.forceCustomText()) return true;
     const val = this.value();
-    return !!val && !this.banks.find(b => b.symbol === val);
+    return !!val && !this.banks.find((b) => b.symbol === val);
   });
 
   customText = computed(() => {
     const val = this.value();
-    const isCustom = this.forceCustomText() || (!!val && !this.banks.find(b => b.symbol === val));
+    const isCustom = this.forceCustomText() || (!!val && !this.banks.find((b) => b.symbol === val));
     return isCustom ? val : '';
   });
 
   filteredBanks = computed(() => {
     const query = this.searchQuery().toLowerCase();
     if (!query) return this.banks;
-    return this.banks.filter(b => 
-      b.name.toLowerCase().includes(query) || 
-      b.fullname.toLowerCase().includes(query) || 
-      b.nameEN.toLowerCase().includes(query) || 
-      b.symbol.toLowerCase().includes(query)
+    return this.banks.filter(
+      (b) =>
+        b.name.toLowerCase().includes(query) ||
+        b.fullname.toLowerCase().includes(query) ||
+        b.nameEN.toLowerCase().includes(query) ||
+        b.symbol.toLowerCase().includes(query),
     );
   });
 
   selectedBank = computed(() => {
     const val = this.value();
-    return this.banks.find(b => b.symbol === val) || null;
+    return this.banks.find((b) => b.symbol === val) || null;
   });
 
   constructor(private eRef: ElementRef) {}
 
   @HostListener('document:click', ['$event'])
   clickout(event: Event) {
-    if(!this.eRef.nativeElement.contains(event.target)) {
+    if (!this.eRef.nativeElement.contains(event.target)) {
       this.isOpen.set(false);
     }
   }
 
   toggleDropdown(event: Event) {
     event.stopPropagation();
-    this.isOpen.update(v => !v);
+    this.isOpen.update((v) => !v);
     if (this.isOpen()) {
       this.searchQuery.set('');
     }

@@ -1,27 +1,26 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { TaxInvoice, TaxInvoiceSearchParams } from '../../../shared/models/financial.models';
 import { FinancialService } from '../../../shared/services/financial.service';
+import { rxResource } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-tax-invoices-list',
   standalone: true,
   imports: [FormsModule, DecimalPipe, DatePipe],
   templateUrl: './tax-invoices-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaxInvoicesList implements OnInit {
   private financialService = inject(FinancialService);
   private destroyRef = inject(DestroyRef);
 
-  data = signal<PagedResult<TaxInvoice>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 0 });
-  loading = signal<boolean>(false);
-  error = signal<string | null>(null);
+  pageNumber = signal<number>(1);
+  pageSize = signal<number>(20);
 
   searchTerm = signal<string>('');
   selectedTaxType = signal<string>('');
@@ -29,7 +28,33 @@ export class TaxInvoicesList implements OnInit {
   dateTo = signal<string>('');
 
   private searchSubject = new Subject<string>();
-  private refresh$ = new BehaviorSubject<void>(undefined);
+
+  invoicesResource = rxResource<PagedResult<TaxInvoice>, TaxInvoiceSearchParams>({
+    params: () => ({
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      taxType: this.selectedTaxType() as any,
+      dateFrom: this.dateFrom(),
+      dateTo: this.dateTo(),
+    }),
+    stream: ({ params }) => this.financialService.getTaxInvoices(params),
+  });
+
+  data = computed(
+    () =>
+      this.invoicesResource.value() || {
+        items: [],
+        totalCount: 0,
+        pageNumber: 1,
+        pageSize: 20,
+        totalPages: 0,
+      },
+  );
+  loading = computed(() => this.invoicesResource.isLoading());
+  error = computed(() =>
+    this.invoicesResource.error() ? 'ไม่สามารถดึงข้อมูลใบกำกับภาษีได้' : null,
+  );
 
   ngOnInit() {
     this.searchSubject
@@ -38,42 +63,9 @@ export class TaxInvoicesList implements OnInit {
         distinctUntilChanged(),
         tap((term) => {
           this.searchTerm.set(term);
-          this.data.update((d) => ({ ...d, pageNumber: 1 }));
-          this.refresh$.next();
+          this.pageNumber.set(1);
         }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
-
-    this.refresh$
-      .pipe(
-        tap(() => {
-          this.loading.set(true);
-          this.error.set(null);
-        }),
-        switchMap(() => {
-          const params: TaxInvoiceSearchParams = {
-            pageNumber: this.data().pageNumber,
-            pageSize: this.data().pageSize,
-            searchTerm: this.searchTerm(),
-            taxType: this.selectedTaxType() as any,
-            dateFrom: this.dateFrom(),
-            dateTo: this.dateTo()
-          };
-          return this.financialService.getTaxInvoices(params).pipe(
-            catchError((err) => {
-              this.error.set('ไม่สามารถดึงข้อมูลใบกำกับภาษีได้');
-              return [];
-            })
-          );
-        }),
-        tap((res: any) => {
-          if (res && res.items) {
-            this.data.set(res);
-          }
-          this.loading.set(false);
-        }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
   }
@@ -84,13 +76,11 @@ export class TaxInvoicesList implements OnInit {
   }
 
   onFilterChange() {
-    this.data.update((d) => ({ ...d, pageNumber: 1 }));
-    this.refresh$.next();
+    this.pageNumber.set(1);
   }
 
   onPageChange(newPage: number) {
-    this.data.update((d) => ({ ...d, pageNumber: newPage }));
-    this.refresh$.next();
+    this.pageNumber.set(newPage);
   }
 
   protected readonly Math = Math;

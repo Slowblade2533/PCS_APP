@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
 
 namespace PCS_API.DTOs;
 
@@ -18,6 +17,9 @@ public class VcbDeliveryDto
     public string Status { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public int? CreatedBy { get; set; }
+    public string? CreatedByUsername { get; set; }
+    public int? UpdatedBy { get; set; }
+    public string? UpdatedByUsername { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

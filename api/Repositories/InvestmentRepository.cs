@@ -1,19 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Dapper;
 using PCS_API.Models;
-using PCS_API.Repositories;
 
 namespace PCS_API.Repositories;
 
-public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IInvestmentRepository
+using Microsoft.Extensions.Logging;
+
+public class InvestmentRepository(ISqlConnectionFactory connectionFactory, ILogger<InvestmentRepository> logger) : IInvestmentRepository
 {
     public async Task<IEnumerable<InvestmentModel>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM Investment";
+        var query = "SELECT InvestmentId, InvestorId, InvestmentType, PrincipalAmount, Currency, InterestRate, StartDate, MaturityDate, Status, ContractUrl, CompanyBankAccountId, IsCash, PaymentProofUrl, InvestorBankAccountId, CreatedAt, UpdatedAt FROM Investment";
         var command = new CommandDefinition(query, cancellationToken: cancellationToken);
         return await conn.QueryAsync<InvestmentModel>(command);
     }
@@ -21,7 +18,7 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
     public async Task<InvestmentModel?> GetByIdAsync(Guid investmentId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM Investment WHERE InvestmentId = @InvestmentId";
+        var query = "SELECT InvestmentId, InvestorId, InvestmentType, PrincipalAmount, Currency, InterestRate, StartDate, MaturityDate, Status, ContractUrl, CompanyBankAccountId, IsCash, PaymentProofUrl, InvestorBankAccountId, CreatedAt, UpdatedAt FROM Investment WHERE InvestmentId = @InvestmentId";
         var command = new CommandDefinition(query, new { InvestmentId = investmentId }, cancellationToken: cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<InvestmentModel>(command);
     }
@@ -141,7 +138,7 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
 
             // 3. Update schedules
             var existingSchedules = (await conn.QueryAsync<InvestmentScheduleModel>(
-                new CommandDefinition("SELECT * FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId", new { model.InvestmentId }, transaction, cancellationToken: cancellationToken))).ToList();
+                new CommandDefinition("SELECT ScheduleId, InvestmentId, InstallmentNumber, DueDate, PrincipalAmount, InterestAmount, PaidAmount, Status, PaymentDate, CompanyBankAccountId, IsCash, SlipUrl, TransactionId, CreatedAt FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId", new { model.InvestmentId }, transaction, cancellationToken: cancellationToken))).ToList();
 
             bool hasPaidSchedules = existingSchedules.Any(s => s.Status == 1);
 
@@ -180,9 +177,10 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
             transaction.Commit();
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             transaction.Rollback();
+            logger.LogError(ex, "Transaction failed and rolled back");
             throw;
         }
     }
@@ -190,17 +188,58 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
     public async Task<bool> DeleteAsync(Guid investmentId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "DELETE FROM Investment WHERE InvestmentId = @InvestmentId";
-        var command = new CommandDefinition(query, new { InvestmentId = investmentId }, cancellationToken: cancellationToken);
-        var rows = await conn.ExecuteAsync(command);
-        return rows > 0;
+        conn.Open();
+        using var transaction = conn.BeginTransaction();
+        try
+        {
+            // 1. Delete InvestmentInterestSchedule records
+            var deleteInterestQuery = "DELETE FROM InvestmentInterestSchedule WHERE InvestmentId = @InvestmentId";
+            var cmdDeleteInterest = new CommandDefinition(deleteInterestQuery, new { InvestmentId = investmentId }, transaction, cancellationToken: cancellationToken);
+            await conn.ExecuteAsync(cmdDeleteInterest);
+
+            // 2. Delete InvestmentSchedule records
+            var deleteSchedulesQuery = "DELETE FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId";
+            var cmdDeleteSchedules = new CommandDefinition(deleteSchedulesQuery, new { InvestmentId = investmentId }, transaction, cancellationToken: cancellationToken);
+            await conn.ExecuteAsync(cmdDeleteSchedules);
+
+            // 3. Find and delete related FinancialTransactions & FinancialLedgerEntries
+            var refPattern = $"%Ref: {investmentId}%";
+            var txIdsQuery = "SELECT TransactionId FROM dbo.FinancialTransactions WHERE Description LIKE @RefPattern";
+            var cmdTxIds = new CommandDefinition(txIdsQuery, new { RefPattern = refPattern }, transaction, cancellationToken: cancellationToken);
+            var txIds = (await conn.QueryAsync<int>(cmdTxIds)).ToList();
+
+            if (txIds.Any())
+            {
+                var deleteLedgerQuery = "DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId IN @TxIds";
+                var cmdDeleteLedger = new CommandDefinition(deleteLedgerQuery, new { TxIds = txIds }, transaction, cancellationToken: cancellationToken);
+                await conn.ExecuteAsync(cmdDeleteLedger);
+
+                var deleteTxQuery = "DELETE FROM dbo.FinancialTransactions WHERE TransactionId IN @TxIds";
+                var cmdDeleteTx = new CommandDefinition(deleteTxQuery, new { TxIds = txIds }, transaction, cancellationToken: cancellationToken);
+                await conn.ExecuteAsync(cmdDeleteTx);
+            }
+
+            // 4. Delete the main Investment record
+            var deleteInvestmentQuery = "DELETE FROM Investment WHERE InvestmentId = @InvestmentId";
+            var cmdDeleteInvestment = new CommandDefinition(deleteInvestmentQuery, new { InvestmentId = investmentId }, transaction, cancellationToken: cancellationToken);
+            var rows = await conn.ExecuteAsync(cmdDeleteInvestment);
+
+            transaction.Commit();
+            return rows > 0;
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            logger.LogError(ex, "Transaction failed and rolled back");
+            throw;
+        }
     }
 
     // Schedule (Installment) methods
     public async Task<IEnumerable<InvestmentScheduleModel>> GetSchedulesByInvestmentAsync(Guid investmentId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId ORDER BY InstallmentNumber ASC";
+        var query = "SELECT ScheduleId, InvestmentId, InstallmentNumber, DueDate, PrincipalAmount, InterestAmount, PaidAmount, Status, PaymentDate, CompanyBankAccountId, IsCash, SlipUrl, TransactionId, CreatedAt FROM InvestmentSchedule WHERE InvestmentId = @InvestmentId ORDER BY InstallmentNumber ASC";
         var command = new CommandDefinition(query, new { InvestmentId = investmentId }, cancellationToken: cancellationToken);
         return await conn.QueryAsync<InvestmentScheduleModel>(command);
     }
@@ -208,7 +247,7 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
     public async Task<InvestmentScheduleModel?> GetScheduleByIdAsync(Guid scheduleId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM InvestmentSchedule WHERE ScheduleId = @ScheduleId";
+        var query = "SELECT ScheduleId, InvestmentId, InstallmentNumber, DueDate, PrincipalAmount, InterestAmount, PaidAmount, Status, PaymentDate, CompanyBankAccountId, IsCash, SlipUrl, TransactionId, CreatedAt FROM InvestmentSchedule WHERE ScheduleId = @ScheduleId";
         var command = new CommandDefinition(query, new { ScheduleId = scheduleId }, cancellationToken: cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<InvestmentScheduleModel>(command);
     }
@@ -260,7 +299,7 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
     public async Task<IEnumerable<InvestmentInterestScheduleModel>> GetInterestSchedulesByInvestmentAsync(Guid investmentId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM InvestmentInterestSchedule WHERE InvestmentId = @InvestmentId ORDER BY StartMonth ASC";
+        var query = "SELECT ScheduleId, InvestmentId, StartMonth, EndMonth, InterestRate, CreatedAt FROM InvestmentInterestSchedule WHERE InvestmentId = @InvestmentId ORDER BY StartMonth ASC";
         var command = new CommandDefinition(query, new { InvestmentId = investmentId }, cancellationToken: cancellationToken);
         return await conn.QueryAsync<InvestmentInterestScheduleModel>(command);
     }
@@ -287,3 +326,5 @@ public class InvestmentRepository(ISqlConnectionFactory connectionFactory) : IIn
         return rows > 0;
     }
 }
+
+

@@ -1,25 +1,27 @@
 import { CommonModule, Location } from '@angular/common';
 import Big from 'big.js';
 import {
-  ChangeDetectorRef,
   Component,
   DestroyRef,
   HostListener,
   OnInit,
   inject,
   signal,
+  computed,
+  effect,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject } from 'rxjs';
-import { debounceTime, finalize, switchMap } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { debounceTime, catchError } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
-import { VcbOrderCreate } from '../../../shared/models/procurement.models';
+import { VcbOrderCreate } from '../../../shared/models/vcb-orders.models';
 import { ProductListItem, ProductVariantDetail } from '../../../shared/models/product.models';
-import { ProcurementService } from '../../../shared/services/procurement.service';
+import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { ProductService } from '../../../shared/services/product.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
@@ -30,10 +32,9 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
   templateUrl: './vcb-orders-create.html',
 })
 export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
-  private readonly procurementService = inject(ProcurementService);
+  private readonly vcbOrdersService = inject(VcbOrdersService);
   private readonly productService = inject(ProductService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -44,20 +45,63 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
 
   editOrderId = signal<number | null>(null);
   isEditMode = signal(false);
-  isFetchingVariants = signal(false);
-  isLoadingData = signal(false);
-  isSearching = signal(false);
+  orderResource = rxResource({
+    params: () => this.editOrderId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.vcbOrdersService.getVcbOrderById(params).pipe(
+        catchError(() => {
+          this.swal.error('โหลดข้อมูลออเดอร์ไม่สำเร็จ');
+          this.router.navigate(['/procurement/vcb-orders']);
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  searchTerm = signal('');
+
+  productsResource = rxResource({
+    params: () => this.searchTerm(),
+    stream: ({ params }) => {
+      if (!params || params.length <= 2) return of({ items: [] });
+      return this.productService
+        .getProducts({
+          pageNumber: 1,
+          pageSize: 20,
+          searchTerm: params,
+        })
+        .pipe(catchError(() => of({ items: [] })));
+    },
+  });
+
+  productDetailResource = rxResource({
+    params: () => this.selectedProduct()?.productId,
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.productService.getProductById(params).pipe(
+        catchError(() => {
+          this.swal.error('ไม่สามารถดึงข้อมูลสินค้านี้ได้');
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  isFetchingVariants = computed(() => this.productDetailResource.isLoading());
+  isSearching = computed(() => this.productsResource.isLoading());
+  searchResults = computed(() => this.productsResource.value()?.items || []);
+  selectedProductVariants = computed(() => this.productDetailResource.value()?.variants || []);
+
   isSubmitting = signal(false);
   orderForm!: FormGroup;
-  searchResults = signal<ProductListItem[]>([]);
   searchSubject = new Subject<string>();
   selectedProduct = signal<ProductListItem | null>(null);
-  selectedProductVariants = signal<ProductVariantDetail[]>([]);
   selectedSlipFile: File | null = null;
   slipFilePreviewUrl = signal<string | null>(null);
 
   @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
+  unloadNotification($event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
       $event.returnValue = true;
     }
@@ -65,6 +109,56 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
 
   get items(): FormArray {
     return this.orderForm.get('items') as FormArray;
+  }
+
+  constructor() {
+    effect(() => {
+      const res = this.orderResource.value();
+      if (res) {
+        const order = res.value || res.data;
+        if (order) {
+          if (order.status !== 'Pending') {
+            this.swal.warning(
+              'ออเดอร์นี้ไม่ได้อยู่ในสถานะ "รอดำเนินการ" (Pending) ไม่สามารถแก้ไขได้',
+            );
+            this.router.navigate(['/procurement/vcb-orders']);
+            return;
+          }
+          this.orderForm.patchValue({
+            orderNo: order.orderNo,
+            orderDate: this.formatDate(new Date(order.orderDate)),
+            totalAmount: Number(order.totalAmount ?? 0).toFixed(2),
+            branchId: order.branchId,
+            notes: order.notes,
+          });
+
+          if (order.transferSlipUrl) {
+            this.slipFilePreviewUrl.set(this.apiOrigin + order.transferSlipUrl);
+          } else {
+            this.slipFilePreviewUrl.set(null);
+          }
+
+          this.items.clear();
+          order.items.forEach((item: any) => {
+            const itemForm = this.fb.group({
+              variantId: [item.variantId, Validators.required],
+              sku: [item.sku],
+              imageUrl: [item.imageUrl || null],
+              productName: [item.productName],
+              variantName: [item.variantName || ''],
+              quantity: [item.quantity, [Validators.required, Validators.min(1)]],
+              totalPrice: [
+                Number(item.totalPrice ?? 0).toFixed(2),
+                [Validators.required, Validators.min(0)],
+              ],
+            });
+            this.items.push(itemForm);
+          });
+          this.calculateTotal();
+          this.orderForm.markAsPristine();
+        }
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -95,59 +189,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       if (id && mode === 'edit') {
         this.isEditMode.set(true);
         this.editOrderId.set(Number(id));
-        this.loadOrderData();
       }
-    });
-  }
-  private loadOrderData(): void {
-    if (!this.editOrderId()) return;
-    this.isLoadingData.set(true);
-    this.procurementService.getVcbOrderById(this.editOrderId()!).subscribe({
-      next: (res) => {
-        const order = res.value || res.data;
-        if (order) {
-          if (order.status !== 'Pending') {
-            this.swal.warning(
-              'ออเดอร์นี้ไม่ได้อยู่ในสถานะ "รอดำเนินการ" (Pending) ไม่สามารถแก้ไขได้',
-            );
-            this.router.navigate(['/procurement/vcb-orders']);
-            return;
-          }
-          this.orderForm.patchValue({
-            orderNo: order.orderNo,
-            orderDate: this.formatDate(new Date(order.orderDate)),
-            totalAmount: Number(order.totalAmount ?? 0).toFixed(2),
-            branchId: order.branchId,
-            notes: order.notes,
-          });
-
-          if (order.transferSlipUrl) {
-            this.slipFilePreviewUrl.set(this.apiOrigin + order.transferSlipUrl);
-          } else {
-            this.slipFilePreviewUrl.set(null);
-          }
-
-          order.items.forEach((item) => {
-            const itemForm = this.fb.group({
-              variantId: [item.variantId, Validators.required],
-              sku: [item.sku],
-              imageUrl: [item.imageUrl || null],
-              productName: [item.productName],
-              variantName: [item.variantName || ''],
-              quantity: [item.quantity, [Validators.required, Validators.min(1)]],
-              totalPrice: [Number(item.totalPrice ?? 0).toFixed(2), [Validators.required, Validators.min(0)]],
-            });
-            this.items.push(itemForm);
-          });
-          this.calculateTotal();
-        }
-        this.isLoadingData.set(false);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.swal.error('โหลดข้อมูลออเดอร์ไม่สำเร็จ');
-        this.router.navigate(['/procurement/vcb-orders']);
-      },
     });
   }
 
@@ -158,57 +200,28 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
 
   private setupProductSearch(): void {
     this.searchSubject
-      .pipe(
-        debounceTime(300),
-        switchMap((term) => {
-          if (!term) return [];
-          this.isSearching.set(true);
-          return this.productService
-            .getProducts({
-              pageNumber: 1,
-              pageSize: 20,
-              searchTerm: term,
-            })
-            .pipe(
-              finalize(() => {
-                this.isSearching.set(false);
-                this.cdr.markForCheck();
-              }),
-            );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((res: any) => {
-        this.searchResults.set(res?.items || []);
-        this.cdr.markForCheck();
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
+      .subscribe((term) => {
+        this.searchTerm.set(term);
+        if (!term || term.length <= 2) {
+          this.selectedProduct.set(null);
+        }
       });
   }
 
   onSearchChange(event: Event): void {
     const term = (event.target as HTMLInputElement).value;
-    if (term.length > 2) {
-      this.searchSubject.next(term);
-    } else {
-      this.searchResults.set([]);
-      this.selectedProductVariants.set([]);
-    }
+    this.searchSubject.next(term);
   }
 
   selectProduct(prod: ProductListItem): void {
     this.selectedProduct.set(prod);
-    this.isFetchingVariants.set(true);
-    this.productService.getProductById(prod.productId).subscribe({
-      next: (res) => {
-        this.selectedProductVariants.set(res.variants || []);
-        this.isFetchingVariants.set(false);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.isFetchingVariants.set(false);
-        this.cdr.markForCheck();
-        this.swal.error('ไม่สามารถดึงข้อมูลสินค้านี้ได้');
-      },
-    });
+    this.searchTerm.set('');
+    // clear the search input visually by grabbing element
+    const input = document.querySelector(
+      'input[placeholder*="พิมพ์ชื่อสินค้า"]',
+    ) as HTMLInputElement;
+    if (input) input.value = '';
   }
 
   addVariantToOrder(variant: ProductVariantDetail, productName: string): void {
@@ -227,7 +240,10 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       productName: [productName],
       variantName: [variant.variantNameTh || ''],
       quantity: [1, [Validators.required, Validators.min(1)]],
-      totalPrice: [Number(variant.basePrice ?? 0).toFixed(2), [Validators.required, Validators.min(0)]],
+      totalPrice: [
+        Number(variant.basePrice ?? 0).toFixed(2),
+        [Validators.required, Validators.min(0)],
+      ],
     });
 
     this.items.push(itemForm);
@@ -243,14 +259,13 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
     return this.items.controls.some((c) => c.get('variantId')?.value === variantId);
   }
 
-  onFileChange(event: any): void {
-    const file = event.target.files[0];
+  onFileChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       this.selectedSlipFile = file;
       const reader = new FileReader();
       reader.onload = () => {
         this.slipFilePreviewUrl.set(reader.result as string);
-        this.cdr.markForCheck();
       };
       reader.readAsDataURL(file);
     }
@@ -313,11 +328,13 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
       totalAmount: Number(formValue.totalAmount || 0).toFixed(2),
       branchId: formValue.branchId,
       notes: formValue.notes,
-      items: formValue.items.map((i: any) => ({
-        variantId: i.variantId,
-        quantity: i.quantity,
-        totalPrice: Number(i.totalPrice || 0).toFixed(2),
-      })),
+      items: formValue.items.map(
+        (i: { variantId: number; quantity: number; totalPrice: string | number }) => ({
+          variantId: i.variantId,
+          quantity: i.quantity,
+          totalPrice: Number(i.totalPrice || 0).toFixed(2),
+        }),
+      ),
     };
 
     const formData = new FormData();
@@ -327,9 +344,8 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
     }
 
     if (this.isEditMode() && this.editOrderId()) {
-      this.procurementService.updateVcbOrder(this.editOrderId()!, formData).subscribe({
+      this.vcbOrdersService.updateVcbOrder(this.editOrderId()!, formData).subscribe({
         next: (res) => {
-          this.cdr.markForCheck();
           if (res.isSuccess) {
             this.orderForm.markAsPristine();
             this.swal.success('แก้ไขออเดอร์ VCANBUY สำเร็จ').then(() => {
@@ -342,16 +358,14 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
         },
         error: (err) => {
           this.isSubmitting.set(false);
-          this.cdr.markForCheck();
           this.swal.error(
             err.error?.errorMessage || err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
           );
         },
       });
     } else {
-      this.procurementService.createVcbOrder(formData).subscribe({
+      this.vcbOrdersService.createVcbOrder(formData).subscribe({
         next: (res) => {
-          this.cdr.markForCheck();
           if (res.isSuccess) {
             this.orderForm.markAsPristine();
             this.swal.success('สร้างออเดอร์ VCANBUY สำเร็จ').then(() => {
@@ -364,7 +378,6 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
         },
         error: (err) => {
           this.isSubmitting.set(false);
-          this.cdr.markForCheck();
           this.swal.error(
             err.error?.errorMessage || err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
           );

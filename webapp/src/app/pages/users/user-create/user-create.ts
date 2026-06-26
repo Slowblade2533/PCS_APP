@@ -1,8 +1,20 @@
-import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  effect,
+  untracked,
+  computed,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize, forkJoin, Observable } from 'rxjs';
+import { of, forkJoin, Observable } from 'rxjs';
+import { finalize, catchError } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import {
   Branch,
@@ -44,10 +56,52 @@ export class UserCreate implements OnInit, HasUnsavedChanges {
   roles = signal<Role[]>([]);
 
   form!: FormGroup;
-  private userId: number | null = null;
+  userId = signal<number | null>(null);
 
   get permissionIds(): FormArray {
     return this.form.get('permissionIds') as FormArray;
+  }
+
+  masterDataResource = rxResource({
+    params: () => this.userId(),
+    stream: ({ params }) => {
+      // Return forkJoin with an object instead of array to easily infer types
+      return forkJoin({
+        roles: this.userService.getRoles(),
+        branches: this.userService.getBranches(),
+        permissions: this.userService.getPermissions(),
+        user: params ? this.userService.getUserById(params) : of(null),
+      }).pipe(
+        catchError((err) => {
+          console.error(err);
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  constructor() {
+    effect(() => {
+      const results = this.masterDataResource.value();
+      if (results) {
+        untracked(() => {
+          this.roles.set(results.roles);
+          this.branches.set(results.branches);
+          this.permissions.set(results.permissions);
+          this.groupPermissions(results.permissions);
+
+          if (results.user) {
+            this.patchForm(results.user);
+          }
+          this.initLoading.set(false);
+        });
+      } else if (results === null && !this.masterDataResource.isLoading()) {
+        untracked(() => {
+          this.errorMsg.set('โหลดข้อมูลไม่สำเร็จ');
+          this.initLoading.set(false);
+        });
+      }
+    });
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -59,11 +113,12 @@ export class UserCreate implements OnInit, HasUnsavedChanges {
 
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
-    this.userId = idParam ? +idParam : null;
-    this.isEditMode.set(!!this.userId);
+    if (idParam) {
+      this.userId.set(+idParam);
+      this.isEditMode.set(true);
+    }
 
     this.buildForm();
-    this.loadMasterData();
   }
 
   hasUnsavedChanges(): boolean {
@@ -98,7 +153,7 @@ export class UserCreate implements OnInit, HasUnsavedChanges {
     this.errorMsg.set('');
 
     const request$: Observable<any> = this.isEditMode()
-      ? this.userService.updateUser(this.userId!, {
+      ? this.userService.updateUser(this.userId()!, {
           email,
           firstName,
           lastName,
@@ -174,46 +229,6 @@ export class UserCreate implements OnInit, HasUnsavedChanges {
     }));
 
     this.permissionGroups.set(result);
-  }
-
-  private loadMasterData(): void {
-    const requests$: Observable<any[]> = this.userId
-      ? forkJoin([
-          this.userService.getRoles(),
-          this.userService.getBranches(),
-          this.userService.getPermissions(),
-          this.userService.getUserById(this.userId),
-        ])
-      : forkJoin([
-          this.userService.getRoles(),
-          this.userService.getBranches(),
-          this.userService.getPermissions(),
-        ]);
-
-    requests$
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        finalize(() => {
-          this.initLoading.set(false);
-        }),
-      )
-      .subscribe({
-        next: (results) => {
-          const roles = results[0] as Role[];
-          const branches = results[1] as Branch[];
-          const permissions = results[2] as Permission[];
-          this.roles.set(roles);
-          this.branches.set(branches);
-          this.permissions.set(permissions);
-          this.groupPermissions(permissions);
-
-          if (results.length === 4) {
-            const user = results[3] as UserDetail;
-            this.patchForm(user);
-          }
-        },
-        error: () => this.errorMsg.set('โหลดข้อมูลไม่สำเร็จ'),
-      });
   }
 
   private patchForm(user: UserDetail): void {

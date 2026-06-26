@@ -1,3 +1,5 @@
+import { StockCondition } from './shared.models';
+
 export interface StockItem {
   variantId: number;
   sku: string;
@@ -70,3 +72,20 @@ export interface StockTransactionRequest {
 }
 
 export type TransactionType = 'IN' | 'OUT' | 'ADJUST' | 'RESERVE' | 'UNRESERVE' | 'DAMAGE' | 'LOST';
+
+export interface StockConditionTransferPayload {
+  variantId: number;
+  fromCondition: StockCondition;
+  toCondition: StockCondition;
+  quantity: number;
+  reason?: string;
+}
+
+export interface StockScrapPayload {
+  variantId: number;
+  condition: StockCondition;
+  quantity: number;
+  isSold: boolean;
+  scrapPrice?: number;
+  reason?: string;
+}

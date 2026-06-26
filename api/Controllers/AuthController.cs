@@ -48,9 +48,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         var user = await authService.AuthenticateAsync(model.Email, model.Password);
 
         if (user == null)
-        {
             return BadRequest(new { message = "อีเมลหรือรหัสผ่านไม่ถูกต้อง" });
-        }
 
         var permissions = await authService.GetUserPermissionsAsync(user.Id);
 
@@ -69,9 +67,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         foreach (var p in permissions)
         {
             if (!claims.Any(c => c.Type == "permission" && c.Value == p.PermissionCode))
-            {
                 claims.Add(new Claim("permission", p.PermissionCode));
-            }
         }
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

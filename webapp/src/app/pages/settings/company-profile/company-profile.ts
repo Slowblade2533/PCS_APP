@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -22,9 +23,7 @@ export class CompanyProfile implements OnInit {
   private http = inject(HttpClient);
   private swal = inject(SweetAlertService);
 
-  isLoading = signal(false);
   isSaving = signal(false);
-  companyBankAccounts = signal<CompanyBankAccount[]>([]);
   showBankForm = signal(false);
   editingBankId = signal<number | null>(null);
   bankForm: FormGroup;
@@ -63,48 +62,54 @@ export class CompanyProfile implements OnInit {
       accountNo: ['', [Validators.required, Validators.pattern(/^[0-9\-]{10,20}$/)]],
       accountName: ['', Validators.required],
       accountType: ['Business', Validators.required],
-      isActive: [true]
+      isActive: [true],
+    });
+
+    effect(() => {
+      const profile = this.profileResource.value();
+      if (profile) {
+        this.form.patchValue({
+          branchCode: profile.branchCode || '00000',
+          branchName: profile.branchName,
+          registrationName: profile.registrationName,
+          entityType: profile.entityType || 'Individual',
+          companyType: profile.companyType || 'บุคคลธรรมดา',
+          isVatRegistered: profile.isVatRegistered || false,
+          vatDocumentUrl: profile.vatDocumentUrl || null,
+          taxId: profile.taxId,
+          address: profile.address,
+          phone: profile.phone,
+          email: profile.email,
+          logoUrl: profile.logoUrl,
+        });
+        this.stagedLogoFile.set(null);
+        this.stagedLogoPreviewUrl.set(null);
+        this.stagedVatDocFile.set(null);
+        this.stagedVatDocFileName.set(null);
+      }
     });
   }
 
+  profileResource = rxResource({
+    params: () => this.branchId,
+    stream: ({ params }) => this.http.get<any>(`${environment.apiUrl}/branches/${params}`),
+  });
+
+  bankAccountsResource = rxResource({
+    params: () => true,
+    stream: () =>
+      this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`),
+  });
+
+  companyBankAccounts = computed(() => this.bankAccountsResource.value() || []);
+  isLoading = computed(() => this.profileResource.isLoading());
+
   ngOnInit(): void {
-    this.loadProfile();
-    this.loadBankAccounts();
+    // rxResource handles loading automatically
   }
 
   loadProfile() {
-    this.isLoading.set(true);
-    this.http
-      .get<any>(`${environment.apiUrl}/branches/${this.branchId}`)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          this.form.patchValue({
-            branchCode: res.branchCode || '00000',
-            branchName: res.branchName,
-            registrationName: res.registrationName,
-            entityType: res.entityType || 'Individual',
-            companyType: res.companyType || 'บุคคลธรรมดา',
-            isVatRegistered: res.isVatRegistered || false,
-            vatDocumentUrl: res.vatDocumentUrl || null,
-            taxId: res.taxId,
-            address: res.address,
-            phone: res.phone,
-            email: res.email,
-            logoUrl: res.logoUrl,
-          });
-          
-          this.stagedLogoFile.set(null);
-          this.stagedLogoPreviewUrl.set(null);
-          this.stagedVatDocFile.set(null);
-          this.stagedVatDocFileName.set(null);
-          this.isLoading.set(false);
-        },
-        error: (err) => {
-          console.error('Failed to load company profile', err);
-          this.isLoading.set(false);
-        },
-      });
+    this.profileResource.reload();
   }
 
   onFileSelected(event: Event) {
@@ -203,7 +208,7 @@ export class CompanyProfile implements OnInit {
             console.error('Upload failed during save', err);
             this.swal.error('อัปโหลดไฟล์ล้มเหลว');
             this.isSaving.set(false);
-          }
+          },
         });
     } else {
       runSave(null, null);
@@ -211,17 +216,7 @@ export class CompanyProfile implements OnInit {
   }
 
   loadBankAccounts() {
-    this.http
-      .get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          this.companyBankAccounts.set(data);
-        },
-        error: (err) => {
-          console.error('Failed to load bank accounts', err);
-        }
-      });
+    this.bankAccountsResource.reload();
   }
 
   openAddBankForm() {
@@ -231,7 +226,7 @@ export class CompanyProfile implements OnInit {
       accountNo: '',
       accountName: '',
       accountType: 'Business',
-      isActive: true
+      isActive: true,
     });
     this.showBankForm.set(true);
   }
@@ -243,7 +238,7 @@ export class CompanyProfile implements OnInit {
       accountNo: bank.accountNo,
       accountName: bank.accountName,
       accountType: bank.accountType,
-      isActive: bank.isActive
+      isActive: bank.isActive,
     });
     this.showBankForm.set(true);
   }
@@ -271,7 +266,7 @@ export class CompanyProfile implements OnInit {
           error: (err) => {
             console.error('Failed to update bank account', err);
             this.swal.error(err.error?.message || 'แก้ไขบัญชีธนาคารล้มเหลว');
-          }
+          },
         });
     } else {
       this.http
@@ -286,7 +281,7 @@ export class CompanyProfile implements OnInit {
           error: (err) => {
             console.error('Failed to create bank account', err);
             this.swal.error(err.error?.message || 'เพิ่มบัญชีธนาคารล้มเหลว');
-          }
+          },
         });
     }
   }
@@ -305,7 +300,7 @@ export class CompanyProfile implements OnInit {
             error: (err) => {
               console.error('Failed to delete bank account', err);
               this.swal.error('ลบบัญชีธนาคารล้มเหลว');
-            }
+            },
           });
       }
     });

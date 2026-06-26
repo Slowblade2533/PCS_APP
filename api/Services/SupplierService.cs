@@ -4,24 +4,17 @@ using PCS_API.Repositories;
 
 namespace PCS_API.Services;
 
-public class SupplierService : ISupplierService
+public class SupplierService(ISupplierRepository supplierRepository) : ISupplierService
 {
-    private readonly ISupplierRepository _supplierRepository;
-
-    public SupplierService(ISupplierRepository supplierRepository)
-    {
-        _supplierRepository = supplierRepository;
-    }
-
     public async Task<ResultDto<PagedResultDto<SupplierDto>>> GetPagedAsync(SupplierSearchDto search, CancellationToken cancellationToken = default)
     {
-        var result = await _supplierRepository.GetPagedAsync(search, cancellationToken);
+        var result = await supplierRepository.GetPagedAsync(search, cancellationToken);
         return ResultDto<PagedResultDto<SupplierDto>>.Success(result);
     }
 
     public async Task<ResultDto<SupplierDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var supplier = await _supplierRepository.GetByIdAsync(id, cancellationToken);
+        var supplier = await supplierRepository.GetByIdAsync(id, cancellationToken);
         if (supplier == null)
             return ResultDto<SupplierDto>.Failure("ไม่พบข้อมูลผู้จำหน่าย");
 
@@ -45,7 +38,7 @@ public class SupplierService : ISupplierService
 
     public async Task<ResultDto<int>> CreateAsync(SupplierCreateDto dto, CancellationToken cancellationToken = default)
     {
-        if (await _supplierRepository.ExistsByCodeAsync(dto.SupplierCode, cancellationToken: cancellationToken))
+        if (await supplierRepository.ExistsByCodeAsync(dto.SupplierCode, cancellationToken: cancellationToken))
             return ResultDto<int>.Failure("รหัสผู้จำหน่ายซ้ำในระบบ");
 
         var model = new SupplierModel
@@ -60,17 +53,17 @@ public class SupplierService : ISupplierService
             IsActive = dto.IsActive
         };
 
-        int newId = await _supplierRepository.CreateAsync(model, cancellationToken);
+        int newId = await supplierRepository.CreateAsync(model, cancellationToken);
         return ResultDto<int>.Success(newId);
     }
 
     public async Task<ResultDto<bool>> UpdateAsync(int id, SupplierCreateDto dto, CancellationToken cancellationToken = default)
     {
-        var existing = await _supplierRepository.GetByIdAsync(id, cancellationToken);
+        var existing = await supplierRepository.GetByIdAsync(id, cancellationToken);
         if (existing == null)
             return ResultDto<bool>.Failure("ไม่พบข้อมูลผู้จำหน่าย");
 
-        if (await _supplierRepository.ExistsByCodeAsync(dto.SupplierCode, excludeId: id, cancellationToken: cancellationToken))
+        if (await supplierRepository.ExistsByCodeAsync(dto.SupplierCode, excludeId: id, cancellationToken: cancellationToken))
             return ResultDto<bool>.Failure("รหัสผู้จำหน่ายซ้ำในระบบ");
 
         existing.SupplierCode = dto.SupplierCode;
@@ -82,7 +75,7 @@ public class SupplierService : ISupplierService
         existing.TaxId = dto.TaxId;
         existing.IsActive = dto.IsActive;
 
-        await _supplierRepository.UpdateAsync(existing, cancellationToken);
+        await supplierRepository.UpdateAsync(existing, cancellationToken);
         return ResultDto<bool>.Success(true);
     }
 }

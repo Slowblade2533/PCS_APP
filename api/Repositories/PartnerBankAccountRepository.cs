@@ -3,20 +3,13 @@ using PCS_API.Models;
 
 namespace PCS_API.Repositories;
 
-public class PartnerBankAccountRepository : IPartnerBankAccountRepository
+public class PartnerBankAccountRepository(ISqlConnectionFactory connectionFactory) : IPartnerBankAccountRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-
-    public PartnerBankAccountRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<IEnumerable<PartnerBankAccountModel>> GetByPartnerAsync(string partnerName, int? supplierId, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = @"
-            SELECT * FROM dbo.PartnerBankAccounts 
+            SELECT Id, SupplierId, PartnerName, BankName, AccountNo, AccountName, IsDefault, IsActive, CreatedAt FROM dbo.PartnerBankAccounts 
             WHERE IsActive = 1 AND (PartnerName = @PartnerName OR (SupplierId IS NOT NULL AND SupplierId = @SupplierId))
             ORDER BY IsDefault DESC, Id DESC;";
         
@@ -26,9 +19,9 @@ public class PartnerBankAccountRepository : IPartnerBankAccountRepository
 
     public async Task<PartnerBankAccountModel?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var command = new CommandDefinition(
-            "SELECT * FROM dbo.PartnerBankAccounts WHERE Id = @Id",
+            "SELECT Id, SupplierId, PartnerName, BankName, AccountNo, AccountName, IsDefault, IsActive, CreatedAt FROM dbo.PartnerBankAccounts WHERE Id = @Id",
             new { Id = id },
             cancellationToken: cancellationToken);
         return await conn.QueryFirstOrDefaultAsync<PartnerBankAccountModel>(command);
@@ -36,7 +29,7 @@ public class PartnerBankAccountRepository : IPartnerBankAccountRepository
 
     public async Task<int> CreateAsync(PartnerBankAccountModel model, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         
         // If this is set to default, reset others for this partner
         if (model.IsDefault)
@@ -59,7 +52,7 @@ public class PartnerBankAccountRepository : IPartnerBankAccountRepository
 
     public async Task<bool> UpdateAsync(PartnerBankAccountModel model, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
 
         if (model.IsDefault)
         {
@@ -88,7 +81,7 @@ public class PartnerBankAccountRepository : IPartnerBankAccountRepository
 
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var command = new CommandDefinition(
             "DELETE FROM dbo.PartnerBankAccounts WHERE Id = @Id",
             new { Id = id },
@@ -99,9 +92,10 @@ public class PartnerBankAccountRepository : IPartnerBankAccountRepository
 
     public async Task<bool> ExistsAsync(string partnerName, string accountNo, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.PartnerBankAccounts WHERE PartnerName = @PartnerName AND AccountNo = @AccountNo) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END;";
         var command = new CommandDefinition(sql, new { PartnerName = partnerName, AccountNo = accountNo }, cancellationToken: cancellationToken);
         return await conn.QuerySingleAsync<bool>(command);
     }
 }
+

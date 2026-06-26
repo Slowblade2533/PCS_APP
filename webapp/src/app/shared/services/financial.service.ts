@@ -67,7 +67,9 @@ export class FinancialService {
   }
 
   // ─── Financial Transactions ──────────────────────────────────────────────────
-  getTransactions(params: FinancialTransactionSearchParams): Observable<PagedResult<FinancialTransaction>> {
+  getTransactions(
+    params: FinancialTransactionSearchParams,
+  ): Observable<PagedResult<FinancialTransaction>> {
     let p = new HttpParams()
       .set('pageNumber', params.pageNumber.toString())
       .set('pageSize', params.pageSize.toString());
@@ -75,7 +77,9 @@ export class FinancialService {
     if (params.transactionType) p = p.set('transactionType', params.transactionType);
     if (params.dateFrom) p = p.set('dateFrom', params.dateFrom);
     if (params.dateTo) p = p.set('dateTo', params.dateTo);
-    return this.http.get<PagedResult<FinancialTransaction>>(`${this.apiUrl}/transactions`, { params: p });
+    return this.http.get<PagedResult<FinancialTransaction>>(`${this.apiUrl}/transactions`, {
+      params: p,
+    });
   }
 
   getTransactionById(id: number): Observable<FinancialTransaction> {
@@ -86,7 +90,10 @@ export class FinancialService {
     return this.http.post<{ value: number }>(`${this.apiUrl}/transactions`, payload);
   }
 
-  updateTransaction(id: number, payload: FinancialTransactionCreatePayload): Observable<{ value: number }> {
+  updateTransaction(
+    id: number,
+    payload: FinancialTransactionCreatePayload,
+  ): Observable<{ value: number }> {
     return this.http.put<{ value: number }>(`${this.apiUrl}/transactions/${id}`, payload);
   }
 
@@ -95,24 +102,34 @@ export class FinancialService {
     formData.append('file', file);
     return this.http.post<{ imageUrl: string }>(
       `${environment.apiUrl}/upload/transaction-attachment`,
-      formData
+      formData,
     );
   }
 
   // ─── Bank Accounts ──────────────────────────────────────────────────────────
-  getPartnerBankAccounts(partnerName?: string, supplierId?: number): Observable<PartnerBankAccount[]> {
+  getPartnerBankAccounts(
+    partnerName?: string,
+    supplierId?: number,
+  ): Observable<PartnerBankAccount[]> {
     let p = new HttpParams();
     if (partnerName) p = p.set('partnerName', partnerName);
     if (supplierId) p = p.set('supplierId', supplierId.toString());
-    return this.http.get<PartnerBankAccount[]>(`${environment.apiUrl}/bank-accounts/partner`, { params: p });
+    return this.http.get<PartnerBankAccount[]>(`${environment.apiUrl}/bank-accounts/partner`, {
+      params: p,
+    });
   }
 
   savePartnerBankAccount(payload: PartnerBankAccountCreatePayload): Observable<{ value: number }> {
-    return this.http.post<{ value: number }>(`${environment.apiUrl}/bank-accounts/partner`, payload);
+    return this.http.post<{ value: number }>(
+      `${environment.apiUrl}/bank-accounts/partner`,
+      payload,
+    );
   }
 
   deletePartnerBankAccount(id: number): Observable<{ value: boolean }> {
-    return this.http.delete<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/partner/${id}`);
+    return this.http.delete<{ value: boolean }>(
+      `${environment.apiUrl}/bank-accounts/partner/${id}`,
+    );
   }
 
   getCompanyBankAccounts(activeOnly: boolean = false): Observable<CompanyBankAccount[]> {
@@ -120,19 +137,32 @@ export class FinancialService {
     if (activeOnly) {
       params = params.set('activeOnly', 'true');
     }
-    return this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`, { params });
+    return this.http.get<CompanyBankAccount[]>(`${environment.apiUrl}/bank-accounts/company`, {
+      params,
+    });
   }
 
   saveCompanyBankAccount(payload: CompanyBankAccountCreatePayload): Observable<{ value: number }> {
-    return this.http.post<{ value: number }>(`${environment.apiUrl}/bank-accounts/company`, payload);
+    return this.http.post<{ value: number }>(
+      `${environment.apiUrl}/bank-accounts/company`,
+      payload,
+    );
   }
 
-  updateCompanyBankAccount(id: number, payload: CompanyBankAccountCreatePayload): Observable<{ value: boolean }> {
-    return this.http.put<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/company/${id}`, payload);
+  updateCompanyBankAccount(
+    id: number,
+    payload: CompanyBankAccountCreatePayload,
+  ): Observable<{ value: boolean }> {
+    return this.http.put<{ value: boolean }>(
+      `${environment.apiUrl}/bank-accounts/company/${id}`,
+      payload,
+    );
   }
 
   deleteCompanyBankAccount(id: number): Observable<{ value: boolean }> {
-    return this.http.delete<{ value: boolean }>(`${environment.apiUrl}/bank-accounts/company/${id}`);
+    return this.http.delete<{ value: boolean }>(
+      `${environment.apiUrl}/bank-accounts/company/${id}`,
+    );
   }
 
   // ─── Reports ────────────────────────────────────────────────────────────────
@@ -147,14 +177,22 @@ export class FinancialService {
     let p = new HttpParams();
     if (dateFrom) p = p.set('dateFrom', dateFrom);
     if (dateTo) p = p.set('dateTo', dateTo);
-    return this.http.get<GeneralJournalRow[]>(`${this.apiUrl}/reports/general-journal`, { params: p });
+    return this.http.get<GeneralJournalRow[]>(`${this.apiUrl}/reports/general-journal`, {
+      params: p,
+    });
   }
 
-  getGeneralLedger(accountId: number, dateFrom?: string, dateTo?: string): Observable<GeneralLedgerRow[]> {
+  getGeneralLedger(
+    accountId: number,
+    dateFrom?: string,
+    dateTo?: string,
+  ): Observable<GeneralLedgerRow[]> {
     let p = new HttpParams().set('accountId', accountId.toString());
     if (dateFrom) p = p.set('dateFrom', dateFrom);
     if (dateTo) p = p.set('dateTo', dateTo);
-    return this.http.get<GeneralLedgerRow[]>(`${this.apiUrl}/reports/general-ledger`, { params: p });
+    return this.http.get<GeneralLedgerRow[]>(`${this.apiUrl}/reports/general-ledger`, {
+      params: p,
+    });
   }
 
   getProfitAndLoss(dateFrom?: string, dateTo?: string): Observable<ProfitAndLossReport> {

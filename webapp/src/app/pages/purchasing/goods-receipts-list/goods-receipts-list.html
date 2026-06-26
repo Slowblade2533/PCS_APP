@@ -2,7 +2,14 @@
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">ใบรับสินค้า (ทั่วไป)</h1>
     <a routerLink="/purchasing/goods-receipts/create" class="btn btn-primary">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-5"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
       สร้างใบรับสินค้า
@@ -18,7 +25,11 @@
         [ngModel]="searchTerm()"
         (input)="onSearch($event)"
       />
-      <select class="select select-bordered w-full" [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event); onFilterChange()">
+      <select
+        class="select select-bordered w-full"
+        [ngModel]="selectedStatus()"
+        (ngModelChange)="selectedStatus.set($event); onFilterChange()"
+      >
         @for (opt of statusOptions; track opt.value) {
           <option [value]="opt.value">{{ opt.label }}</option>
         }
@@ -57,7 +68,9 @@
             </tr>
           } @else if (data().items.length === 0) {
             <tr>
-              <td colspan="9" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลใบรับสินค้า</td>
+              <td colspan="9" class="text-center py-8 text-base-content/60">
+                ไม่พบข้อมูลใบรับสินค้า
+              </td>
             </tr>
           } @else {
             @for (item of data().items; track item.receiptId) {
@@ -65,11 +78,11 @@
                 <td class="font-medium text-primary">{{ item.receiptNo }}</td>
                 <td>{{ item.pONo }}</td>
                 <td>{{ item.supplierName }}</td>
-                <td>{{ item.receiptDate | date:'dd/MM/yyyy' }}</td>
+                <td>{{ item.receiptDate | date: 'dd/MM/yyyy' }}</td>
                 <td>{{ item.shippingCompany || '-' }}</td>
                 <td>{{ item.trackingNo || '-' }}</td>
                 <td class="text-right font-semibold">
-                  {{ item.shippingCost | number:'1.2-2' }}
+                  {{ item.shippingCost | number: '1.2-2' }}
                 </td>
                 <td>
                   <span class="badge {{ getStatusBadgeClass(item.status) }} badge-sm">
@@ -77,7 +90,11 @@
                   </span>
                 </td>
                 <td class="text-right">
-                  <a [routerLink]="['/purchasing/goods-receipts', item.receiptId]" class="btn btn-ghost btn-xs">เปิด</a>
+                  <a
+                    [routerLink]="['/purchasing/goods-receipts', item.receiptId]"
+                    class="btn btn-ghost btn-xs"
+                    >เปิด</a
+                  >
                 </td>
               </tr>
             }
@@ -90,22 +107,24 @@
     @if (data().totalCount > 0) {
       <div class="flex justify-between items-center p-4 bg-base-200/50">
         <span class="text-sm text-base-content/70">
-          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง 
-          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }} 
+          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง
+          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }}
           จากทั้งหมด {{ data().totalCount }} รายการ
         </span>
         <div class="join">
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber === 1"
-            (click)="onPageChange(data().pageNumber - 1)">
+            (click)="onPageChange(data().pageNumber - 1)"
+          >
             «
           </button>
           <button class="join-item btn btn-sm">หน้า {{ data().pageNumber }}</button>
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber * data().pageSize >= data().totalCount"
-            (click)="onPageChange(data().pageNumber + 1)">
+            (click)="onPageChange(data().pageNumber + 1)"
+          >
             »
           </button>
         </div>

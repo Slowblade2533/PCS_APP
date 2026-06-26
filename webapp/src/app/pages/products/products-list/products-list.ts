@@ -1,16 +1,17 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed, effect } from '@angular/core';
 import Big from 'big.js';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { BehaviorSubject, of, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ProductSearchFilter } from '../../../shared/components/product-search-filter/product-search-filter';
 import { ProductListItem, ProductSearchParams } from '../../../shared/models/product.models';
+import { PagedResult } from '../../../shared/models/pagination.models';
 import { ProductService } from '../../../shared/services/product.service';
 import { SweetAlertService, escapeHtml } from '../../../shared/services/sweet-alert.service';
 
@@ -29,29 +30,56 @@ function formatNumberWithCommas(value: any): string {
   selector: 'app-products-list',
   imports: [FormsModule, RouterLink, PaginationComponent, ImageHoverPreview, ProductSearchFilter],
   templateUrl: './products-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductsList implements OnInit {
   private destroyRef = inject(DestroyRef);
   private productService = inject(ProductService);
   private swal = inject(SweetAlertService);
 
-  isLoading = signal<boolean>(false);
   pageNumber = signal<number>(1);
   pageSize = signal<number>(10);
-  products = signal<ProductListItem[]>([]);
   searchTerm = signal<string>('');
   selectedCategory = signal<string>('');
   selectedInventoryGroup = signal<string>('');
   selectedStatus = signal<string>('');
   selectedType = signal<string>('');
-  totalCount = signal<number>(0);
-  totalPages = signal<number>(1);
+
+  productsResource = rxResource<PagedResult<ProductListItem>, ProductSearchParams>({
+    params: () => ({
+      searchTerm: this.searchTerm(),
+      categoryId: this.selectedCategory() ? Number(this.selectedCategory()) : null,
+      productStatus: this.selectedStatus(),
+      productType: this.selectedType(),
+      inventoryGroup: this.selectedInventoryGroup(),
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+    }),
+    stream: ({ params }) => {
+      const s = params.searchTerm?.trim() || '';
+      if (s.length > 0 && s.length < 3) {
+        return of({ items: [], totalCount: 0, totalPages: 1, pageNumber: 1, pageSize: 10 });
+      }
+      return this.productService.getProducts(params);
+    },
+  });
+
+  products = computed(() => this.productsResource.value()?.items || []);
+  totalCount = computed(() => this.productsResource.value()?.totalCount || 0);
+  totalPages = computed(() => this.productsResource.value()?.totalPages || 1);
+  isLoading = computed(() => this.productsResource.isLoading());
 
   apiOrigin = environment.apiUrl;
 
-  private readonly refresh$ = new BehaviorSubject<void>(undefined);
   private readonly searchTrigger$ = new Subject<string>();
+
+  constructor() {
+    effect(() => {
+      const err = this.productsResource.error();
+      if (err) {
+        console.error('Error fetching products:', err);
+      }
+    });
+  }
 
   ngOnInit() {
     this.searchTrigger$
@@ -59,56 +87,17 @@ export class ProductsList implements OnInit {
       .subscribe((search) => {
         this.searchTerm.set(search);
         this.pageNumber.set(1);
-        this.refresh$.next();
-      });
-
-    this.refresh$
-      .pipe(
-        tap(() => this.isLoading.set(true)),
-        switchMap(() => {
-          const filterParams: ProductSearchParams = {
-            searchTerm: this.searchTerm(),
-            categoryId: this.selectedCategory() ? Number(this.selectedCategory()) : null,
-            productStatus: this.selectedStatus(),
-            productType: this.selectedType(),
-            inventoryGroup: this.selectedInventoryGroup(),
-            pageNumber: this.pageNumber(),
-            pageSize: this.pageSize(),
-          };
-
-          const s = filterParams.searchTerm?.trim() || '';
-          if (s.length > 0 && s.length < 3) {
-            return of({ items: [], totalCount: 0, totalPages: 1, pageNumber: 1, pageSize: 10 });
-          }
-
-          return this.productService.getProducts(filterParams);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (res) => {
-          this.products.set(res.items);
-          this.totalCount.set(res.totalCount);
-          this.totalPages.set(res.totalPages);
-          this.isLoading.set(false);
-        },
-        error: (err) => {
-          console.error('Error fetching products:', err);
-          this.isLoading.set(false);
-        },
       });
   }
 
   goToPage(page: number) {
     if (page >= 1 && page <= this.totalPages()) {
       this.pageNumber.set(page);
-      this.refresh$.next();
     }
   }
 
   onSearch() {
     this.pageNumber.set(1);
-    this.refresh$.next();
   }
 
   onSearchChange(value: string) {

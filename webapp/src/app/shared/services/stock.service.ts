@@ -4,6 +4,10 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PagedResult } from '../models/pagination.models';
 import {
+  StockConditionTransferPayload,
+  StockScrapPayload,
+} from '../models/stock.models';
+import {
   StockItem,
   StockListQuery,
   StockTransaction,
@@ -44,5 +48,13 @@ export class StockService {
     if (query.dateFrom) params = params.set('dateFrom', query.dateFrom);
     if (query.dateTo) params = params.set('dateTo', query.dateTo);
     return this.http.get<PagedResult<StockTransaction>>(`${this.apiUrl}/transactions`, { params });
+  }
+
+  transferCondition(payload: StockConditionTransferPayload): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/transfer-condition`, payload);
+  }
+
+  scrap(payload: StockScrapPayload): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/scrap`, payload);
   }
 }

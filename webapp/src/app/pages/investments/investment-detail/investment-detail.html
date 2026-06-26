@@ -1,35 +1,68 @@
 <div class="p-6 max-w-7xl mx-auto space-y-6">
   <!-- Header -->
-  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-base-200 pb-5">
+  <div
+    class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-base-200 pb-5"
+  >
     <div>
       <div class="flex items-center gap-3">
-        <h1 class="text-3xl font-extrabold text-base-content tracking-tight">รายละเอียดสัญญาการลงทุน / เงินกู้ยืม</h1>
+        <h1 class="text-3xl font-extrabold text-base-content tracking-tight">
+          รายละเอียดสัญญาการลงทุน / เงินกู้ยืม
+        </h1>
         @if (investment()) {
-          <span class="badge font-bold p-3" 
-                [ngClass]="{
-                  'badge-info': investment()?.status === 0,
-                  'badge-success': investment()?.status === 1,
-                  'badge-error': investment()?.status === 2,
-                  'badge-ghost': investment()?.status === 3
-                }">
+          <span
+            class="badge font-bold p-3"
+            [ngClass]="{
+              'badge-info': investment()?.status === 0,
+              'badge-success': investment()?.status === 1,
+              'badge-error': investment()?.status === 2,
+              'badge-ghost': investment()?.status === 3,
+            }"
+          >
             {{ getStatusLabel(investment()?.status) }}
           </span>
         }
       </div>
-      <p class="text-sm text-base-content/60 mt-1">ดูรายละเอียด ยอดชำระคืน ตารางคำนวณเงินปันผล/ดอกเบี้ย และบันทึกประวัติการจ่ายชำระเงินคืน</p>
+      <p class="text-sm text-base-content/60 mt-1">
+        ดูรายละเอียด ยอดชำระคืน ตารางคำนวณเงินปันผล/ดอกเบี้ย และบันทึกประวัติการจ่ายชำระเงินคืน
+      </p>
     </div>
     <div class="flex gap-2">
       @if (investment()?.status === 0) {
-        <a [routerLink]="['/investments', investmentId, 'edit']" class="btn btn-primary btn-outline">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+        <a
+          [routerLink]="['/investments', investmentId(), 'edit']"
+          class="btn btn-primary btn-outline"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            class="size-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 21.75a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+            />
           </svg>
           แก้ไขข้อมูลสัญญา
         </a>
       }
       <a routerLink="/investments" class="btn btn-outline hover:bg-base-200">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          class="size-5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
+          />
         </svg>
         ย้อนกลับ
       </a>
@@ -43,112 +76,234 @@
     </div>
   } @else if (investment()) {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
       <!-- Left Column: Contract Info & Repayment Schedule -->
       <div class="lg:col-span-2 space-y-6">
-        
         <!-- Contract Card -->
         <div class="card bg-base-100 shadow-xl border border-base-200">
           <div class="card-body">
             <div class="flex items-center gap-2 border-b border-base-200 pb-3 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 text-primary">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="size-5 text-primary"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                />
               </svg>
               <h2 class="text-lg font-bold text-base-content">รายละเอียดข้อมูลสัญญา</h2>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span class="text-xs text-base-content/50 block font-semibold">ประเภทสัญญา</span>
-                <span class="font-bold text-base-content">{{ getTypeLabel(investment()?.investmentType) }}</span>
-              </div>
-              
-              <div>
-                <span class="text-xs text-base-content/50 block font-semibold">ยอดเงินต้นสัญญา</span>
-                <span class="font-mono font-bold text-lg text-primary">฿{{ investment()?.principalAmount | number:'1.2-2' }}</span>
+                <span class="font-bold text-base-content">{{
+                  getTypeLabel(investment()?.investmentType)
+                }}</span>
               </div>
 
               <div>
-                <span class="text-xs text-base-content/50 block font-semibold">วันที่เริ่มต้นสัญญา</span>
-                <span class="font-mono text-sm font-semibold">{{ investment()?.startDate | date:'dd MMMM yyyy' }}</span>
+                <span class="text-xs text-base-content/50 block font-semibold"
+                  >ยอดเงินต้นสัญญา</span
+                >
+                <span class="font-mono font-bold text-lg text-primary"
+                  >฿{{ investment()?.principalAmount | number: '1.2-2' }}</span
+                >
               </div>
 
               <div>
-                <span class="text-xs text-base-content/50 block font-semibold">วันสิ้นสุดสัญญา (กำหนดคืน)</span>
+                <span class="text-xs text-base-content/50 block font-semibold"
+                  >วันที่เริ่มต้นสัญญา</span
+                >
+                <span class="font-mono text-sm font-semibold">{{
+                  investment()?.startDate | date: 'dd MMMM yyyy'
+                }}</span>
+              </div>
+
+              <div>
+                <span class="text-xs text-base-content/50 block font-semibold"
+                  >วันสิ้นสุดสัญญา (กำหนดคืน)</span
+                >
                 <span class="font-mono text-sm font-semibold">
-                  {{ investment()?.maturityDate ? (investment()?.maturityDate | date:'dd MMMM yyyy') : 'ไม่มีกำหนด' }}
+                  {{
+                    investment()?.maturityDate
+                      ? (investment()?.maturityDate | date: 'dd MMMM yyyy')
+                      : 'ไม่มีกำหนด'
+                  }}
                 </span>
               </div>
 
               @if (investment()?.investmentType === 1) {
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold">อัตราดอกเบี้ยต่อปี (ปกติ)</span>
-                  <span class="font-mono text-sm font-semibold">{{ investment()?.interestRate }}%</span>
+                  <span class="text-xs text-base-content/50 block font-semibold"
+                    >อัตราดอกเบี้ยต่อปี (ปกติ)</span
+                  >
+                  <span class="font-mono text-sm font-semibold"
+                    >{{ investment()?.interestRate }}%</span
+                  >
                 </div>
               }
 
               <div>
-                <span class="text-xs text-base-content/50 block font-semibold">วิธีรับโอนเงินต้นเข้าบริษัท</span>
+                <span class="text-xs text-base-content/50 block font-semibold"
+                  >วิธีรับโอนเงินต้นเข้าบริษัท</span
+                >
                 <span class="text-sm font-semibold">
                   @if (investment()?.isCash) {
                     <span class="badge badge-warning gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5M5.25 7.5h13.5m-12 9h10.5m-9.75-3h9M12 9v6m-2.25-3h4.5" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-3.5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5M5.25 7.5h13.5m-12 9h10.5m-9.75-3h9M12 9v6m-2.25-3h4.5"
+                        />
                       </svg>
                       เงินสด
                     </span>
                   } @else {
-                    <span class="text-base-content block">{{ getCompanyName(investment()?.companyBankAccountId) }}</span>
+                    <span class="text-base-content block">{{
+                      getCompanyName(investment()?.companyBankAccountId)
+                    }}</span>
                   }
                 </span>
               </div>
 
               @if (investment()?.contractUrl) {
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold mb-1">เอกสารใบสัญญาเงินกู้ / ร่วมทุน</span>
+                  <span class="text-xs text-base-content/50 block font-semibold mb-1"
+                    >เอกสารใบสัญญาเงินกู้ / ร่วมทุน</span
+                  >
                   @if (isImage(investment()?.contractUrl)) {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
                       <app-image-hover-preview
                         [imageUrl]="getFileUrl(investment()?.contractUrl)"
                         altText="Contract Preview"
                         imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
                       ></app-image-hover-preview>
                       <div class="flex flex-col">
-                        <span class="text-xs font-semibold text-base-content/80">ตัวอย่างสัญญา (รูปภาพ)</span>
-                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                        <span class="text-xs font-semibold text-base-content/80"
+                          >ตัวอย่างสัญญา (รูปภาพ)</span
+                        >
+                        <a
+                          [href]="getFileUrl(investment()?.contractUrl)"
+                          target="_blank"
+                          class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5"
+                        >
                           เปิดในแท็บใหม่
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="currentColor"
+                            class="size-3"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                            />
+                          </svg>
                         </a>
                       </div>
                     </div>
                   } @else if (isPdf(investment()?.contractUrl)) {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
-                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
+                      <div
+                        class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-8"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                          />
                         </svg>
                       </div>
                       <div class="flex flex-col">
-                        <span class="text-xs font-semibold text-base-content/80">เอกสารสัญญา (PDF)</span>
-                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <span class="text-xs font-semibold text-base-content/80"
+                          >เอกสารสัญญา (PDF)</span
+                        >
+                        <a
+                          [href]="getFileUrl(investment()?.contractUrl)"
+                          target="_blank"
+                          class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="currentColor"
+                            class="size-3"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                            />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                            />
                           </svg>
                           กดเพื่อดูเนื้อหา
                         </a>
                       </div>
                     </div>
                   } @else {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
-                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
+                      <div
+                        class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-7"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                          />
                         </svg>
                       </div>
                       <div class="flex flex-col">
                         <span class="text-xs font-semibold text-base-content/80">ไฟล์สัญญาแนบ</span>
-                        <a [href]="getFileUrl(investment()?.contractUrl)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        <a
+                          [href]="getFileUrl(investment()?.contractUrl)"
+                          target="_blank"
+                          class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]"
+                        >
                           ดูเนื้อหาไฟล์
                         </a>
                       </div>
@@ -159,50 +314,130 @@
 
               @if (investment()?.paymentProofUrl) {
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold mb-1">หลักฐานการรับเงินลงทุน</span>
+                  <span class="text-xs text-base-content/50 block font-semibold mb-1"
+                    >หลักฐานการรับเงินลงทุน</span
+                  >
                   @if (isImage(investment()?.paymentProofUrl)) {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
                       <app-image-hover-preview
                         [imageUrl]="getFileUrl(investment()?.paymentProofUrl)"
                         altText="Payment Proof Preview"
                         imageClass="w-12 h-12 rounded-lg border border-base-300 bg-base-100 cursor-zoom-in object-cover shadow-sm hover:scale-105 transition-all"
                       ></app-image-hover-preview>
                       <div class="flex flex-col">
-                        <span class="text-xs font-semibold text-base-content/80">ตัวอย่างหลักฐาน (รูปภาพ)</span>
-                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5">
+                        <span class="text-xs font-semibold text-base-content/80"
+                          >ตัวอย่างหลักฐาน (รูปภาพ)</span
+                        >
+                        <a
+                          [href]="getFileUrl(investment()?.paymentProofUrl)"
+                          target="_blank"
+                          class="text-[10px] text-primary hover:underline font-medium mt-0.5 flex items-center gap-0.5"
+                        >
                           เปิดในแท็บใหม่
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="currentColor"
+                            class="size-3"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                            />
+                          </svg>
                         </a>
                       </div>
                     </div>
                   } @else if (isPdf(investment()?.paymentProofUrl)) {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
-                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-8">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
+                      <div
+                        class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-red-500"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-8"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                          />
                         </svg>
                       </div>
                       <div class="flex flex-col">
-                        <span class="text-xs font-semibold text-base-content/80">หลักฐานการรับเงิน (PDF)</span>
-                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        <span class="text-xs font-semibold text-base-content/80"
+                          >หลักฐานการรับเงิน (PDF)</span
+                        >
+                        <a
+                          [href]="getFileUrl(investment()?.paymentProofUrl)"
+                          target="_blank"
+                          class="btn btn-xs btn-error btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="currentColor"
+                            class="size-3"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                            />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                            />
                           </svg>
                           กดเพื่อดูเนื้อหา
                         </a>
                       </div>
                     </div>
                   } @else {
-                    <div class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit">
-                      <div class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-7">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    <div
+                      class="flex items-center gap-3 p-2 bg-base-200/50 rounded-lg border border-base-200/80 w-fit"
+                    >
+                      <div
+                        class="w-12 h-12 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center shadow-sm text-base-content/50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-7"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                          />
                         </svg>
                       </div>
                       <div class="flex flex-col">
-                        <span class="text-xs font-semibold text-base-content/80">ไฟล์หลักฐานแนบ</span>
-                        <a [href]="getFileUrl(investment()?.paymentProofUrl)" target="_blank" class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]">
+                        <span class="text-xs font-semibold text-base-content/80"
+                          >ไฟล์หลักฐานแนบ</span
+                        >
+                        <a
+                          [href]="getFileUrl(investment()?.paymentProofUrl)"
+                          target="_blank"
+                          class="btn btn-xs btn-outline mt-1 gap-1 h-7 min-h-7 px-2 text-[10px]"
+                        >
                           ดูเนื้อหาไฟล์
                         </a>
                       </div>
@@ -219,10 +454,23 @@
           <div class="card bg-base-100 shadow-xl border border-base-200">
             <div class="card-body">
               <div class="flex items-center gap-2 border-b border-base-200 pb-3 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 text-primary">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="size-5 text-primary"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"
+                  />
                 </svg>
-                <h2 class="text-lg font-bold text-base-content">อัตราดอกเบี้ยขั้นบันได (Tiered Interest)</h2>
+                <h2 class="text-lg font-bold text-base-content">
+                  อัตราดอกเบี้ยขั้นบันได (Tiered Interest)
+                </h2>
               </div>
               <div class="overflow-x-auto">
                 <table class="table table-sm table-zebra w-full text-center">
@@ -253,17 +501,41 @@
           <div class="card-body">
             <div class="flex items-center justify-between border-b border-base-200 pb-3 mb-4">
               <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 text-primary">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0-2.25h.008v.008H7.5v-.008Zm6.75 4.5h.008v.008h-.008v-.008Zm0-2.25h.008v.008h-.008V15Zm0-2.25h.008v.008h-.008v-.008Zm2.25 4.5h.008v.008H16.5v-.008Zm0-2.25h.008v.008H16.5V15Z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                  stroke="currentColor"
+                  class="size-5 text-primary"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0-2.25h.008v.008H7.5v-.008Zm6.75 4.5h.008v.008h-.008v-.008Zm0-2.25h.008v.008h-.008V15Zm0-2.25h.008v.008h-.008v-.008Zm2.25 4.5h.008v.008H16.5v-.008Zm0-2.25h.008v.008H16.5V15Z"
+                  />
                 </svg>
-                <h2 class="text-lg font-bold text-base-content">ตารางงวดการชำระชำระคืน (Repayment Installments)</h2>
+                <h2 class="text-lg font-bold text-base-content">
+                  ตารางงวดการชำระชำระคืน (Repayment Installments)
+                </h2>
               </div>
             </div>
 
             @if (schedules().length === 0) {
               <div class="text-center py-8 text-base-content/50">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-12 mx-auto mb-2 text-base-content/30">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-12 mx-auto mb-2 text-base-content/30"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 6v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 ไม่มีตารางชำระเงินคืนสำหรับสัญญานี้ (หุ้นส่วนมักไม่มีงวดจ่ายชำระคืนแบบกำหนดล่วงหน้า)
               </div>
@@ -288,27 +560,39 @@
                     @for (item of schedules(); track item.scheduleId) {
                       <tr class="hover:bg-base-200/50 transition-colors">
                         <td class="font-bold text-center">งวดที่ {{ item.installmentNumber }}</td>
-                        <td class="font-mono text-xs">{{ item.dueDate | date:'dd/MM/yyyy' }}</td>
-                        <td class="font-mono text-right">฿{{ item.principalAmount | number:'1.2-2' }}</td>
-                        <td class="font-mono text-right">฿{{ item.interestAmount | number:'1.2-2' }}</td>
+                        <td class="font-mono text-xs">{{ item.dueDate | date: 'dd/MM/yyyy' }}</td>
+                        <td class="font-mono text-right">
+                          ฿{{ item.principalAmount | number: '1.2-2' }}
+                        </td>
+                        <td class="font-mono text-right">
+                          ฿{{ item.interestAmount | number: '1.2-2' }}
+                        </td>
                         <td class="font-mono text-right font-bold text-primary">
-                          ฿{{ (item.principalAmount + item.interestAmount) | number:'1.2-2' }}
+                          ฿{{ item.principalAmount + item.interestAmount | number: '1.2-2' }}
                         </td>
                         <td class="font-mono text-right text-success font-semibold">
                           @if (item.status === 1) {
-                            ฿{{ item.paidAmount | number:'1.2-2' }}
+                            ฿{{ item.paidAmount | number: '1.2-2' }}
                           } @else {
                             -
                           }
                         </td>
                         <td class="text-center">
-                          <span class="badge badge-sm font-semibold text-xs" [ngClass]="getScheduleStatusBadgeClass(item.status)">
+                          <span
+                            class="badge badge-sm font-semibold text-xs"
+                            [ngClass]="getScheduleStatusBadgeClass(item.status)"
+                          >
                             {{ getScheduleStatusLabel(item.status) }}
                           </span>
                         </td>
                         <td>
                           @if (item.slipUrl) {
-                            <a [href]="item.slipUrl" target="_blank" class="btn btn-ghost btn-xs text-primary p-0 min-h-0 h-auto font-bold underline" title="ดูสลิป">
+                            <a
+                              [href]="item.slipUrl"
+                              target="_blank"
+                              class="btn btn-ghost btn-xs text-primary p-0 min-h-0 h-auto font-bold underline"
+                              title="ดูสลิป"
+                            >
                               ดูสลิปโอนเงิน
                             </a>
                           } @else {
@@ -320,7 +604,10 @@
                             @if (item.isCash) {
                               <span class="badge badge-warning badge-xs">เงินสด</span>
                             } @else {
-                              <span class="text-xs max-w-[120px] truncate block" [title]="getCompanyName(item.companyBankAccountId)">
+                              <span
+                                class="text-xs max-w-[120px] truncate block"
+                                [title]="getCompanyName(item.companyBankAccountId)"
+                              >
                                 {{ getCompanyName(item.companyBankAccountId) }}
                               </span>
                             }
@@ -330,14 +617,32 @@
                         </td>
                         <td class="text-center">
                           @if (item.status === 0 || item.status === 2) {
-                            <button class="btn btn-primary btn-xs font-bold gap-1 shadow hover:scale-105 transition-all" (click)="openRepaymentModal(item)">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            <button
+                              class="btn btn-primary btn-xs font-bold gap-1 shadow hover:scale-105 transition-all"
+                              (click)="openRepaymentModal(item)"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="2"
+                                stroke="currentColor"
+                                class="size-3"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                />
                               </svg>
                               บันทึกชำระ
                             </button>
                           } @else if (item.status === 1 && item.transactionId) {
-                            <a [routerLink]="['/finance/transactions', item.transactionId]" class="btn btn-outline btn-xs font-normal" title="ดูรายการทางบัญชี">
+                            <a
+                              [routerLink]="['/finance/transactions', item.transactionId]"
+                              class="btn btn-outline btn-xs font-normal"
+                              title="ดูรายการทางบัญชี"
+                            >
                               สมุดรายวัน
                             </a>
                           } @else {
@@ -356,13 +661,23 @@
 
       <!-- Right Column: Investor Details & Bank Accounts -->
       <div class="space-y-6">
-        
         <!-- Investor Info Card -->
         <div class="card bg-base-100 shadow-xl border border-base-200">
           <div class="card-body">
             <div class="flex items-center gap-2 border-b border-base-200 pb-3 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 text-primary">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="size-5 text-primary"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+                />
               </svg>
               <h2 class="text-lg font-bold text-base-content">ข้อมูลผู้ร่วมลงทุน (เจ้าหนี้)</h2>
             </div>
@@ -371,18 +686,27 @@
               <div class="space-y-4">
                 <div>
                   <span class="text-xs text-base-content/50 block font-semibold">ชื่อ-นามสกุล</span>
-                  <a [routerLink]="['/investors', investor()?.investorId]" class="font-bold text-primary hover:underline text-lg">
+                  <a
+                    [routerLink]="['/investors', investor()?.investorId]"
+                    class="font-bold text-primary hover:underline text-lg"
+                  >
                     {{ investor()?.title }}{{ investor()?.firstName }} {{ investor()?.lastName }}
                   </a>
                 </div>
 
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold">เลขประจำตัวผู้เสียภาษี (Tax ID)</span>
-                  <span class="text-sm font-mono font-semibold">{{ investor()?.taxId || '-' }}</span>
+                  <span class="text-xs text-base-content/50 block font-semibold"
+                    >เลขประจำตัวผู้เสียภาษี (Tax ID)</span
+                  >
+                  <span class="text-sm font-mono font-semibold">{{
+                    investor()?.taxId || '-'
+                  }}</span>
                 </div>
 
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold">เบอร์โทรศัพท์</span>
+                  <span class="text-xs text-base-content/50 block font-semibold"
+                    >เบอร์โทรศัพท์</span
+                  >
                   <span class="text-sm font-semibold">{{ investor()?.phone || '-' }}</span>
                 </div>
 
@@ -392,8 +716,12 @@
                 </div>
 
                 <div>
-                  <span class="text-xs text-base-content/50 block font-semibold">ที่อยู่ตามบัตร/สัญญา</span>
-                  <span class="text-sm text-base-content/80 font-medium block whitespace-pre-wrap leading-relaxed">
+                  <span class="text-xs text-base-content/50 block font-semibold"
+                    >ที่อยู่ตามบัตร/สัญญา</span
+                  >
+                  <span
+                    class="text-sm text-base-content/80 font-medium block whitespace-pre-wrap leading-relaxed"
+                  >
                     {{ investor()?.address || '-' }}
                   </span>
                 </div>
@@ -408,25 +736,47 @@
         <div class="card bg-base-100 shadow-xl border border-base-200">
           <div class="card-body">
             <div class="flex items-center gap-2 border-b border-base-200 pb-3 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5 text-primary">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-19.5 0h19.5M2.25 9.75h19.5m-19.5 3h19.5m-19.5 0h19.5m-19.5 0h19.5m-19.5 3h19.5M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="size-5 text-primary"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M2.25 8.25h19.5M2.25 9h19.5m-19.5 0h19.5M2.25 9.75h19.5m-19.5 3h19.5m-19.5 0h19.5m-19.5 0h19.5m-19.5 3h19.5M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"
+                />
               </svg>
               <h2 class="text-lg font-bold text-base-content">บัญชีธนาคารสำหรับโอนเงินคืน</h2>
             </div>
-            
-            <p class="text-xs text-base-content/50 mb-3 leading-relaxed">กรุณาจ่ายชำระเงินโอนคืนเข้าบัญชีของเจ้าหนี้ตามรายการด้านล่างนี้:</p>
+
+            <p class="text-xs text-base-content/50 mb-3 leading-relaxed">
+              กรุณาจ่ายชำระเงินโอนคืนเข้าบัญชีของเจ้าหนี้ตามรายการด้านล่างนี้:
+            </p>
 
             @if (investorBankAccounts().length === 0) {
-              <p class="text-sm text-base-content/50 italic py-2">ไม่ได้ลงทะเบียนบัญชีธนาคารของนักลงทุนไว้</p>
+              <p class="text-sm text-base-content/50 italic py-2">
+                ไม่ได้ลงทะเบียนบัญชีธนาคารของนักลงทุนไว้
+              </p>
             } @else {
               <div class="space-y-3">
                 @for (bank of investorBankAccounts(); track bank.bankAccountId) {
                   <div class="p-3 bg-base-200/50 rounded-lg border border-base-200 relative group">
                     <div class="flex justify-between items-start">
                       <div>
-                        <span class="font-bold text-sm block text-base-content">{{ bank.bankName }}</span>
-                        <span class="font-mono text-sm block font-bold text-primary mt-1">{{ bank.accountNumber }}</span>
-                        <span class="text-xs text-base-content/60 block mt-0.5">ประเภท: {{ bank.accountType === 'Saving' ? 'ออมทรัพย์' : 'กระแสรายวัน' }}</span>
+                        <span class="font-bold text-sm block text-base-content">{{
+                          bank.bankName
+                        }}</span>
+                        <span class="font-mono text-sm block font-bold text-primary mt-1">{{
+                          bank.accountNumber
+                        }}</span>
+                        <span class="text-xs text-base-content/60 block mt-0.5"
+                          >ประเภท:
+                          {{ bank.accountType === 'Saving' ? 'ออมทรัพย์' : 'กระแสรายวัน' }}</span
+                        >
                       </div>
                       @if (bank.isDefault) {
                         <span class="badge badge-success badge-xs font-semibold">หลัก</span>
@@ -448,7 +798,9 @@
   <div class="modal modal-open backdrop-blur-sm">
     <div class="modal-box border border-base-200 shadow-2xl max-w-md">
       <div class="flex justify-between items-center border-b border-base-200 pb-3 mb-4">
-        <h3 class="font-bold text-lg text-base-content">บันทึกการชำระเงินคืน งวดที่ {{ selectedSchedule()?.installmentNumber }}</h3>
+        <h3 class="font-bold text-lg text-base-content">
+          บันทึกการชำระเงินคืน งวดที่ {{ selectedSchedule()?.installmentNumber }}
+        </h3>
         <button class="btn btn-sm btn-circle btn-ghost" (click)="closeRepaymentModal()">✕</button>
       </div>
 
@@ -457,23 +809,45 @@
         <div class="bg-base-200/60 p-4 rounded-lg border border-base-200 space-y-2">
           <div class="flex justify-between text-sm">
             <span class="text-base-content/60">ยอดเงินต้นที่ต้องชำระ:</span>
-            <span class="font-mono font-semibold">฿{{ selectedSchedule()?.principalAmount | number:'1.2-2' }}</span>
+            <span class="font-mono font-semibold"
+              >฿{{ selectedSchedule()?.principalAmount | number: '1.2-2' }}</span
+            >
           </div>
           <div class="flex justify-between text-sm">
             <span class="text-base-content/60">ยอดดอกเบี้ยที่ต้องชำระ:</span>
-            <span class="font-mono font-semibold">฿{{ selectedSchedule()?.interestAmount | number:'1.2-2' }}</span>
+            <span class="font-mono font-semibold"
+              >฿{{ selectedSchedule()?.interestAmount | number: '1.2-2' }}</span
+            >
           </div>
-          <div class="flex justify-between text-sm font-bold border-t border-base-300 pt-2 text-primary">
+          <div
+            class="flex justify-between text-sm font-bold border-t border-base-300 pt-2 text-primary"
+          >
             <span>ยอดชำระตามกำหนดงวด:</span>
-            <span class="font-mono">฿{{ ((selectedSchedule()?.principalAmount || 0) + (selectedSchedule()?.interestAmount || 0)) | number:'1.2-2' }}</span>
+            <span class="font-mono"
+              >฿{{
+                (selectedSchedule()?.principalAmount || 0) +
+                  (selectedSchedule()?.interestAmount || 0) | number: '1.2-2'
+              }}</span
+            >
           </div>
         </div>
 
         <!-- Paid Amount -->
         <div class="form-control w-full">
-          <label class="label"><span class="label-text font-semibold">จำนวนเงินที่ชำระจริง (บาท) <span class="text-error">*</span></span></label>
-          <input type="number" formControlName="paidAmount" class="input input-bordered w-full font-mono font-bold" placeholder="0.00" />
-          @if (repaymentForm.get('paidAmount')?.touched && repaymentForm.get('paidAmount')?.invalid) {
+          <label class="label"
+            ><span class="label-text font-semibold"
+              >จำนวนเงินที่ชำระจริง (บาท) <span class="text-error">*</span></span
+            ></label
+          >
+          <input
+            type="number"
+            formControlName="paidAmount"
+            class="input input-bordered w-full font-mono font-bold"
+            placeholder="0.00"
+          />
+          @if (
+            repaymentForm.get('paidAmount')?.touched && repaymentForm.get('paidAmount')?.invalid
+          ) {
             <span class="text-xs text-error mt-1">กรุณาระบุจำนวนเงินที่ถูกต้องมากกว่า 0</span>
           }
         </div>
@@ -491,14 +865,26 @@
         <!-- Company Bank Account Source -->
         @if (!repaymentForm.get('isCash')?.value) {
           <div class="form-control w-full">
-            <label class="label"><span class="label-text font-semibold">จ่ายจากบัญชีธนาคารบริษัท <span class="text-error">*</span></span></label>
-            <select formControlName="companyBankAccountId" class="select select-bordered w-full bg-base-100">
+            <label class="label"
+              ><span class="label-text font-semibold"
+                >จ่ายจากบัญชีธนาคารบริษัท <span class="text-error">*</span></span
+              ></label
+            >
+            <select
+              formControlName="companyBankAccountId"
+              class="select select-bordered w-full bg-base-100"
+            >
               <option value="">เลือกบัญชีที่ใช้โอนเงิน...</option>
               @for (bank of companyBankAccounts(); track bank.id) {
-                <option [value]="bank.id">{{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})</option>
+                <option [value]="bank.id">
+                  {{ bank.bankName }} - {{ bank.accountNo }} ({{ bank.accountName }})
+                </option>
               }
             </select>
-            @if (repaymentForm.get('companyBankAccountId')?.touched && repaymentForm.get('companyBankAccountId')?.invalid) {
+            @if (
+              repaymentForm.get('companyBankAccountId')?.touched &&
+              repaymentForm.get('companyBankAccountId')?.invalid
+            ) {
               <span class="text-xs text-error mt-1">กรุณาเลือกบัญชีธนาคารต้นทางที่ใช้โอนเงิน</span>
             }
           </div>
@@ -506,8 +892,18 @@
 
         <!-- Upload Slip Attachment -->
         <div class="form-control w-full">
-          <label class="label"><span class="label-text font-semibold">อัปโหลดสลิปหลักฐานการโอน (สลิปโอนเงิน / ใบสำคัญจ่ายเงินสด)</span></label>
-          <input type="file" (change)="onSlipUpload($event)" accept="image/*,application/pdf" class="file-input file-input-bordered file-input-primary w-full text-sm" [disabled]="isUploadingSlip()" />
+          <label class="label"
+            ><span class="label-text font-semibold"
+              >อัปโหลดสลิปหลักฐานการโอน (สลิปโอนเงิน / ใบสำคัญจ่ายเงินสด)</span
+            ></label
+          >
+          <input
+            type="file"
+            (change)="onSlipUpload($event)"
+            accept="image/*,application/pdf"
+            class="file-input file-input-bordered file-input-primary w-full text-sm"
+            [disabled]="isUploadingSlip()"
+          />
           @if (isUploadingSlip()) {
             <div class="flex items-center gap-2 mt-1">
               <span class="loading loading-spinner loading-xs text-primary"></span>
@@ -515,20 +911,49 @@
             </div>
           }
           @if (repaymentForm.get('slipUrl')?.value) {
-            <div class="mt-2 flex items-center gap-2 bg-success/10 text-success p-2 rounded border border-success/20 text-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            <div
+              class="mt-2 flex items-center gap-2 bg-success/10 text-success p-2 rounded border border-success/20 text-xs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                class="size-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
               </svg>
               <span>อัปโหลดหลักฐานสำเร็จแล้ว</span>
-              <a [href]="repaymentForm.get('slipUrl')?.value" target="_blank" class="underline font-bold ml-auto">ดูรูปภาพ</a>
+              <a
+                [href]="repaymentForm.get('slipUrl')?.value"
+                target="_blank"
+                class="underline font-bold ml-auto"
+                >ดูรูปภาพ</a
+              >
             </div>
           }
         </div>
 
         <!-- Buttons -->
         <div class="modal-action border-t border-base-200 pt-4 flex gap-2">
-          <button type="button" class="btn btn-outline" (click)="closeRepaymentModal()" [disabled]="isSubmittingRepayment()">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary min-w-[100px]" [disabled]="isSubmittingRepayment() || isUploadingSlip()">
+          <button
+            type="button"
+            class="btn btn-outline"
+            (click)="closeRepaymentModal()"
+            [disabled]="isSubmittingRepayment()"
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary min-w-[100px]"
+            [disabled]="isSubmittingRepayment() || isUploadingSlip()"
+          >
             @if (isSubmittingRepayment()) {
               <span class="loading loading-spinner loading-xs"></span>
             }

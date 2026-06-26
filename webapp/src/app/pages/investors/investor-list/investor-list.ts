@@ -1,5 +1,6 @@
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Investor } from '../../../shared/models/investor.models';
 import { InvestorService } from '../../../shared/services/investor.service';
@@ -10,45 +11,38 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './investor-list.html',
-  styleUrl: './investor-list.css',
 })
-export class InvestorList implements OnInit {
+export class InvestorList {
   private readonly investorService = inject(InvestorService);
   private readonly swal = inject(SweetAlertService);
 
-  investors = signal<Investor[]>([]);
-  isLoading = signal<boolean>(true);
+  investorsResource = rxResource({
+    stream: () => this.investorService.getInvestors(),
+  });
+
   searchTerm = signal<string>('');
 
-  ngOnInit(): void {
-    this.loadInvestors();
-  }
-
-  loadInvestors(): void {
-    this.isLoading.set(true);
-    this.investorService.getInvestors().subscribe({
-      next: (data) => {
-        this.investors.set(data);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
+  constructor() {
+    effect(() => {
+      const err = this.investorsResource.error();
+      if (err) {
         console.error('Failed to load investors', err);
         this.swal.error('ไม่สามารถโหลดข้อมูลนักลงทุนได้');
-        this.isLoading.set(false);
-      },
+      }
     });
   }
 
   get filteredInvestors(): Investor[] {
     const term = this.searchTerm().toLowerCase().trim();
-    if (!term) return this.investors();
+    const investors = this.investorsResource.value() || [];
+    if (!term) return investors;
 
-    return this.investors().filter(
+    return investors.filter(
       (i) =>
         i.firstName.toLowerCase().includes(term) ||
         i.lastName.toLowerCase().includes(term) ||
         i.email.toLowerCase().includes(term) ||
-        i.phone.includes(term)
+        i.phone.includes(term),
     );
   }
 
@@ -58,19 +52,21 @@ export class InvestorList implements OnInit {
   }
 
   deleteInvestor(id: string, name: string): void {
-    this.swal.confirm(`ยืนยันการลบข้อมูลนักลงทุน ${name}?`, 'การลบข้อมูลนี้จะไม่สามารถกู้คืนได้').then((confirmed) => {
-      if (confirmed) {
-        this.investorService.deleteInvestor(id).subscribe({
-          next: () => {
-            this.swal.success('ลบข้อมูลสำเร็จ');
-            this.loadInvestors();
-          },
-          error: (err) => {
-            console.error('Failed to delete investor', err);
-            this.swal.error('ไม่สามารถลบข้อมูลนักลงทุนได้เนื่องจากมีข้อมูลการลงทุนผูกอยู่');
-          },
-        });
-      }
-    });
+    this.swal
+      .confirm(`ยืนยันการลบข้อมูลนักลงทุน ${name}?`, 'การลบข้อมูลนี้จะไม่สามารถกู้คืนได้')
+      .then((confirmed) => {
+        if (confirmed) {
+          this.investorService.deleteInvestor(id).subscribe({
+            next: () => {
+              this.swal.success('ลบข้อมูลสำเร็จ');
+              this.investorsResource.reload();
+            },
+            error: (err) => {
+              console.error('Failed to delete investor', err);
+              this.swal.error('ไม่สามารถลบข้อมูลนักลงทุนได้เนื่องจากมีข้อมูลการลงทุนผูกอยู่');
+            },
+          });
+        }
+      });
   }
 }

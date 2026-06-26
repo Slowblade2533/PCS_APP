@@ -8,4 +8,3 @@ Big.RM = 2; // ROUND_HALF_UP (if 3rd decimal place >= 5, rounds up; otherwise ro
 Big.DP = 4; // Max decimal places for intermediate division results
 
 bootstrapApplication(App, appConfig).catch((err) => console.error(err));
-

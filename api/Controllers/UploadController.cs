@@ -4,8 +4,8 @@ using System.Security.Cryptography;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize(Policy = "CanUploadImage")]
 public class UploadController(IWebHostEnvironment env) : ControllerBase
 {
@@ -22,7 +22,8 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
         int bytesRead = stream.Read(buffer);
         stream.Position = 0; // reset for subsequent reads
 
-        if (bytesRead < 4) return false;
+        if (bytesRead < 4) 
+            return false;
 
         // JPEG: FF D8 FF
         if (buffer[0] == 0xFF && buffer[1] == 0xD8 && buffer[2] == 0xFF)
@@ -92,7 +93,9 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     public async Task<IActionResult> UploadProductImage(IFormFile file)
     {
         var (isSuccess, result) = await SaveImageAsync(file, "products");
-        if (!isSuccess) return BadRequest(new { message = result });
+        if (!isSuccess) 
+            return BadRequest(new { message = result });
+
         return Ok(new { imageUrl = result });
     }
 
@@ -101,7 +104,9 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     public async Task<IActionResult> UploadCompanyLogo(IFormFile file)
     {
         var (isSuccess, result) = await SaveImageAsync(file, "company-profile");
-        if (!isSuccess) return BadRequest(new { message = result });
+        if (!isSuccess) 
+            return BadRequest(new { message = result });
+
         return Ok(new { imageUrl = result });
     }
 
@@ -113,13 +118,15 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
         int bytesRead = stream.Read(buffer);
         stream.Position = 0; // reset for subsequent reads
 
-        if (bytesRead < 4) return false;
+        if (bytesRead < 4) 
+            return false;
 
         if (ext == ".pdf")
         {
             // PDF: %PDF (hex: 25 50 44 46)
             if (buffer[0] == 0x25 && buffer[1] == 0x50 && buffer[2] == 0x44 && buffer[3] == 0x46)
                 return true;
+
             return false;
         }
 
@@ -184,7 +191,9 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     public async Task<IActionResult> UploadTransactionAttachment(IFormFile file)
     {
         var (isSuccess, result) = await SaveAttachmentAsync(file, "temp");
-        if (!isSuccess) return BadRequest(new { message = result });
+        if (!isSuccess) 
+            return BadRequest(new { message = result });
+
         return Ok(new { imageUrl = result });
     }
 }

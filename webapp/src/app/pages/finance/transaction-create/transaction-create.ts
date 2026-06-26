@@ -1,9 +1,10 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed, effect, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { switchMap, tap } from 'rxjs/operators';
+import { catchError, of } from 'rxjs';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import {
   ChartOfAccount,
@@ -12,7 +13,7 @@ import {
   LedgerEntryCreatePayload,
   TransactionType,
   PartnerBankAccount,
-  CompanyBankAccount
+  CompanyBankAccount,
 } from '../../../shared/models/financial.models';
 import { Branch } from '../../../shared/models/user.models';
 import { FinancialService } from '../../../shared/services/financial.service';
@@ -25,7 +26,6 @@ import { ImageHoverPreview } from '../../../shared/components/image-hover-previe
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe, BankSelectComponent, ImageHoverPreview],
   templateUrl: './transaction-create.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionCreate implements OnInit {
   private financialService = inject(FinancialService);
@@ -40,11 +40,17 @@ export class TransactionCreate implements OnInit {
 
   transactionId = signal<number | null>(null);
   isViewMode = signal<boolean>(false);
-  detail = signal<FinancialTransaction | null>(null);
 
-  accounts = signal<ChartOfAccount[]>([]);
-  branches = signal<Branch[]>([]);
-  
+  accountsResource = rxResource({
+    stream: () => this.financialService.getAccounts().pipe(catchError(() => of([]))),
+  });
+  accounts = computed(() => this.accountsResource.value()?.filter((a) => a.isActive) || []);
+
+  branchesResource = rxResource({
+    stream: () => this.financialService.getBranches().pipe(catchError(() => of([]))),
+  });
+  branches = computed(() => this.branchesResource.value()?.filter((b) => b.isActive) || []);
+
   // Form State
   transactionDate = signal<string>(new Date().toISOString().split('T')[0]);
   transactionType = signal<TransactionType>('EXPENSE');
@@ -69,8 +75,21 @@ export class TransactionCreate implements OnInit {
   destinationAccountNo = signal<string>('');
   sourceAccountName = signal<string>('');
   destinationAccountName = signal<string>('');
-  partnerBankAccounts = signal<PartnerBankAccount[]>([]);
-  companyBankAccounts = signal<CompanyBankAccount[]>([]);
+  partnerBankAccountsResource = rxResource({
+    params: () => this.partnerName(),
+    stream: ({ params }) => {
+      if (!params || params.trim().length === 0) return of([]);
+      return this.financialService
+        .getPartnerBankAccounts(params.trim())
+        .pipe(catchError(() => of([])));
+    },
+  });
+  partnerBankAccounts = computed(() => this.partnerBankAccountsResource.value() || []);
+
+  companyBankAccountsResource = rxResource({
+    stream: () => this.financialService.getCompanyBankAccounts().pipe(catchError(() => of([]))),
+  });
+  companyBankAccounts = computed(() => this.companyBankAccountsResource.value() || []);
   saveSourceAccountOnTheFly = signal<boolean>(false);
   saveDestinationAccountOnTheFly = signal<boolean>(false);
 
@@ -80,10 +99,26 @@ export class TransactionCreate implements OnInit {
 
   ledgerEntries = signal<LedgerEntryCreatePayload[]>([
     { accountId: 0, debitAmount: 0, creditAmount: 0, memo: '' },
-    { accountId: 0, debitAmount: 0, creditAmount: 0, memo: '' }
+    { accountId: 0, debitAmount: 0, creditAmount: 0, memo: '' },
   ]);
 
-  loading = signal<boolean>(false);
+  detailResource = rxResource({
+    params: () => this.transactionId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.financialService.getTransactionById(params).pipe(catchError(() => of(null)));
+    },
+  });
+  detail = computed(() => this.detailResource.value());
+
+  loading = computed(
+    () =>
+      this.accountsResource.isLoading() ||
+      this.branchesResource.isLoading() ||
+      this.companyBankAccountsResource.isLoading() ||
+      this.detailResource.isLoading() ||
+      this.partnerBankAccountsResource.isLoading(),
+  );
   submitting = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -101,55 +136,28 @@ export class TransactionCreate implements OnInit {
     { value: 'RECEIPT', label: 'รับเงินเข้า' },
   ];
 
-  ngOnInit() {
-    this.financialService.getAccounts().subscribe((accs) => {
-      this.accounts.set(accs.filter(a => a.isActive));
-      this.applyTemplate();
+  constructor() {
+    effect(() => {
+      const accs = this.accounts();
+      if (accs.length > 0 && !this.transactionId() && this.autoGenerateLedger()) {
+        untracked(() => this.applyTemplate());
+      }
     });
 
-    this.financialService.getBranches().subscribe((brs) => {
-      this.branches.set(brs.filter(b => b.isActive));
-      if (!this.isViewMode() && brs.length > 0) {
+    effect(() => {
+      const brs = this.branches();
+      if (!this.isViewMode() && brs.length > 0 && !this.branchId()) {
         this.branchId.set(brs[0].id);
       }
     });
+  }
 
-    this.financialService.getCompanyBankAccounts().subscribe({
-      next: (accounts) => {
-        this.companyBankAccounts.set(accounts);
-      },
-      error: (err) => {
-        console.error('Failed to load company bank accounts', err);
-      }
-    });
-
-    this.route.paramMap.pipe(
-      tap((params) => {
-        const id = params.get('id');
-        if (id) {
-          this.transactionId.set(Number(id));
-          this.isViewMode.set(true);
-          this.loading.set(true);
-        }
-      }),
-      switchMap((params) => {
-        const id = params.get('id');
-        if (id) {
-          return this.financialService.getTransactionById(Number(id));
-        }
-        return [];
-      }),
-      tap((res: any) => {
-        if (res) {
-          this.detail.set(res);
-          if (res.partnerName) {
-            this.onPartnerNameChange(res.partnerName);
-          }
-        }
-        this.loading.set(false);
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe();
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.transactionId.set(Number(id));
+      this.isViewMode.set(true);
+    }
   }
 
   editTransaction() {
@@ -163,7 +171,7 @@ export class TransactionCreate implements OnInit {
     this.paymentRefNo.set(d.paymentRefNo || '');
     this.sourceAccountInfo.set(d.sourceAccountInfo || '');
     this.attachmentUrl.set(d.attachmentUrl || '');
-    
+
     this.documentNo.set(d.documentNo || '');
     this.partnerName.set(d.partnerName || '');
     this.status.set(d.status || 'POSTED');
@@ -185,12 +193,14 @@ export class TransactionCreate implements OnInit {
     this.autoGenerateLedger.set(false);
 
     if (d.ledgerEntries && d.ledgerEntries.length > 0) {
-      this.ledgerEntries.set(d.ledgerEntries.map(e => ({
-        accountId: e.accountId,
-        debitAmount: e.debitAmount,
-        creditAmount: e.creditAmount,
-        memo: e.memo || ''
-      })));
+      this.ledgerEntries.set(
+        d.ledgerEntries.map((e) => ({
+          accountId: e.accountId,
+          debitAmount: e.debitAmount,
+          creditAmount: e.creditAmount,
+          memo: e.memo || '',
+        })),
+      );
     }
 
     this.isViewMode.set(false);
@@ -234,9 +244,7 @@ export class TransactionCreate implements OnInit {
   onDescriptionChange(newDesc: string) {
     this.description.set(newDesc);
     if (this.autoGenerateLedger()) {
-      this.ledgerEntries.update(entries => 
-        entries.map(e => ({ ...e, memo: newDesc }))
-      );
+      this.ledgerEntries.update((entries) => entries.map((e) => ({ ...e, memo: newDesc })));
     }
   }
 
@@ -294,19 +302,19 @@ export class TransactionCreate implements OnInit {
     const finalDebitCode = debitCodeOverride || debitCode;
     const finalCreditCode = creditCodeOverride || creditCode;
 
-    const dbAcc = this.accounts().find(a => a.accountCode === finalDebitCode);
-    const crAcc = this.accounts().find(a => a.accountCode === finalCreditCode);
+    const dbAcc = this.accounts().find((a) => a.accountCode === finalDebitCode);
+    const crAcc = this.accounts().find((a) => a.accountCode === finalCreditCode);
 
     if (dbAcc && crAcc) {
       this.ledgerEntries.set([
         { accountId: dbAcc.accountId, debitAmount: amount, creditAmount: 0, memo: memoText },
-        { accountId: crAcc.accountId, debitAmount: 0, creditAmount: amount, memo: memoText }
+        { accountId: crAcc.accountId, debitAmount: 0, creditAmount: amount, memo: memoText },
       ]);
     }
   }
 
   syncLedgerAmounts(amount: number) {
-    this.ledgerEntries.update(entries => {
+    this.ledgerEntries.update((entries) => {
       if (entries.length >= 2) {
         const newEntries = [...entries];
         newEntries[0] = { ...newEntries[0], debitAmount: amount, creditAmount: 0 };
@@ -326,17 +334,20 @@ export class TransactionCreate implements OnInit {
 
   addLedgerEntry() {
     this.autoGenerateLedger.set(false);
-    this.ledgerEntries.update(entries => [...entries, { accountId: 0, debitAmount: 0, creditAmount: 0, memo: '' }]);
+    this.ledgerEntries.update((entries) => [
+      ...entries,
+      { accountId: 0, debitAmount: 0, creditAmount: 0, memo: '' },
+    ]);
   }
 
   removeLedgerEntry(index: number) {
     this.autoGenerateLedger.set(false);
-    this.ledgerEntries.update(entries => entries.filter((_, i) => i !== index));
+    this.ledgerEntries.update((entries) => entries.filter((_, i) => i !== index));
   }
 
   updateLedgerEntry(index: number, field: keyof LedgerEntryCreatePayload, value: any) {
     this.autoGenerateLedger.set(false);
-    this.ledgerEntries.update(entries => {
+    this.ledgerEntries.update((entries) => {
       const newEntries = [...entries];
       (newEntries[index] as any)[field] = value;
       return newEntries;
@@ -344,7 +355,7 @@ export class TransactionCreate implements OnInit {
   }
 
   getAccountCode(accountId: number): string {
-    const acc = this.accounts().find(a => a.accountId === Number(accountId));
+    const acc = this.accounts().find((a) => a.accountId === Number(accountId));
     return acc ? acc.accountCode : '';
   }
 
@@ -394,7 +405,7 @@ export class TransactionCreate implements OnInit {
         sourceAccountInfo: this.sourceAccountInfo(),
         receiverAccountId: this.receiverAccountId() ? Number(this.receiverAccountId()) : undefined,
         attachmentUrl: finalAttachmentUrl,
-        
+
         // New audit and document fields
         status: this.status(),
         branchId: this.branchId() ? Number(this.branchId()) : undefined,
@@ -408,12 +419,12 @@ export class TransactionCreate implements OnInit {
         sourceAccountName: this.sourceAccountName() || undefined,
         destinationAccountName: this.destinationAccountName() || undefined,
 
-        ledgerEntries: this.ledgerEntries().map(e => ({
+        ledgerEntries: this.ledgerEntries().map((e) => ({
           accountId: Number(e.accountId),
           debitAmount: Number(e.debitAmount),
           creditAmount: Number(e.creditAmount),
-          memo: e.memo
-        }))
+          memo: e.memo,
+        })),
       };
 
       const id = this.transactionId();
@@ -429,14 +440,15 @@ export class TransactionCreate implements OnInit {
           error: (err) => {
             this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
             this.submitting.set(false);
-          }
+          },
         });
       });
     };
 
     const file = this.selectedFile();
     if (file) {
-      this.financialService.uploadAttachment(file)
+      this.financialService
+        .uploadAttachment(file)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (res) => {
@@ -446,7 +458,7 @@ export class TransactionCreate implements OnInit {
             console.error('Upload failed', err);
             this.error.set(err.error?.message || 'ไม่สามารถอัปโหลดไฟล์แนบได้');
             this.submitting.set(false);
-          }
+          },
         });
     } else {
       submitPayload(this.attachmentUrl());
@@ -491,7 +503,12 @@ export class TransactionCreate implements OnInit {
   isImageUrl(url: string | null | undefined): boolean {
     if (!url) return false;
     const lower = url.toLowerCase();
-    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp');
+    return (
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.webp')
+    );
   }
 
   getAttachmentUrl(url: string | undefined): string {
@@ -510,24 +527,12 @@ export class TransactionCreate implements OnInit {
 
   getBranchName(id: number | undefined): string {
     if (!id) return '-';
-    const b = this.branches().find(x => x.id === id);
+    const b = this.branches().find((x) => x.id === id);
     return b ? b.branchName : id.toString();
   }
 
   onPartnerNameChange(name: string) {
     this.partnerName.set(name);
-    if (!name || name.trim().length === 0) {
-      this.partnerBankAccounts.set([]);
-      return;
-    }
-    this.financialService.getPartnerBankAccounts(name.trim()).subscribe({
-      next: (accounts) => {
-        this.partnerBankAccounts.set(accounts);
-      },
-      error: (err) => {
-        console.error('Failed to load partner bank accounts', err);
-      }
-    });
   }
 
   selectPartnerBankAccount(account: PartnerBankAccount, type: 'source' | 'destination') {
@@ -555,7 +560,7 @@ export class TransactionCreate implements OnInit {
   }
 
   isPartnerAccountSaved(accountNo: string): boolean {
-    return this.partnerBankAccounts().some(a => a.accountNo === accountNo);
+    return this.partnerBankAccounts().some((a) => a.accountNo === accountNo);
   }
 
   onAccountNoInput(event: Event, type: 'source' | 'destination') {
@@ -579,21 +584,29 @@ export class TransactionCreate implements OnInit {
     const promises: any[] = [];
 
     if (this.saveSourceAccountOnTheFly() && this.originBank() && this.sourceAccountNo()) {
-      promises.push(this.financialService.savePartnerBankAccount({
-        partnerName: partner,
-        bankName: this.originBank(),
-        accountNo: this.sourceAccountNo(),
-        accountName: this.sourceAccountName() || partner
-      }));
+      promises.push(
+        this.financialService.savePartnerBankAccount({
+          partnerName: partner,
+          bankName: this.originBank(),
+          accountNo: this.sourceAccountNo(),
+          accountName: this.sourceAccountName() || partner,
+        }),
+      );
     }
 
-    if (this.saveDestinationAccountOnTheFly() && this.destinationBank() && this.destinationAccountNo()) {
-      promises.push(this.financialService.savePartnerBankAccount({
-        partnerName: partner,
-        bankName: this.destinationBank(),
-        accountNo: this.destinationAccountNo(),
-        accountName: this.destinationAccountName() || partner
-      }));
+    if (
+      this.saveDestinationAccountOnTheFly() &&
+      this.destinationBank() &&
+      this.destinationAccountNo()
+    ) {
+      promises.push(
+        this.financialService.savePartnerBankAccount({
+          partnerName: partner,
+          bankName: this.destinationBank(),
+          accountNo: this.destinationAccountNo(),
+          accountName: this.destinationAccountName() || partner,
+        }),
+      );
     }
 
     if (promises.length === 0) {
@@ -609,7 +622,7 @@ export class TransactionCreate implements OnInit {
         error: (err) => {
           console.error('Failed to save bank account on the fly', err);
           callback();
-        }
+        },
       });
     });
   }

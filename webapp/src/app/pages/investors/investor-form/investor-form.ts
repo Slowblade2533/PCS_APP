@@ -1,18 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
+import { BankSelectComponent } from '../../../shared/components/bank-select/bank-select';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { InvestorService } from '../../../shared/services/investor.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
-import { BankSelectComponent } from '../../../shared/components/bank-select/bank-select';
 
 @Component({
   selector: 'app-investor-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, BankSelectComponent],
   templateUrl: './investor-form.html',
-  styleUrl: './investor-form.css',
 })
 export class InvestorForm implements OnInit, HasUnsavedChanges {
   private readonly fb = inject(FormBuilder);
@@ -24,22 +25,60 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
   form!: FormGroup;
   isEditMode = signal<boolean>(false);
   investorId = signal<string | null>(null);
-  isLoading = signal<boolean>(false);
+
+  investorResource = rxResource({
+    params: () => this.investorId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.investorService.getInvestorById(params).pipe(
+        catchError((err) => {
+          console.error('Failed to load investor details', err);
+          this.swal.error('ไม่พบข้อมูลนักลงทุนดังกล่าว');
+          this.router.navigate(['/investors']);
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  isSaving = signal<boolean>(false);
+  isLoading = computed(() => this.investorResource.isLoading() || this.isSaving());
   isSubmitted = signal<boolean>(false);
 
   constructor() {
     this.initForm();
+
+    effect(() => {
+      const res = this.investorResource.value();
+      if (res && res.investor) {
+        this.form.patchValue({
+          title: res.investor.title || 'นาย',
+          firstName: res.investor.firstName || '',
+          lastName: res.investor.lastName || '',
+          taxId: res.investor.taxId || '',
+          address: res.investor.address || '',
+          phone: res.investor.phone || '',
+          email: res.investor.email || '',
+        });
+
+        while (this.bankAccounts.length > 0) {
+          this.bankAccounts.removeAt(0);
+        }
+
+        const accounts = res.bankAccounts || [];
+        accounts.forEach((acc: any) => {
+          this.bankAccounts.push(this.createBankAccountFormGroup(acc));
+        });
+      }
+    });
   }
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => {
-      const id = params.get('id');
-      if (id) {
-        this.isEditMode.set(true);
-        this.investorId.set(id);
-        this.loadInvestorData(id);
-      }
-    });
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.isEditMode.set(true);
+      this.investorId.set(id);
+    }
   }
 
   initForm(): void {
@@ -63,7 +102,10 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
     return this.fb.group({
       bankAccountId: [data?.bankAccountId || ''],
       bankName: [data?.bankName || '', Validators.required],
-      accountNumber: [data?.accountNumber || '', [Validators.required, Validators.pattern('^[0-9]+$')]],
+      accountNumber: [
+        data?.accountNumber || '',
+        [Validators.required, Validators.pattern('^[0-9]+$')],
+      ],
       accountType: [data?.accountType || 'Savings', Validators.required],
       isDefault: [data?.isDefault || false],
     });
@@ -91,42 +133,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
     }
   }
 
-  loadInvestorData(id: string): void {
-    this.isLoading.set(true);
-    this.investorService.getInvestorById(id).subscribe({
-      next: (res) => {
-        try {
-          if (res && res.investor) {
-            this.form.patchValue({
-              title: res.investor.title || 'นาย',
-              firstName: res.investor.firstName || '',
-              lastName: res.investor.lastName || '',
-              taxId: res.investor.taxId || '',
-              address: res.investor.address || '',
-              phone: res.investor.phone || '',
-              email: res.investor.email || '',
-            });
-          }
-
-          // Set bank accounts
-          const accounts = res?.bankAccounts || [];
-          accounts.forEach((acc: any) => {
-            this.bankAccounts.push(this.createBankAccountFormGroup(acc));
-          });
-          this.isLoading.set(false);
-        } catch (e) {
-          console.error('Error parsing investor data:', e);
-          this.isLoading.set(false);
-        }
-      },
-      error: (err) => {
-        console.error('Failed to load investor details', err);
-        this.isLoading.set(false);
-        this.swal.error('ไม่พบข้อมูลนักลงทุนดังกล่าว');
-        this.router.navigate(['/investors']);
-      },
-    });
-  }
+  // Removed loadInvestorData
 
   hasUnsavedChanges(): boolean {
     return this.form.dirty && !this.isSubmitted();
@@ -138,14 +145,17 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
       return;
     }
 
-    this.isLoading.set(true);
+    this.isSaving.set(true);
     const rawPayload = this.form.value;
     const payload = {
       ...rawPayload,
       bankAccounts: (rawPayload.bankAccounts || []).map((b: any) => ({
         ...b,
-        bankAccountId: b.bankAccountId && b.bankAccountId.trim() !== '' ? b.bankAccountId : '00000000-0000-0000-0000-000000000000'
-      }))
+        bankAccountId:
+          b.bankAccountId && b.bankAccountId.trim() !== ''
+            ? b.bankAccountId
+            : '00000000-0000-0000-0000-000000000000',
+      })),
     };
 
     if (this.isEditMode() && this.investorId()) {
@@ -158,7 +168,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
         error: (err) => {
           console.error('Failed to update investor', err);
           this.swal.error('ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบอีกครั้ง');
-          this.isLoading.set(false);
+          this.isSaving.set(false);
         },
       });
     } else {
@@ -166,12 +176,13 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
         next: (res) => {
           this.isSubmitted.set(true);
           this.swal.success('เพิ่มข้อมูลนักลงทุนสำเร็จ');
+          this.isSaving.set(false);
           this.router.navigate(['/investors', res.investorId]);
         },
         error: (err) => {
           console.error('Failed to create investor', err);
           this.swal.error('ไม่สามารถเพิ่มข้อมูลได้ กรุณาตรวจสอบอีกครั้ง');
-          this.isLoading.set(false);
+          this.isSaving.set(false);
         },
       });
     }

@@ -186,7 +186,8 @@
                       <div class="relative flex-shrink-0">
                         <app-image-hover-preview
                           [imageUrl]="
-                            variant.get('stagedPreviewUrl')?.value || (apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value))
+                            variant.get('stagedPreviewUrl')?.value ||
+                            apiOrigin + $safeNavigationMigration(variant.get('imageUrl')?.value)
                           "
                           altText="Preview"
                           imageClass="w-24 h-24 border rounded-md object-cover bg-base-200 cursor-pointer"

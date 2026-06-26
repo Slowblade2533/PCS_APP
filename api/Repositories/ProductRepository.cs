@@ -1,159 +1,14 @@
-using Dapper;
-using Microsoft.Data.SqlClient;
+﻿using Dapper;
 using PCS_API.DTOs;
-using PCS_API.Services;
-using System.Text;
+using System.Data;
 
 namespace PCS_API.Repositories;
 
-public class ProductRepository : IProductRepository
+public class ProductRepository(ISqlConnectionFactory connectionFactory) : IProductRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-    private readonly ImageCleanupChannel _imageCleanup;
-    public ProductRepository(ISqlConnectionFactory connectionFactory, ImageCleanupChannel imageCleanup)
-    {
-        _connectionFactory = connectionFactory;
-        _imageCleanup = imageCleanup;
-    }
-
-    public async Task<ResultDto<int>> CreateProductWithVariantsAsync(ProductCreateDto dto)
-    {
-        using var connection = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
-        if (connection == null) throw new InvalidOperationException("Could not create DbConnection.");
-        await connection.OpenAsync();
-        using var transaction = await connection.BeginTransactionAsync();
-
-        try
-        {
-            var duplicateSkusInPayload = dto.Variants
-                .Where(v => !string.IsNullOrWhiteSpace(v.Sku))
-                .GroupBy(v => v.Sku.Trim(), StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicateSkusInPayload.Any())
-            {
-                return ResultDto<int>.Failure($"พบรหัส SKU ซ้ำกันเองภายในรายการที่คุณกรอกเข้ามา: '{string.Join(", ", duplicateSkusInPayload)}' กรุณาแก้ไขไม่ให้ซ้ำกัน");
-            }
-
-            var duplicateBarcodesInPayload = dto.Variants
-                .Where(v => !string.IsNullOrWhiteSpace(v.Barcode))
-                .GroupBy(v => v.Barcode!.Trim(), StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicateBarcodesInPayload.Any())
-            {
-                return ResultDto<int>.Failure($"พบรหัสบาร์โค้ดซ้ำกันเองภายในรายการที่คุณกรอกเข้ามา: '{string.Join(", ", duplicateBarcodesInPayload)}' กรุณาแก้ไขไม่ให้ซ้ำกัน");
-            }
-
-            var barcodesToCheck = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Barcode)).Select(v => v.Barcode).ToList();
-            var skusToCheck = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Sku)).Select(v => v.Sku).ToList();
-
-            if (barcodesToCheck.Any() || skusToCheck.Any())
-            {
-                var checkSql = "";
-                var checkParams = new DynamicParameters();
-
-                if (barcodesToCheck.Any())
-                {
-                    checkSql += "SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes;\n";
-                    checkParams.Add("Barcodes", barcodesToCheck);
-                }
-                if (skusToCheck.Any())
-                {
-                    checkSql += "SELECT Sku FROM ProductVariants WHERE Sku IN @Skus;\n";
-                    checkParams.Add("Skus", skusToCheck);
-                }
-
-                using var multi = await connection.QueryMultipleAsync(checkSql, checkParams, transaction);
-                if (barcodesToCheck.Any())
-                {
-                    var existingBarcodes = (await multi.ReadAsync<string>()).ToList();
-                    if (existingBarcodes.Any())
-                    {
-                        return ResultDto<int>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                    }
-                }
-                if (skusToCheck.Any())
-                {
-                    var existingSkus = (await multi.ReadAsync<string>()).ToList();
-                    if (existingSkus.Any())
-                    {
-                        return ResultDto<int>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                    }
-                }
-            }
-
-            string productSql = @"
-                    INSERT INTO Products (ProductNameTh, ProductNameEn, Description, BrandName, CategoryId, ProductType, ProductStatus, CreatedBy, IsStockTracked, InventoryGroup)
-                    OUTPUT INSERTED.ProductId
-                    VALUES (@ProductNameTh, @ProductNameEn, @Description, @BrandName, @CategoryId, @ProductType, @ProductStatus, @CreatedBy, @IsStockTracked, @InventoryGroup);";
-
-            int productId = await connection.QuerySingleAsync<int>(productSql, dto, transaction);
-
-            var batchSql = new StringBuilder();
-            var batchParams = new DynamicParameters();
-            batchParams.Add("ProductId", productId);
-            batchParams.Add("CreatedBy", dto.CreatedBy);
-
-            for (int i = 0; i < dto.Variants.Count; i++)
-            {
-                var v = dto.Variants[i];
-                batchSql.AppendLine($"DECLARE @VId{i} INT;");
-                batchSql.AppendLine($@"
-                    INSERT INTO ProductVariants (ProductId, Sku, Barcode, VariantNameTh, VariantNameEn, Color, SizeLabel, StylePattern, UnitOfMeasure, Width, Length, Height, Weight, ImageUrl)
-                    VALUES (@ProductId, @Sku{i}, @Barcode{i}, @VariantNameTh{i}, @VariantNameEn{i}, @Color{i}, @SizeLabel{i}, @StylePattern{i}, @UnitOfMeasure{i}, @Width{i}, @Length{i}, @Height{i}, @Weight{i}, @ImageUrl{i});
-                    SET @VId{i} = SCOPE_IDENTITY();
-                    INSERT INTO ProductPrices (VariantId, BasePrice, DiscountPrice, UpdatedAt)
-                    VALUES (@VId{i}, @BasePrice{i}, @DiscountPrice{i}, GETDATE());
-                    INSERT INTO Stocks (VariantId, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
-                    VALUES (@VId{i}, @CurrentQuantity{i}, 0, @ReorderPoint{i}, GETDATE());");
-
-                if (dto.IsStockTracked && v.CurrentQuantity > 0)
-                {
-                    batchSql.AppendLine($@"
-                    INSERT INTO StockTransactions (VariantId, TransactionType, Quantity, UnitCost, Notes, CreatedBy)
-                    VALUES (@VId{i}, 'IN', @CurrentQuantity{i}, 0.00, N'บันทึกยอดตั้งต้นจากการเพิ่มสินค้าใหม่', @CreatedBy);");
-                }
-
-                batchParams.Add($"Sku{i}", v.Sku);
-                batchParams.Add($"Barcode{i}", v.Barcode);
-                batchParams.Add($"VariantNameTh{i}", v.VariantNameTh);
-                batchParams.Add($"VariantNameEn{i}", v.VariantNameEn);
-                batchParams.Add($"Color{i}", v.Color);
-                batchParams.Add($"SizeLabel{i}", v.SizeLabel);
-                batchParams.Add($"StylePattern{i}", v.StylePattern);
-                batchParams.Add($"UnitOfMeasure{i}", v.UnitOfMeasure);
-                batchParams.Add($"Width{i}", v.Width);
-                batchParams.Add($"Length{i}", v.Length);
-                batchParams.Add($"Height{i}", v.Height);
-                batchParams.Add($"Weight{i}", v.Weight);
-                batchParams.Add($"ImageUrl{i}", v.ImageUrl);
-                batchParams.Add($"BasePrice{i}", v.BasePrice);
-                batchParams.Add($"DiscountPrice{i}", v.DiscountPrice);
-                batchParams.Add($"CurrentQuantity{i}", v.CurrentQuantity);
-                batchParams.Add($"ReorderPoint{i}", v.ReorderPoint);
-            }
-
-            if (batchSql.Length > 0)
-            {
-                await connection.ExecuteAsync(batchSql.ToString(), batchParams, transaction);
-            }
-
-            await transaction.CommitAsync();
-            return ResultDto<int>.Success(productId);
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
-
     public async Task<PagedResultDto<ProductListDto>> GetPagedProductsAsync(ProductSearchParamsDto search, CancellationToken cancellationToken = default)
     {
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = connectionFactory.CreateConnection();
 
         var parameters = new DynamicParameters();
         parameters.Add("SearchTerm", string.IsNullOrEmpty(search.SearchTerm) ? null : $"%{search.SearchTerm}%");
@@ -166,7 +21,7 @@ public class ProductRepository : IProductRepository
 
         string sql = @"
                 SELECT COUNT(*)
-                FROM Products p
+                FROM dbo.Products p
                 WHERE 
                     (@SearchTerm IS NULL OR p.ProductNameTh LIKE @SearchTerm OR p.ProductNameEn LIKE @SearchTerm OR p.BrandName LIKE @SearchTerm)
                     AND (@CategoryId IS NULL OR p.CategoryId = @CategoryId)
@@ -188,11 +43,11 @@ public class ProductRepository : IProductRepository
                     ISNULL(SUM(st.AvailableQuantity), 0) AS TotalAvailableStock,
                     ISNULL(MIN(pr.BasePrice), 0) AS MinPrice,
                     MAX(pv.ImageUrl) AS ImageUrl
-                FROM Products p
-                INNER JOIN Categories c ON p.CategoryId = c.CategoryId
-                LEFT JOIN ProductVariants pv ON p.ProductId = pv.ProductId
-                LEFT JOIN Stocks st ON pv.VariantId = st.VariantId
-                LEFT JOIN ProductPrices pr ON pv.VariantId = pr.VariantId
+                FROM dbo.Products p
+                INNER JOIN dbo.Categories c ON p.CategoryId = c.CategoryId
+                LEFT JOIN dbo.ProductVariants pv ON p.ProductId = pv.ProductId
+                LEFT JOIN dbo.Stocks st ON pv.VariantId = st.VariantId
+                LEFT JOIN dbo.ProductPrices pr ON pv.VariantId = pr.VariantId
                 WHERE 
                     (@SearchTerm IS NULL OR p.ProductNameTh LIKE @SearchTerm OR p.ProductNameEn LIKE @SearchTerm OR p.BrandName LIKE @SearchTerm)
                     AND (@CategoryId IS NULL OR p.CategoryId = @CategoryId)
@@ -214,7 +69,7 @@ public class ProductRepository : IProductRepository
 
             return new PagedResultDto<ProductListDto>
             {
-                Items = items,
+                Items = items.ToList(),
                 TotalCount = totalCount,
                 PageNumber = search.PageNumber,
                 PageSize = search.PageSize
@@ -222,8 +77,6 @@ public class ProductRepository : IProductRepository
         }
         catch (OperationCanceledException)
         {
-            // Handle cases where the client cancels the request (e.g. typing in search box too fast)
-            // This prevents unhandled TaskCanceledException errors in the application.
             return new PagedResultDto<ProductListDto>
             {
                 Items = new List<ProductListDto>(),
@@ -234,23 +87,23 @@ public class ProductRepository : IProductRepository
         }
     }
 
-    public async Task<ProductDetailDto?> GetProductDetailAsync(int productId)
+    public async Task<ProductDetailDto?> GetProductDetailAsync(int productId, CancellationToken cancellationToken = default)
     {
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = connectionFactory.CreateConnection();
 
         string sql = @"
                 SELECT ProductId, ProductNameTh, ProductNameEn, Description, BrandName, CategoryId, ProductType, ProductStatus, IsStockTracked, InventoryGroup 
-                FROM Products WHERE ProductId = @productId;
+                FROM dbo.Products WHERE ProductId = @productId;
 
                 SELECT pv.VariantId, pv.ProductId, pv.Sku, pv.Barcode, pv.VariantNameTh, pv.VariantNameEn, pv.Color, pv.SizeLabel, pv.StylePattern, pv.ImageUrl, pv.UnitOfMeasure, 
                        pv.Width, pv.Length, pv.Height, pv.Weight,
                        pr.BasePrice, pr.DiscountPrice, st.CurrentQuantity, st.ReorderPoint 
-                FROM ProductVariants pv
-                LEFT JOIN ProductPrices pr ON pv.VariantId = pr.VariantId
-                LEFT JOIN Stocks st ON pv.VariantId = st.VariantId
+                FROM dbo.ProductVariants pv
+                LEFT JOIN dbo.ProductPrices pr ON pv.VariantId = pr.VariantId
+                LEFT JOIN dbo.Stocks st ON pv.VariantId = st.VariantId
                 WHERE pv.ProductId = @productId;";
 
-        using var multi = await connection.QueryMultipleAsync(sql, new { productId });
+        using var multi = await connection.QueryMultipleAsync(new CommandDefinition(sql, new { productId }, cancellationToken: cancellationToken));
         var product = await multi.ReadFirstOrDefaultAsync<ProductDetailDto>();
         if (product == null) return null;
 
@@ -260,264 +113,154 @@ public class ProductRepository : IProductRepository
         return product;
     }
 
-    public async Task<ResultDto<bool>> UpdateProductWithVariantsAsync(int productId, ProductCreateDto dto)
+    public async Task<int> InsertProductAsync(ProductCreateDto dto, IDbTransaction transaction, CancellationToken cancellationToken = default)
     {
-        using var connection = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
-        if (connection == null) throw new InvalidOperationException("Could not create DbConnection.");
-        await connection.OpenAsync();
-        using var transaction = await connection.BeginTransactionAsync();
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = @"
+            INSERT INTO dbo.Products (ProductNameTh, ProductNameEn, Description, BrandName, CategoryId, ProductType, ProductStatus, CreatedBy, IsStockTracked, InventoryGroup)
+            OUTPUT INSERTED.ProductId
+            VALUES (@ProductNameTh, @ProductNameEn, @Description, @BrandName, @CategoryId, @ProductType, @ProductStatus, @CreatedBy, @IsStockTracked, @InventoryGroup);";
+        return await conn.QuerySingleAsync<int>(new CommandDefinition(sql, dto, transaction: transaction, cancellationToken: cancellationToken));
+    }
 
+    public async Task<int> UpdateProductAsync(int productId, ProductCreateDto dto, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = @"
+            UPDATE dbo.Products 
+            SET ProductNameTh = @ProductNameTh, ProductNameEn = @ProductNameEn, 
+                Description = @Description, BrandName = @BrandName, 
+                CategoryId = @CategoryId,
+                ProductType = @ProductType,
+                ProductStatus = @ProductStatus,
+                IsStockTracked = @IsStockTracked,
+                InventoryGroup = @InventoryGroup
+            WHERE ProductId = @ProductId;";
+        
+        var parameters = new DynamicParameters(dto);
+        parameters.Add("ProductId", productId);
+        return await conn.ExecuteAsync(new CommandDefinition(sql, parameters, transaction: transaction, cancellationToken: cancellationToken));
+    }
+
+    public async Task<int> InsertProductVariantAsync(int productId, VariantCreateDto v, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        var parameters = new DynamicParameters(v);
+        parameters.Add("ProductId", productId);
+        
+        string sql = @"
+            INSERT INTO dbo.ProductVariants (ProductId, Sku, Barcode, VariantNameTh, VariantNameEn, Color, SizeLabel, StylePattern, UnitOfMeasure, Width, Length, Height, Weight, ImageUrl)
+            OUTPUT INSERTED.VariantId
+            VALUES (@ProductId, @Sku, @Barcode, @VariantNameTh, @VariantNameEn, @Color, @SizeLabel, @StylePattern, @UnitOfMeasure, @Width, @Length, @Height, @Weight, @ImageUrl);";
+        return await conn.QuerySingleAsync<int>(new CommandDefinition(sql, parameters, transaction: transaction, cancellationToken: cancellationToken));
+    }
+
+    public async Task UpdateProductVariantsAndPricesAsync(IEnumerable<object> updateDataList, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = @"
+            UPDATE dbo.ProductVariants 
+            SET Sku = @Sku, Barcode = @Barcode, VariantNameTh = @VariantNameTh, VariantNameEn = @VariantNameEn, Color = @Color, SizeLabel = @SizeLabel, StylePattern = @StylePattern, UnitOfMeasure = @UnitOfMeasure,
+                Width = @Width, Length = @Length, Height = @Height, Weight = @Weight,
+                ImageUrl = @ImageUrl
+            WHERE VariantId = @UVariantId;
+    
+            UPDATE dbo.ProductPrices 
+            SET BasePrice = @BasePrice, DiscountPrice = @DiscountPrice, UpdatedAt = GETDATE()
+            WHERE VariantId = @UVariantId;
+
+            UPDATE dbo.Stocks 
+            SET CurrentQuantity = @CurrentQuantity, ReorderPoint = @ReorderPoint, UpdatedAt = GETDATE()
+            WHERE VariantId = @UVariantId AND RowVersion = @URowVersion;";
+
+        await conn.ExecuteAsync(new CommandDefinition(sql, updateDataList, transaction: transaction, cancellationToken: cancellationToken));
+    }
+
+    public async Task DeleteProductVariantsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = "DELETE FROM dbo.ProductVariants WHERE VariantId IN @Ids;";
+        await conn.ExecuteAsync(new CommandDefinition(sql, new { Ids = variantIds }, transaction: transaction, cancellationToken: cancellationToken));
+    }
+
+    public async Task InsertProductPriceAsync(int variantId, decimal basePrice, decimal? discountPrice, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = @"
+            INSERT INTO dbo.ProductPrices (VariantId, BasePrice, DiscountPrice, UpdatedAt)
+            VALUES (@VariantId, @BasePrice, @DiscountPrice, GETDATE());";
+        await conn.ExecuteAsync(new CommandDefinition(sql, new { VariantId = variantId, BasePrice = basePrice, DiscountPrice = discountPrice }, transaction: transaction, cancellationToken: cancellationToken));
+    }
+
+    public async Task<List<string>> CheckBarcodesExistAsync(IEnumerable<string> barcodes, IEnumerable<int>? ignoreVariantIds = null, IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
         try
         {
-            var duplicateSkusInPayload = dto.Variants
-                .Where(v => !string.IsNullOrWhiteSpace(v.Sku))
-                .GroupBy(v => v.Sku.Trim(), StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicateSkusInPayload.Any())
-            {
-                return ResultDto<bool>.Failure($"พบรหัส SKU ซ้ำกันเองภายในรายการที่คุณกรอกเข้ามา: '{string.Join(", ", duplicateSkusInPayload)}' กรุณาแก้ไขไม่ให้ซ้ำกัน");
-            }
-
-            var duplicateBarcodesInPayload = dto.Variants
-                .Where(v => !string.IsNullOrWhiteSpace(v.Barcode))
-                .GroupBy(v => v.Barcode!.Trim(), StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
-            if (duplicateBarcodesInPayload.Any())
-            {
-                return ResultDto<bool>.Failure($"พบรหัสบาร์โค้ดซ้ำกันเองภายในรายการที่คุณกรอกเข้ามา: '{string.Join(", ", duplicateBarcodesInPayload)}' กรุณาแก้ไขไม่ให้ซ้ำกัน");
-            }
+            var parameters = new DynamicParameters();
+            parameters.Add("Barcodes", barcodes);
+            string sql = "SELECT Barcode FROM dbo.ProductVariants WHERE Barcode IN @Barcodes";
             
-            var filesToCheckForDeletion = new List<string>();
-
-            var incomingVariantIds = dto.Variants
-                .Where(x => x.VariantId.HasValue && x.VariantId.Value > 0)
-                .Select(x => x.VariantId!.Value)
-                .ToList();
-
-            string getCurrentVariantsSql = "SELECT VariantId FROM ProductVariants WHERE ProductId = @ProductId;";
-            var existingVariantIds = (await connection.QueryAsync<int>(getCurrentVariantsSql, new { ProductId = productId }, transaction)).ToList();
-            var variantsToDelete = existingVariantIds.Except(incomingVariantIds).ToList();
-
-            if (variantsToDelete.Any())
+            if (ignoreVariantIds != null && ignoreVariantIds.Any())
             {
-                var imagesOfDeletedVariants = await connection.QueryAsync<string>(
-                    "SELECT ImageUrl FROM ProductVariants WHERE VariantId IN @Ids AND ImageUrl IS NOT NULL;",
-                    new { Ids = variantsToDelete }, transaction);
-                filesToCheckForDeletion.AddRange(imagesOfDeletedVariants);
-
-                await connection.ExecuteAsync("DELETE FROM ProductVariants WHERE VariantId IN @Ids;", new { Ids = variantsToDelete }, transaction);
+                sql += " AND VariantId NOT IN @IgnoreIds";
+                parameters.Add("IgnoreIds", ignoreVariantIds);
             }
 
-            var existingVariantsToUpdate = dto.Variants.Where(v => v.VariantId != null && v.VariantId > 0).Select(v => v.VariantId).ToList();
-            if (!existingVariantsToUpdate.Any())
-            {
-                existingVariantsToUpdate.Add(-1);
-            }
-
-            var barcodes = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Barcode)).Select(v => v.Barcode).ToList();
-            var skus = dto.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Sku)).Select(v => v.Sku).ToList();
-
-            if (barcodes.Any() || skus.Any())
-            {
-                var checkSql = "";
-                var checkParams = new DynamicParameters();
-                checkParams.Add("IgnoreIds", existingVariantsToUpdate);
-
-                if (barcodes.Any())
-                {
-                    checkSql += "SELECT Barcode FROM ProductVariants WHERE Barcode IN @Barcodes AND VariantId NOT IN @IgnoreIds;\n";
-                    checkParams.Add("Barcodes", barcodes);
-                }
-                if (skus.Any())
-                {
-                    checkSql += "SELECT Sku FROM ProductVariants WHERE Sku IN @Skus AND VariantId NOT IN @IgnoreIds;\n";
-                    checkParams.Add("Skus", skus);
-                }
-
-                using var multi = await connection.QueryMultipleAsync(checkSql, checkParams, transaction);
-                if (barcodes.Any())
-                {
-                    var existingBarcodes = (await multi.ReadAsync<string>()).ToList();
-                    if (existingBarcodes.Any())
-                    {
-                        return ResultDto<bool>.Failure($"รหัสบาร์โค้ด '{string.Join(", ", existingBarcodes)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                    }
-                }
-                if (skus.Any())
-                {
-                    var existingSkus = (await multi.ReadAsync<string>()).ToList();
-                    if (existingSkus.Any())
-                    {
-                        return ResultDto<bool>.Failure($"รหัส SKU '{string.Join(", ", existingSkus)}' มีอยู่ในระบบแล้ว ไม่สามารถใช้ซ้ำได้");
-                    }
-                }
-            }
-
-            string updateProductSql = @"
-                    UPDATE Products 
-                    SET ProductNameTh = @ProductNameTh, ProductNameEn = @ProductNameEn, 
-                        Description = @Description, BrandName = @BrandName, 
-                        CategoryId = @CategoryId,
-                        ProductType = @ProductType,
-                        ProductStatus = @ProductStatus,
-                        IsStockTracked = @IsStockTracked,
-                        InventoryGroup = @InventoryGroup
-                    WHERE ProductId = @ProductId;";
-
-            var productParams = new DynamicParameters(dto);
-            productParams.Add("ProductId", productId);
-            int rowsAffected = await connection.ExecuteAsync(updateProductSql, productParams, transaction);
-            if (rowsAffected == 0)
-            {
-                return ResultDto<bool>.Failure("ไม่พบสินค้าที่ต้องการแก้ไข");
-            }
-
-            var existingVarIdsForUpdate = dto.Variants
-                .Where(v => v.VariantId != null && v.VariantId > 0)
-                .Select(v => v.VariantId!.Value)
-                .ToList();
-
-            Dictionary<int, string?> oldImageMap = new();
-            Dictionary<int, byte[]> rowVersionMap = new();
-            if (existingVarIdsForUpdate.Any())
-            {
-                string batchFetchSql = @"
-                    SELECT VariantId, ImageUrl FROM ProductVariants WHERE VariantId IN @Ids;
-                    SELECT VariantId, RowVersion FROM Stocks WHERE VariantId IN @Ids;
-                ";
-                using var multi = await connection.QueryMultipleAsync(batchFetchSql, new { Ids = existingVarIdsForUpdate }, transaction);
-                var oldImages = await multi.ReadAsync<(int VariantId, string? ImageUrl)>();
-                var stockSnapshots = await multi.ReadAsync<(int VariantId, byte[] RowVersion)>();
-
-                oldImageMap = oldImages.ToDictionary(x => x.VariantId, x => x.ImageUrl);
-                rowVersionMap = stockSnapshots.ToDictionary(x => x.VariantId, x => x.RowVersion);
-            }
-
-            var newVariants = dto.Variants.Where(v => v.VariantId == null || v.VariantId == 0).ToList();
-            if (newVariants.Any())
-            {
-                var batchSql = new StringBuilder();
-                var batchParams = new DynamicParameters();
-                batchParams.Add("ProductId", productId);
-                batchParams.Add("CreatedBy", dto.UpdatedBy ?? dto.CreatedBy);
-
-                for (int i = 0; i < newVariants.Count; i++)
-                {
-                    var v = newVariants[i];
-                    batchSql.AppendLine($"DECLARE @NewVId{i} INT;");
-                    batchSql.AppendLine($@"
-                        INSERT INTO ProductVariants (ProductId, Sku, Barcode, VariantNameTh, VariantNameEn, Color, SizeLabel, StylePattern, UnitOfMeasure, Width, Length, Height, Weight, ImageUrl)
-                        VALUES (@ProductId, @NSku{i}, @NBarcode{i}, @NVariantNameTh{i}, @NVariantNameEn{i}, @NColor{i}, @NSizeLabel{i}, @NStylePattern{i}, @NUnitOfMeasure{i}, @NWidth{i}, @NLength{i}, @NHeight{i}, @NWeight{i}, @NImageUrl{i});
-                        SET @NewVId{i} = SCOPE_IDENTITY();
-                        INSERT INTO ProductPrices (VariantId, BasePrice, DiscountPrice, UpdatedAt)
-                        VALUES (@NewVId{i}, @NBasePrice{i}, @NDiscountPrice{i}, GETDATE());
-                        INSERT INTO Stocks (VariantId, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
-                        VALUES (@NewVId{i}, @NCurrentQuantity{i}, 0, @NReorderPoint{i}, GETDATE());");
-
-                    if (dto.IsStockTracked && v.CurrentQuantity > 0)
-                    {
-                        batchSql.AppendLine($@"
-                        INSERT INTO StockTransactions (VariantId, TransactionType, Quantity, UnitCost, Notes, CreatedBy)
-                        VALUES (@NewVId{i}, 'IN', @NCurrentQuantity{i}, 0.00, N'บันทึกยอดตั้งต้นจากการเพิ่ม SKU ใหม่ในโหมดแก้ไข', @CreatedBy);");
-                    }
-
-                    batchParams.Add($"NSku{i}", v.Sku);
-                    batchParams.Add($"NBarcode{i}", v.Barcode);
-                    batchParams.Add($"NVariantNameTh{i}", v.VariantNameTh);
-                    batchParams.Add($"NVariantNameEn{i}", v.VariantNameEn);
-                    batchParams.Add($"NColor{i}", v.Color);
-                    batchParams.Add($"NSizeLabel{i}", v.SizeLabel);
-                    batchParams.Add($"NStylePattern{i}", v.StylePattern);
-                    batchParams.Add($"NUnitOfMeasure{i}", v.UnitOfMeasure);
-                    batchParams.Add($"NWidth{i}", v.Width);
-                    batchParams.Add($"NLength{i}", v.Length);
-                    batchParams.Add($"NHeight{i}", v.Height);
-                    batchParams.Add($"NWeight{i}", v.Weight);
-                    batchParams.Add($"NImageUrl{i}", v.ImageUrl);
-                    batchParams.Add($"NBasePrice{i}", v.BasePrice);
-                    batchParams.Add($"NDiscountPrice{i}", v.DiscountPrice);
-                    batchParams.Add($"NCurrentQuantity{i}", v.CurrentQuantity);
-                    batchParams.Add($"NReorderPoint{i}", v.ReorderPoint);
-                }
-
-                await connection.ExecuteAsync(batchSql.ToString(), batchParams, transaction);
-            }
-
-            var existingVariants = dto.Variants.Where(v => v.VariantId != null && v.VariantId > 0).ToList();
-            if (existingVariants.Any())
-            {
-                var updateSql = new StringBuilder();
-                var updateParams = new DynamicParameters();
-
-                for (int i = 0; i < existingVariants.Count; i++)
-                {
-                    var v = existingVariants[i];
-                    int variantId = v.VariantId!.Value;
-
-                    if (oldImageMap.TryGetValue(variantId, out var oldImageUrl))
-                    {
-                        if (!string.Equals(oldImageUrl, v.ImageUrl, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(oldImageUrl))
-                        {
-                            filesToCheckForDeletion.Add(oldImageUrl);
-                        }
-                    }
-
-                    updateSql.AppendLine($@"
-                        UPDATE ProductVariants 
-                        SET Sku = @USku{i}, Barcode = @UBarcode{i}, VariantNameTh = @UVariantNameTh{i}, VariantNameEn = @UVariantNameEn{i}, Color = @UColor{i}, SizeLabel = @USizeLabel{i}, StylePattern = @UStylePattern{i}, UnitOfMeasure = @UUnitOfMeasure{i},
-                            Width = @UWidth{i}, Length = @ULength{i}, Height = @UHeight{i}, Weight = @UWeight{i},
-                            ImageUrl = @UImageUrl{i}
-                        WHERE VariantId = @UVariantId{i};
-                
-                        UPDATE ProductPrices 
-                        SET BasePrice = @UBasePrice{i}, DiscountPrice = @UDiscountPrice{i}, UpdatedAt = GETDATE()
-                        WHERE VariantId = @UVariantId{i};
-
-                        UPDATE Stocks 
-                        SET CurrentQuantity = @UCurrentQuantity{i}, ReorderPoint = @UReorderPoint{i}, UpdatedAt = GETDATE()
-                        WHERE VariantId = @UVariantId{i} AND RowVersion = @URowVersion{i};");
-
-                    updateParams.Add($"UVariantId{i}", variantId);
-                    updateParams.Add($"USku{i}", v.Sku);
-                    updateParams.Add($"UBarcode{i}", v.Barcode);
-                    updateParams.Add($"UVariantNameTh{i}", v.VariantNameTh);
-                    updateParams.Add($"UVariantNameEn{i}", v.VariantNameEn);
-                    updateParams.Add($"UColor{i}", v.Color);
-                    updateParams.Add($"USizeLabel{i}", v.SizeLabel);
-                    updateParams.Add($"UStylePattern{i}", v.StylePattern);
-                    updateParams.Add($"UUnitOfMeasure{i}", v.UnitOfMeasure);
-                    updateParams.Add($"UWidth{i}", v.Width);
-                    updateParams.Add($"ULength{i}", v.Length);
-                    updateParams.Add($"UHeight{i}", v.Height);
-                    updateParams.Add($"UWeight{i}", v.Weight);
-                    updateParams.Add($"UImageUrl{i}", v.ImageUrl);
-                    updateParams.Add($"UBasePrice{i}", v.BasePrice);
-                    updateParams.Add($"UDiscountPrice{i}", v.DiscountPrice);
-                    updateParams.Add($"UCurrentQuantity{i}", v.CurrentQuantity);
-                    updateParams.Add($"UReorderPoint{i}", v.ReorderPoint);
-                    updateParams.Add($"URowVersion{i}", rowVersionMap.GetValueOrDefault(variantId, Array.Empty<byte>()));
-                }
-
-                await connection.ExecuteAsync(updateSql.ToString(), updateParams, transaction);
-            }
-
-            await transaction.CommitAsync();
-
-            if (filesToCheckForDeletion.Any())
-            {
-                _imageCleanup.Writer.TryWrite(filesToCheckForDeletion.Distinct().ToList());
-            }
-
-            return ResultDto<bool>.Success(true);
+            var results = await conn.QueryAsync<string>(new CommandDefinition(sql, parameters, transaction: transaction, cancellationToken: cancellationToken));
+            return results.ToList();
         }
-        catch
+        finally
         {
-            await transaction.RollbackAsync();
-            throw;
+            if (transaction == null) conn.Dispose();
         }
+    }
+
+    public async Task<List<string>> CheckSkusExistAsync(IEnumerable<string> skus, IEnumerable<int>? ignoreVariantIds = null, IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
+        try
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("Skus", skus);
+            string sql = "SELECT Sku FROM dbo.ProductVariants WHERE Sku IN @Skus";
+            
+            if (ignoreVariantIds != null && ignoreVariantIds.Any())
+            {
+                sql += " AND VariantId NOT IN @IgnoreIds";
+                parameters.Add("IgnoreIds", ignoreVariantIds);
+            }
+
+            var results = await conn.QueryAsync<string>(new CommandDefinition(sql, parameters, transaction: transaction, cancellationToken: cancellationToken));
+            return results.ToList();
+        }
+        finally
+        {
+            if (transaction == null) conn.Dispose();
+        }
+    }
+
+    public async Task<List<int>> GetExistingVariantIdsAsync(int productId, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = "SELECT VariantId FROM dbo.ProductVariants WHERE ProductId = @ProductId;";
+        var results = await conn.QueryAsync<int>(new CommandDefinition(sql, new { ProductId = productId }, transaction: transaction, cancellationToken: cancellationToken));
+        return results.ToList();
+    }
+
+    public async Task<List<(int VariantId, string? ImageUrl)>> GetVariantImagesAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = "SELECT VariantId, ImageUrl FROM dbo.ProductVariants WHERE VariantId IN @Ids AND ImageUrl IS NOT NULL;";
+        var results = await conn.QueryAsync<(int VariantId, string? ImageUrl)>(new CommandDefinition(sql, new { Ids = variantIds }, transaction: transaction, cancellationToken: cancellationToken));
+        return results.ToList();
+    }
+
+    public async Task<List<(int VariantId, byte[] RowVersion)>> GetStockRowVersionsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
+        string sql = "SELECT VariantId, RowVersion FROM dbo.Stocks WHERE VariantId IN @Ids;";
+        var results = await conn.QueryAsync<(int VariantId, byte[] RowVersion)>(new CommandDefinition(sql, new { Ids = variantIds }, transaction: transaction, cancellationToken: cancellationToken));
+        return results.ToList();
     }
 }

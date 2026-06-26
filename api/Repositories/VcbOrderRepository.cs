@@ -5,22 +5,20 @@ using System.Text;
 
 namespace PCS_API.Repositories;
 
-public class VcbOrderRepository : IVcbOrderRepository
+public class VcbOrderRepository(ISqlConnectionFactory connectionFactory) : IVcbOrderRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-
-    public VcbOrderRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<VcbOrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = @"
             SELECT o.Id, o.OrderNo, o.OrderDate, o.TotalAmount, o.Status, o.BranchId,
-                   o.Notes, o.TransferSlipUrl, o.CreatedBy, o.CreatedAt, o.UpdatedAt
+                   o.Notes, o.TransferSlipUrl, o.CreatedBy, o.CreatedAt, o.UpdatedAt,
+                   o.UpdatedBy,
+                   uc.Username AS CreatedByUsername,
+                   uu.Username AS UpdatedByUsername
             FROM dbo.VcbOrders o
+            LEFT JOIN dbo.Users uc ON o.CreatedBy = uc.Id
+            LEFT JOIN dbo.Users uu ON o.UpdatedBy = uu.Id
             WHERE o.Id = @Id;
 
             SELECT i.Id, i.OrderId, i.VariantId, i.Quantity, i.TotalPrice,
@@ -50,7 +48,7 @@ public class VcbOrderRepository : IVcbOrderRepository
 
     public async Task<PagedResultDto<VcbOrderDto>> GetPagedAsync(VcbOrderSearchDto search, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var parameters = new DynamicParameters();
         string whereClause = "WHERE 1=1";
 
@@ -76,8 +74,12 @@ public class VcbOrderRepository : IVcbOrderRepository
             SELECT COUNT(*) FROM dbo.VcbOrders o {whereClause};
 
             SELECT o.*, 
-                   (SELECT COUNT(*) FROM dbo.VcbOrderItems i WHERE i.OrderId = o.Id) AS ItemCount 
+                   (SELECT COUNT(*) FROM dbo.VcbOrderItems i WHERE i.OrderId = o.Id) AS ItemCount,
+                   uc.Username AS CreatedByUsername,
+                   uu.Username AS UpdatedByUsername
             FROM dbo.VcbOrders o
+            LEFT JOIN dbo.Users uc ON o.CreatedBy = uc.Id
+            LEFT JOIN dbo.Users uu ON o.UpdatedBy = uu.Id
             {whereClause}
             ORDER BY o.OrderDate DESC, o.Id DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
@@ -101,7 +103,7 @@ public class VcbOrderRepository : IVcbOrderRepository
 
     public async Task<int> CreateAsync(VcbOrderCreateDto dto, string? transferSlipUrl, int createdBy, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        using var conn = connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
         if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
         await conn.OpenAsync(cancellationToken);
         using var tx = await conn.BeginTransactionAsync(cancellationToken);
@@ -210,7 +212,7 @@ public class VcbOrderRepository : IVcbOrderRepository
 
     public async Task<bool> UpdateAsync(int id, VcbOrderCreateDto dto, string? transferSlipUrl, int updatedBy, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
+        using var conn = connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
         if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
         await conn.OpenAsync(cancellationToken);
         using var tx = await conn.BeginTransactionAsync(cancellationToken);
@@ -225,6 +227,7 @@ public class VcbOrderRepository : IVcbOrderRepository
                     BranchId = @BranchId,
                     Notes = @Notes,
                     TransferSlipUrl = COALESCE(@TransferSlipUrl, TransferSlipUrl),
+                    UpdatedBy = @UpdatedBy,
                     UpdatedAt = GETDATE()
                 WHERE Id = @Id AND Status = 'Pending';";
 
@@ -236,7 +239,8 @@ public class VcbOrderRepository : IVcbOrderRepository
                 TotalAmount = dto.TotalAmount,
                 BranchId = dto.BranchId,
                 Notes = dto.Notes,
-                TransferSlipUrl = transferSlipUrl
+                TransferSlipUrl = transferSlipUrl,
+                UpdatedBy = updatedBy
             }, transaction: tx, cancellationToken: cancellationToken));
 
             if (rowsAffected == 0)
@@ -332,16 +336,18 @@ public class VcbOrderRepository : IVcbOrderRepository
         }
     }
 
-    public async Task<bool> UpdateStatusAsync(int id, string status, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateStatusAsync(int id, string status, int currentUserId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
-        string sql = @"
-            UPDATE dbo.VcbOrders
-            SET Status = @Status,
-                UpdatedAt = GETDATE()
-            WHERE Id = @Id;";
-        
-        int rows = await conn.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Status = status }, cancellationToken: cancellationToken));
-        return rows > 0;
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
+        try
+        {
+            string sql = "UPDATE dbo.VcbOrders SET Status = @Status, UpdatedBy = @UpdatedBy, UpdatedAt = GETDATE() WHERE Id = @Id";
+            int rows = await conn.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Status = status, UpdatedBy = currentUserId }, transaction: transaction, cancellationToken: cancellationToken));
+            return rows > 0;
+        }
+        finally
+        {
+            if (transaction == null) conn.Dispose();
+        }
     }
 }

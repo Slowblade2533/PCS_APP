@@ -1,21 +1,25 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
-import { FinancialTransaction, FinancialTransactionSearchParams, TransactionType } from '../../../shared/models/financial.models';
+import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
+import {
+  FinancialTransaction,
+  FinancialTransactionSearchParams,
+  TransactionType,
+} from '../../../shared/models/financial.models';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { FinancialService } from '../../../shared/services/financial.service';
+import { rxResource } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-transactions-list',
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
   templateUrl: './transactions-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionsList implements OnInit {
   private financialService = inject(FinancialService);
@@ -23,9 +27,8 @@ export class TransactionsList implements OnInit {
 
   apiOrigin = environment.apiUrl;
 
-  data = signal<PagedResult<FinancialTransaction>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 0 });
-  loading = signal<boolean>(false);
-  error = signal<string | null>(null);
+  pageNumber = signal<number>(1);
+  pageSize = signal<number>(20);
 
   searchTerm = signal<string>('');
   selectedType = signal<string>('');
@@ -33,7 +36,6 @@ export class TransactionsList implements OnInit {
   dateTo = signal<string>('');
 
   private searchSubject = new Subject<string>();
-  private refresh$ = new BehaviorSubject<void>(undefined);
 
   typeOptions: { value: string; label: string }[] = [
     { value: '', label: 'ทั้งหมด' },
@@ -50,6 +52,36 @@ export class TransactionsList implements OnInit {
     { value: 'RECEIPT', label: 'รับเงินเข้า' },
   ];
 
+  transactionsResource = rxResource<
+    PagedResult<FinancialTransaction>,
+    FinancialTransactionSearchParams
+  >({
+    params: () => ({
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      transactionType: this.selectedType(),
+      dateFrom: this.dateFrom(),
+      dateTo: this.dateTo(),
+    }),
+    stream: ({ params }) => this.financialService.getTransactions(params),
+  });
+
+  data = computed(
+    () =>
+      this.transactionsResource.value() || {
+        items: [],
+        totalCount: 0,
+        pageNumber: 1,
+        pageSize: 20,
+        totalPages: 0,
+      },
+  );
+  loading = computed(() => this.transactionsResource.isLoading());
+  error = computed(() =>
+    this.transactionsResource.error() ? 'ไม่สามารถดึงข้อมูลรายการได้' : null,
+  );
+
   ngOnInit() {
     this.searchSubject
       .pipe(
@@ -57,42 +89,9 @@ export class TransactionsList implements OnInit {
         distinctUntilChanged(),
         tap((term) => {
           this.searchTerm.set(term);
-          this.data.update((d) => ({ ...d, pageNumber: 1 }));
-          this.refresh$.next();
+          this.pageNumber.set(1);
         }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
-
-    this.refresh$
-      .pipe(
-        tap(() => {
-          this.loading.set(true);
-          this.error.set(null);
-        }),
-        switchMap(() => {
-          const params: FinancialTransactionSearchParams = {
-            pageNumber: this.data().pageNumber,
-            pageSize: this.data().pageSize,
-            searchTerm: this.searchTerm(),
-            transactionType: this.selectedType(),
-            dateFrom: this.dateFrom(),
-            dateTo: this.dateTo()
-          };
-          return this.financialService.getTransactions(params).pipe(
-            catchError((err) => {
-              this.error.set('ไม่สามารถดึงข้อมูลรายการได้');
-              return [];
-            })
-          );
-        }),
-        tap((res: any) => {
-          if (res && res.items) {
-            this.data.set(res);
-          }
-          this.loading.set(false);
-        }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
   }
@@ -103,29 +102,35 @@ export class TransactionsList implements OnInit {
   }
 
   onFilterChange() {
-    this.data.update((d) => ({ ...d, pageNumber: 1 }));
-    this.refresh$.next();
+    this.pageNumber.set(1);
   }
 
   onPageChange(newPage: number) {
-    this.data.update((d) => ({ ...d, pageNumber: newPage }));
-    this.refresh$.next();
+    this.pageNumber.set(newPage);
   }
 
   getTypeBadgeClass(type: string): string {
     switch (type) {
-      case 'INVESTMENT': return 'badge-info';
-      case 'SALES': return 'badge-success';
+      case 'INVESTMENT':
+        return 'badge-info';
+      case 'SALES':
+        return 'badge-success';
       case 'TRANSFER_IN':
-      case 'RECEIPT': return 'badge-secondary text-white';
+      case 'RECEIPT':
+        return 'badge-secondary text-white';
       case 'PURCHASE_GENERAL':
-      case 'PURCHASE_VCB': return 'badge-warning';
+      case 'PURCHASE_VCB':
+        return 'badge-warning';
       case 'FREIGHT_VCB':
-      case 'FREIGHT_GENERAL': return 'badge-warning';
-      case 'EXPENSE': return 'badge-error';
+      case 'FREIGHT_GENERAL':
+        return 'badge-warning';
+      case 'EXPENSE':
+        return 'badge-error';
       case 'STOCK_LOSS':
-      case 'SCRAP': return 'badge-neutral';
-      default: return 'badge-ghost';
+      case 'SCRAP':
+        return 'badge-neutral';
+      default:
+        return 'badge-ghost';
     }
   }
 

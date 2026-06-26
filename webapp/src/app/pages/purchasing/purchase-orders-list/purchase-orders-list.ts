@@ -1,28 +1,31 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
 import { PagedResult } from '../../../shared/models/pagination.models';
-import { PurchaseOrderListItem, PurchaseOrderSearchParams, PurchaseOrderStatus } from '../../../shared/models/procurement.models';
-import { PurchaseOrderService } from '../../../shared/services/procurement.service';
+import {
+  PurchaseOrderListItem,
+  PurchaseOrderSearchParams,
+  PurchaseOrderStatus,
+} from '../../../shared/models/purchase-orders.models';
+import { PurchaseOrdersService } from '../../../shared/services/purchase-orders.service';
+import { rxResource } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-purchase-orders-list',
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
   templateUrl: './purchase-orders-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PurchaseOrdersList implements OnInit {
-  private poService = inject(PurchaseOrderService);
+  private poService = inject(PurchaseOrdersService);
   private destroyRef = inject(DestroyRef);
 
-  data = signal<PagedResult<PurchaseOrderListItem>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 0 });
-  loading = signal<boolean>(false);
-  error = signal<string | null>(null);
+  pageNumber = signal<number>(1);
+  pageSize = signal<number>(20);
 
   searchTerm = signal<string>('');
   selectedStatus = signal<string>('');
@@ -30,7 +33,6 @@ export class PurchaseOrdersList implements OnInit {
   dateTo = signal<string>('');
 
   private searchSubject = new Subject<string>();
-  private refresh$ = new BehaviorSubject<void>(undefined);
 
   statusOptions: { value: string; label: string }[] = [
     { value: '', label: 'ทั้งหมด' },
@@ -41,6 +43,31 @@ export class PurchaseOrdersList implements OnInit {
     { value: 'CANCELLED', label: 'ยกเลิก' },
   ];
 
+  ordersResource = rxResource<PagedResult<PurchaseOrderListItem>, PurchaseOrderSearchParams>({
+    params: () => ({
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      status: this.selectedStatus() as PurchaseOrderStatus | '',
+      dateFrom: this.dateFrom(),
+      dateTo: this.dateTo(),
+    }),
+    stream: ({ params }) => this.poService.getAll(params),
+  });
+
+  data = computed(
+    () =>
+      this.ordersResource.value() || {
+        items: [],
+        totalCount: 0,
+        pageNumber: 1,
+        pageSize: 20,
+        totalPages: 0,
+      },
+  );
+  loading = computed(() => this.ordersResource.isLoading());
+  error = computed(() => (this.ordersResource.error() ? 'ไม่สามารถดึงข้อมูลรายการได้' : null));
+
   ngOnInit() {
     this.searchSubject
       .pipe(
@@ -48,42 +75,9 @@ export class PurchaseOrdersList implements OnInit {
         distinctUntilChanged(),
         tap((term) => {
           this.searchTerm.set(term);
-          this.data.update((d) => ({ ...d, pageNumber: 1 }));
-          this.refresh$.next();
+          this.pageNumber.set(1);
         }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
-
-    this.refresh$
-      .pipe(
-        tap(() => {
-          this.loading.set(true);
-          this.error.set(null);
-        }),
-        switchMap(() => {
-          const params: PurchaseOrderSearchParams = {
-            pageNumber: this.data().pageNumber,
-            pageSize: this.data().pageSize,
-            searchTerm: this.searchTerm(),
-            status: this.selectedStatus() as PurchaseOrderStatus | '',
-            dateFrom: this.dateFrom(),
-            dateTo: this.dateTo()
-          };
-          return this.poService.getAll(params).pipe(
-            catchError((err) => {
-              this.error.set('ไม่สามารถดึงข้อมูลรายการได้');
-              return [];
-            })
-          );
-        }),
-        tap((res: any) => {
-          if (res && res.items) {
-            this.data.set(res);
-          }
-          this.loading.set(false);
-        }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
   }
@@ -94,23 +88,27 @@ export class PurchaseOrdersList implements OnInit {
   }
 
   onFilterChange() {
-    this.data.update((d) => ({ ...d, pageNumber: 1 }));
-    this.refresh$.next();
+    this.pageNumber.set(1);
   }
 
   onPageChange(newPage: number) {
-    this.data.update((d) => ({ ...d, pageNumber: newPage }));
-    this.refresh$.next();
+    this.pageNumber.set(newPage);
   }
 
   getStatusBadgeClass(status: string): string {
     switch (status) {
-      case 'DRAFT': return 'badge-neutral';
-      case 'ORDERED': return 'badge-info';
-      case 'PARTIALLY_RECEIVED': return 'badge-warning';
-      case 'RECEIVED': return 'badge-success';
-      case 'CANCELLED': return 'badge-error';
-      default: return 'badge-ghost';
+      case 'DRAFT':
+        return 'badge-neutral';
+      case 'ORDERED':
+        return 'badge-info';
+      case 'PARTIALLY_RECEIVED':
+        return 'badge-warning';
+      case 'RECEIVED':
+        return 'badge-success';
+      case 'CANCELLED':
+        return 'badge-error';
+      default:
+        return 'badge-ghost';
     }
   }
 

@@ -1,30 +1,27 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
-using PCS_API.Models;
 
 namespace PCS_API.Repositories;
 
-public class VcbDeliveryRepository : IVcbDeliveryRepository
+public class VcbDeliveryRepository(ISqlConnectionFactory connectionFactory) : IVcbDeliveryRepository
 {
-    private readonly ISqlConnectionFactory _connectionFactory;
-
-    public VcbDeliveryRepository(ISqlConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
-
     public async Task<VcbDeliveryDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         string sql = @"
-            SELECT * FROM dbo.VcbDeliveries WHERE Id = @Id;
+            SELECT d.*,
+                   uc.Username AS CreatedByUsername,
+                   uu.Username AS UpdatedByUsername
+            FROM dbo.VcbDeliveries d
+            LEFT JOIN dbo.Users uc ON d.CreatedBy = uc.Id
+            LEFT JOIN dbo.Users uu ON d.UpdatedBy = uu.Id
+            WHERE d.Id = @Id;
             
-            SELECT o.*, o.Id as OrderId FROM dbo.VcbDeliveryOrders do
+            SELECT do.DeliveryId, do.OrderId, o.OrderNo FROM dbo.VcbDeliveryOrders do
             INNER JOIN dbo.VcbOrders o ON do.OrderId = o.Id
             WHERE do.DeliveryId = @Id;
 
-            SELECT * FROM dbo.VcbDeliveryItems WHERE DeliveryId = @Id;
+            SELECT Id, DeliveryId, PackageBoxNo, DomesticTrackingNo, TotalWeight, BoxDimensions, ContainedBoxNumbers, ShippingCost FROM dbo.VcbDeliveryItems WHERE DeliveryId = @Id;
 
             SELECT si.BoxNumbers 
             FROM dbo.VcbShipmentItems si
@@ -60,7 +57,7 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
 
     public async Task<PagedResultDto<VcbDeliveryDto>> GetPagedAsync(VcbDeliverySearchDto search, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
+        using var conn = connectionFactory.CreateConnection();
         var parameters = new DynamicParameters();
         string whereClause = "WHERE 1=1";
 
@@ -90,8 +87,12 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                           FROM dbo.VcbDeliveryOrders do 
                           INNER JOIN dbo.VcbOrders o ON do.OrderId = o.Id
                           WHERE do.DeliveryId = d.Id 
-                          FOR XML PATH('')), 1, 2, '') AS OrderNumbers
+                          FOR XML PATH('')), 1, 2, '') AS OrderNumbers,
+                   uc.Username AS CreatedByUsername,
+                   uu.Username AS UpdatedByUsername
             FROM dbo.VcbDeliveries d
+            LEFT JOIN dbo.Users uc ON d.CreatedBy = uc.Id
+            LEFT JOIN dbo.Users uu ON d.UpdatedBy = uu.Id
             {whereClause}
             ORDER BY d.OrderDate DESC, d.Id DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
@@ -113,17 +114,14 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
         };
     }
 
-    public async Task<int> CreateAsync(VcbDeliveryCreateDto dto, string? transferSlipUrl, int currentUserId, CancellationToken cancellationToken = default)
+    public async Task<int> CreateAsync(VcbDeliveryCreateDto dto, string? transferSlipUrl, int currentUserId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
-        if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
-        await conn.OpenAsync(cancellationToken);
-        using var tx = await conn.BeginTransactionAsync(cancellationToken);
-
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
         try
         {
             string insertSql = @"
-                INSERT INTO dbo.VcbDeliveries (DeliveryNo, OrderDate, ShippingAddress, DomesticShippingCompany, 
+                INSERT INTO dbo.VcbDeliveries (
+                    DeliveryNo, OrderDate, ShippingAddress, DomesticShippingCompany, 
                     TotalAmountBeforeDiscount, DiscountAmount, TotalAmount, TransferredAmount, TransferSlipUrl, 
                     Status, Notes, CreatedBy, CreatedAt, UpdatedAt)
                 VALUES (@DeliveryNo, @OrderDate, @ShippingAddress, @DomesticShippingCompany, 
@@ -144,12 +142,12 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                 TransferSlipUrl = transferSlipUrl,
                 dto.Notes,
                 CreatedBy = currentUserId
-            }, transaction: tx, cancellationToken: cancellationToken));
+            }, transaction: transaction, cancellationToken: cancellationToken));
 
             // Insert Delivery Orders mapping
             string insertOrdersSql = @"INSERT INTO dbo.VcbDeliveryOrders (DeliveryId, OrderId) VALUES (@DeliveryId, @OrderId)";
             var orderParams = dto.OrderIds.Select(oId => new { DeliveryId = deliveryId, OrderId = oId });
-            await conn.ExecuteAsync(new CommandDefinition(insertOrdersSql, orderParams, transaction: tx, cancellationToken: cancellationToken));
+            await conn.ExecuteAsync(new CommandDefinition(insertOrdersSql, orderParams, transaction: transaction, cancellationToken: cancellationToken));
 
             // Insert Delivery Items
             string insertItemsSql = @"
@@ -166,105 +164,22 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                 i.ContainedBoxNumbers,
                 i.ShippingCost
             });
-            await conn.ExecuteAsync(new CommandDefinition(insertItemsSql, itemParams, transaction: tx, cancellationToken: cancellationToken));
+            await conn.ExecuteAsync(new CommandDefinition(insertItemsSql, itemParams, transaction: transaction, cancellationToken: cancellationToken));
 
-            // Create Expense AccountTransaction
-            if (dto.TransferredAmount > 0)
-            {
-                string insertExpenseSql = @"
-                    INSERT INTO dbo.AccountTransactions (TransactionDate, Type, Amount, ReferenceType, ReferenceId, Notes, CreatedBy, CreatedAt)
-                    VALUES (GETDATE(), 'Expense', @Amount, 'VcbDeliveryCost', @ReferenceId, N'ค่าขนส่ง VCANBUY บิล: ' + @DeliveryNo, @CreatedBy, GETDATE());";
-                await conn.ExecuteAsync(new CommandDefinition(insertExpenseSql, new
-                {
-                    Amount = dto.TransferredAmount,
-                    ReferenceId = deliveryId,
-                    dto.DeliveryNo,
-                    CreatedBy = currentUserId
-                }, transaction: tx, cancellationToken: cancellationToken));
-            }
-
-            // Sync Financial Transaction for Freight In
-            const string syncFinTxSql = @"
-                DECLARE @FinTxId INT;
-                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbDelivery' AND ReferenceId = @DeliveryId;
-
-                IF @TransferredAmount > 0
-                BEGIN
-                    IF @FinTxId IS NULL
-                    BEGIN
-                        INSERT INTO dbo.FinancialTransactions (
-                            TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
-                            Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
-                            ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
-                            Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
-                            SlipDateTime
-                        )
-                        VALUES (
-                            @OrderDate, 'FREIGHT_VCB', 'VcbDelivery', @DeliveryId, NULL,
-                            N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo, @TransferredAmount, 'TRANSFER', NULL, NULL,
-                            NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
-                            'POSTED', 1, GETDATE(), @CreatedBy, @DeliveryNo, N'VCANBUY',
-                            @OrderDate
-                        );
-                        SET @FinTxId = SCOPE_IDENTITY();
-                    END
-                    ELSE
-                    BEGIN
-                        UPDATE dbo.FinancialTransactions SET
-                            TransactionDate = @OrderDate,
-                            Description = N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo,
-                            TotalAmount = @TransferredAmount,
-                            AttachmentUrl = @TransferSlipUrl,
-                            UpdatedAt = GETDATE()
-                        WHERE TransactionId = @FinTxId;
-                    END
-
-                    DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
-
-                    INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
-                    VALUES 
-                        (@FinTxId, 14, @TransferredAmount, 0, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo),
-                        (@FinTxId, 2, 0, @TransferredAmount, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo);
-                END
-                ELSE
-                BEGIN
-                    IF @FinTxId IS NOT NULL
-                    BEGIN
-                        DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
-                        DELETE FROM dbo.FinancialTransactions WHERE TransactionId = @FinTxId;
-                    END
-                END";
-
-            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
-            {
-                DeliveryId = deliveryId,
-                dto.DeliveryNo,
-                dto.OrderDate,
-                dto.TransferredAmount,
-                TransferSlipUrl = transferSlipUrl,
-                CreatedBy = currentUserId
-            }, transaction: tx, cancellationToken: cancellationToken));
-
-            await tx.CommitAsync(cancellationToken);
             return deliveryId;
         }
-        catch
+        finally
         {
-            await tx.RollbackAsync(cancellationToken);
-            throw;
+            if (transaction == null) conn.Dispose();
         }
     }
 
-    public async Task<bool> UpdateAsync(int id, VcbDeliveryCreateDto dto, string? transferSlipUrl, int currentUserId, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateAsync(int id, VcbDeliveryCreateDto dto, string? transferSlipUrl, int currentUserId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
-        if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
-        await conn.OpenAsync(cancellationToken);
-        using var tx = await conn.BeginTransactionAsync(cancellationToken);
-
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
         try
         {
-            var existing = await conn.QuerySingleOrDefaultAsync<string>("SELECT TransferSlipUrl FROM dbo.VcbDeliveries WHERE Id = @Id", new { Id = id }, transaction: tx);
+            var existing = await conn.QuerySingleOrDefaultAsync<string>("SELECT TransferSlipUrl FROM dbo.VcbDeliveries WHERE Id = @Id", new { Id = id }, transaction: transaction);
             if (existing == null) return false;
 
             string updateSql = @"
@@ -279,6 +194,7 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                     TransferredAmount = @TransferredAmount,
                     " + (transferSlipUrl != null ? "TransferSlipUrl = @TransferSlipUrl, " : "") + @"
                     Notes = @Notes,
+                    UpdatedBy = @UpdatedBy,
                     UpdatedAt = GETDATE()
                 WHERE Id = @Id";
 
@@ -294,18 +210,19 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                 dto.TotalAmount,
                 dto.TransferredAmount,
                 TransferSlipUrl = transferSlipUrl,
-                dto.Notes
-            }, transaction: tx, cancellationToken: cancellationToken));
+                dto.Notes,
+                UpdatedBy = currentUserId
+            }, transaction: transaction, cancellationToken: cancellationToken));
 
-            await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.VcbDeliveryOrders WHERE DeliveryId = @Id", new { Id = id }, transaction: tx, cancellationToken: cancellationToken));
+            await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.VcbDeliveryOrders WHERE DeliveryId = @Id", new { Id = id }, transaction: transaction, cancellationToken: cancellationToken));
             string insertOrdersSql = @"INSERT INTO dbo.VcbDeliveryOrders (DeliveryId, OrderId) VALUES (@DeliveryId, @OrderId)";
             if (dto.OrderIds != null && dto.OrderIds.Any())
             {
                 var orderParams = dto.OrderIds.Select(oId => new { DeliveryId = id, OrderId = oId });
-                await conn.ExecuteAsync(new CommandDefinition(insertOrdersSql, orderParams, transaction: tx, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertOrdersSql, orderParams, transaction: transaction, cancellationToken: cancellationToken));
             }
 
-            await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.VcbDeliveryItems WHERE DeliveryId = @Id", new { Id = id }, transaction: tx, cancellationToken: cancellationToken));
+            await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.VcbDeliveryItems WHERE DeliveryId = @Id", new { Id = id }, transaction: transaction, cancellationToken: cancellationToken));
             string insertItemsSql = @"
                 INSERT INTO dbo.VcbDeliveryItems (DeliveryId, PackageBoxNo, DomesticTrackingNo, TotalWeight, BoxDimensions, ContainedBoxNumbers, ShippingCost)
                 VALUES (@DeliveryId, @PackageBoxNo, @DomesticTrackingNo, @TotalWeight, @BoxDimensions, @ContainedBoxNumbers, @ShippingCost)";
@@ -321,116 +238,43 @@ public class VcbDeliveryRepository : IVcbDeliveryRepository
                     i.ContainedBoxNumbers,
                     i.ShippingCost
                 });
-                await conn.ExecuteAsync(new CommandDefinition(insertItemsSql, itemParams, transaction: tx, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertItemsSql, itemParams, transaction: transaction, cancellationToken: cancellationToken));
             }
 
-            var existingExpense = await conn.QuerySingleOrDefaultAsync<int?>("SELECT Id FROM dbo.AccountTransactions WHERE ReferenceType = 'VcbDeliveryCost' AND ReferenceId = @Id", new { Id = id }, transaction: tx);
-            if (dto.TransferredAmount > 0)
-            {
-                if (existingExpense.HasValue)
-                {
-                    string updateExpenseSql = "UPDATE dbo.AccountTransactions SET Amount = @Amount, Notes = N'ค่าขนส่ง VCANBUY บิล: ' + @DeliveryNo WHERE Id = @ExpenseId";
-                    await conn.ExecuteAsync(new CommandDefinition(updateExpenseSql, new { Amount = dto.TransferredAmount, dto.DeliveryNo, ExpenseId = existingExpense.Value }, transaction: tx, cancellationToken: cancellationToken));
-                }
-                else
-                {
-                    string insertExpenseSql = @"
-                        INSERT INTO dbo.AccountTransactions (TransactionDate, Type, Amount, ReferenceType, ReferenceId, Notes, CreatedBy, CreatedAt)
-                        VALUES (GETDATE(), 'Expense', @Amount, 'VcbDeliveryCost', @ReferenceId, N'ค่าขนส่ง VCANBUY บิล: ' + @DeliveryNo, @CreatedBy, GETDATE());";
-                    await conn.ExecuteAsync(new CommandDefinition(insertExpenseSql, new
-                    {
-                        Amount = dto.TransferredAmount,
-                        ReferenceId = id,
-                        dto.DeliveryNo,
-                        CreatedBy = currentUserId
-                    }, transaction: tx, cancellationToken: cancellationToken));
-                }
-            }
-            else
-            {
-                if (existingExpense.HasValue)
-                {
-                    await conn.ExecuteAsync(new CommandDefinition("DELETE FROM dbo.AccountTransactions WHERE Id = @ExpenseId", new { ExpenseId = existingExpense.Value }, transaction: tx, cancellationToken: cancellationToken));
-                }
-            }
-
-            // Sync Financial Transaction for Freight In
-            const string syncFinTxSql = @"
-                DECLARE @FinTxId INT;
-                SELECT @FinTxId = TransactionId FROM dbo.FinancialTransactions WHERE ReferenceType = 'VcbDelivery' AND ReferenceId = @DeliveryId;
-
-                IF @TransferredAmount > 0
-                BEGIN
-                    IF @FinTxId IS NULL
-                    BEGIN
-                        INSERT INTO dbo.FinancialTransactions (
-                            TransactionDate, TransactionType, ReferenceType, ReferenceId, TaxInvoiceId,
-                            Description, TotalAmount, PaymentMethod, SourceAccountInfo, PaymentRefNo,
-                            ReceiverAccountId, AttachmentUrl, ReceivedBy, CreatedBy, CreatedAt, UpdatedAt,
-                            Status, BranchId, PostedAt, PostedBy, DocumentNo, PartnerName,
-                            SlipDateTime
-                        )
-                        VALUES (
-                            @OrderDate, 'FREIGHT_VCB', 'VcbDelivery', @DeliveryId, NULL,
-                            N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo, @TransferredAmount, 'TRANSFER', NULL, NULL,
-                            NULL, @TransferSlipUrl, NULL, @CreatedBy, GETDATE(), GETDATE(),
-                            'POSTED', 1, GETDATE(), @CreatedBy, @DeliveryNo, N'VCANBUY',
-                            @OrderDate
-                        );
-                        SET @FinTxId = SCOPE_IDENTITY();
-                    END
-                    ELSE
-                    BEGIN
-                        UPDATE dbo.FinancialTransactions SET
-                            TransactionDate = @OrderDate,
-                            Description = N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo,
-                            TotalAmount = @TransferredAmount,
-                            AttachmentUrl = @TransferSlipUrl,
-                            UpdatedAt = GETDATE()
-                        WHERE TransactionId = @FinTxId;
-                    END
-
-                    DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
-
-                    INSERT INTO dbo.FinancialLedgerEntries (TransactionId, AccountId, DebitAmount, CreditAmount, Memo)
-                    VALUES 
-                        (@FinTxId, 14, @TransferredAmount, 0, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo),
-                        (@FinTxId, 2, 0, @TransferredAmount, N'ชำระค่าขนส่ง VCANBUY เลขที่ ' + @DeliveryNo);
-                END
-                ELSE
-                BEGIN
-                    IF @FinTxId IS NOT NULL
-                    BEGIN
-                        DELETE FROM dbo.FinancialLedgerEntries WHERE TransactionId = @FinTxId;
-                        DELETE FROM dbo.FinancialTransactions WHERE TransactionId = @FinTxId;
-                    END
-                END";
-
-            await conn.ExecuteAsync(new CommandDefinition(syncFinTxSql, new
-            {
-                DeliveryId = id,
-                dto.DeliveryNo,
-                dto.OrderDate,
-                dto.TransferredAmount,
-                TransferSlipUrl = transferSlipUrl,
-                CreatedBy = currentUserId
-            }, transaction: tx, cancellationToken: cancellationToken));
-
-            await tx.CommitAsync(cancellationToken);
             return true;
         }
-        catch
+        finally
         {
-            await tx.RollbackAsync(cancellationToken);
-            throw;
+            if (transaction == null) conn.Dispose();
         }
     }
 
-    public async Task<bool> UpdateStatusAsync(int id, string status, int currentUserId, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateStatusAsync(int id, string status, int currentUserId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
     {
-        using var conn = _connectionFactory.CreateConnection();
-        string sql = "UPDATE dbo.VcbDeliveries SET Status = @Status, UpdatedAt = GETDATE() WHERE Id = @Id";
-        int rows = await conn.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Status = status }, cancellationToken: cancellationToken));
-        return rows > 0;
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
+        try
+        {
+            string sql = "UPDATE dbo.VcbDeliveries SET Status = @Status, UpdatedBy = @UpdatedBy, UpdatedAt = GETDATE() WHERE Id = @Id";
+            int rows = await conn.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Status = status, UpdatedBy = currentUserId }, transaction: transaction, cancellationToken: cancellationToken));
+            return rows > 0;
+        }
+        finally
+        {
+            if (transaction == null) conn.Dispose();
+        }
+    }
+
+    public async Task<IEnumerable<string>> GetDeliveryBoxesAsync(int deliveryId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
+    {
+        var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
+        try
+        {
+            string sql = "SELECT ContainedBoxNumbers FROM dbo.VcbDeliveryItems WHERE DeliveryId = @DeliveryId;";
+            return await conn.QueryAsync<string>(new CommandDefinition(sql, new { DeliveryId = deliveryId }, transaction: transaction, cancellationToken: cancellationToken));
+        }
+        finally
+        {
+            if (transaction == null) conn.Dispose();
+        }
     }
 }

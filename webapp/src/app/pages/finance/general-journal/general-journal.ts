@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FinancialService } from '../../../shared/services/financial.service';
@@ -10,28 +10,31 @@ import { GeneralJournalRow } from '../../../shared/models/financial.models';
   standalone: true,
   imports: [DatePipe, DecimalPipe, FormsModule, NgClass],
   templateUrl: './general-journal.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneralJournal implements OnInit {
   private financialService = inject(FinancialService);
   private destroyRef = inject(DestroyRef);
 
-  dateFrom = signal<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-  dateTo = signal<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]);
-  
+  dateFrom = signal<string>(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+  );
+  dateTo = signal<string>(
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+  );
+
   rows = signal<(GeneralJournalRow & { isAlternate?: boolean })[]>([]);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
 
   totalMoneyIn = computed(() => {
     return this.rows()
-      .filter(row => this.isCashAccount(row.accountCode))
+      .filter((row) => this.isCashAccount(row.accountCode))
       .reduce((sum, row) => sum + (row.debitAmount || 0), 0);
   });
 
   totalMoneyOut = computed(() => {
     return this.rows()
-      .filter(row => this.isCashAccount(row.accountCode))
+      .filter((row) => this.isCashAccount(row.accountCode))
       .reduce((sum, row) => sum + (row.creditAmount || 0), 0);
   });
 
@@ -47,17 +50,21 @@ export class GeneralJournal implements OnInit {
   getTransactionClass(type: string): string {
     if (!type) return '';
     const upperType = type.toUpperCase();
-    
+
     // Incoming list (รับเข้า - green)
     if (['INVESTMENT', 'SALES', 'TRANSFER_IN', 'RECEIPT'].includes(upperType)) {
       return 'bg-success/5';
     }
-    
+
     // Outgoing list (จ่ายออก - red)
-    if (['PURCHASE_GENERAL', 'PURCHASE_VCB', 'FREIGHT_VCB', 'FREIGHT_GENERAL', 'EXPENSE'].includes(upperType)) {
+    if (
+      ['PURCHASE_GENERAL', 'PURCHASE_VCB', 'FREIGHT_VCB', 'FREIGHT_GENERAL', 'EXPENSE'].includes(
+        upperType,
+      )
+    ) {
       return 'bg-error/5';
     }
-    
+
     return ''; // Other
   }
 
@@ -68,7 +75,8 @@ export class GeneralJournal implements OnInit {
   loadData() {
     this.loading.set(true);
     this.error.set(null);
-    this.financialService.getGeneralJournal(this.dateFrom(), this.dateTo())
+    this.financialService
+      .getGeneralJournal(this.dateFrom(), this.dateTo())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {
@@ -87,7 +95,7 @@ export class GeneralJournal implements OnInit {
         error: (err) => {
           this.error.set('ไม่สามารถดึงข้อมูลสมุดรายวันทั่วไปได้');
           this.loading.set(false);
-        }
+        },
       });
   }
 }

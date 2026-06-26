@@ -184,26 +184,18 @@
       </div>
 
       <div class="p-4 border-t border-base-200 bg-base-50 flex justify-between items-center">
-        <div class="text-sm text-base-content/70">
-          แสดงรายการที่
-          <span class="font-bold">{{
-            totalCount() === 0 ? 0 : (searchParams.page - 1) * searchParams.pageSize + 1
-          }}</span>
+        <div class="text-sm text-base-content/60 px-4 mt-4 md:mt-0">
+          แสดง {{ totalCount() === 0 ? 0 : (page() - 1) * pageSize() + 1 }}
           ถึง
-          <span class="font-bold">{{
-            searchParams.page * searchParams.pageSize > totalCount()
-              ? totalCount()
-              : searchParams.page * searchParams.pageSize
-          }}</span>
-          จากทั้งหมด <span class="font-bold">{{ totalCount() }}</span>
+          {{ page() * pageSize() > totalCount() ? totalCount() : page() * pageSize() }}
+          จาก {{ totalCount() }} รายการ
         </div>
         <app-pagination
-          [page]="searchParams.page"
-          [pageSize]="searchParams.pageSize"
+          [page]="page()"
+          [pageSize]="pageSize()"
           [totalCount]="totalCount()"
           (pageChange)="onPageChange($event)"
-        >
-        </app-pagination>
+        ></app-pagination>
       </div>
     </div>
   </div>

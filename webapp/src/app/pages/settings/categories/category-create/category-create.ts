@@ -6,12 +6,15 @@ import {
   OnInit,
   signal,
   WritableSignal,
+  effect,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { CategorySearchComponent } from '../../../../shared/components/category-search/category-search';
 import { HasUnsavedChanges } from '../../../../shared/guards/has-unsaved-changes.interface';
 import { CategoryDto } from '../../../../shared/models/category.models';
@@ -50,6 +53,40 @@ export class CategoryCreate implements OnInit, HasUnsavedChanges {
     isActive: [true],
   });
 
+  categoryResource = rxResource({
+    params: () => this.categoryId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.categoryService.getCategoryById(params).pipe(
+        catchError((err) => {
+          console.error(err);
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  constructor() {
+    effect(() => {
+      const cat = this.categoryResource.value();
+      if (cat) {
+        untracked(() => {
+          this.form.patchValue({
+            categoryName: cat.categoryName,
+            description: cat.description,
+            parentId: cat.parentId,
+            sortOrder: cat.sortOrder,
+            isActive: cat.isActive,
+          });
+        });
+      } else if (cat === null && !this.categoryResource.isLoading() && this.categoryId()) {
+        untracked(() => {
+          this.errorMsg.set('ไม่พบข้อมูลหมวดหมู่ที่ระบุ');
+        });
+      }
+    });
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.hasUnsavedChanges()) {
@@ -62,7 +99,6 @@ export class CategoryCreate implements OnInit, HasUnsavedChanges {
     if (idParam) {
       this.categoryId.set(Number(idParam));
       this.isEditMode.set(true);
-      this.loadCategory(this.categoryId()!);
     }
 
     this.setupAutocomplete('level1Name', this.level1Suggestions);
@@ -81,27 +117,6 @@ export class CategoryCreate implements OnInit, HasUnsavedChanges {
   isInvalid(controlName: string): boolean {
     const ctrl = this.form.get(controlName);
     return !!(ctrl?.invalid && ctrl?.touched);
-  }
-
-  loadCategory(id: number): void {
-    this.categoryService
-      .getCategoryById(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (cat) => {
-          this.form.patchValue({
-            categoryName: cat.categoryName,
-            description: cat.description,
-            parentId: cat.parentId,
-            sortOrder: cat.sortOrder,
-            isActive: cat.isActive,
-          });
-        },
-        error: (err) => {
-          this.errorMsg.set('ไม่พบข้อมูลหมวดหมู่ที่ระบุ');
-          console.error(err);
-        },
-      });
   }
 
   onSubmit(): void {

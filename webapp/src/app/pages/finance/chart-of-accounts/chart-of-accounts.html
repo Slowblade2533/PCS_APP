@@ -37,7 +37,9 @@
                 <td class="font-mono font-medium">{{ item.accountCode }}</td>
                 <td class="font-bold">{{ item.accountName }}</td>
                 <td>
-                  <span class="badge {{ getAccountTypeClass(item.accountType) }} badge-sm font-semibold">
+                  <span
+                    class="badge {{ getAccountTypeClass(item.accountType) }} badge-sm font-semibold"
+                  >
                     {{ getAccountTypeLabel(item.accountType) }}
                   </span>
                 </td>

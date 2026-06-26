@@ -6,28 +6,19 @@ using PCS_API.Repositories;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/bank-accounts")]
+[ApiController]
 [Authorize]
-public class BankAccountsController : ControllerBase
-{
-    private readonly IPartnerBankAccountRepository _partnerRepo;
-    private readonly ICompanyBankAccountRepository _companyRepo;
-
-    public BankAccountsController(
+public class BankAccountsController(
         IPartnerBankAccountRepository partnerRepo,
-        ICompanyBankAccountRepository companyRepo)
-    {
-        _partnerRepo = partnerRepo;
-        _companyRepo = companyRepo;
-    }
-
+        ICompanyBankAccountRepository companyRepo) : ControllerBase
+{
     // ─── Partner Bank Accounts ────────────────────────────────────────────────
     [HttpGet("partner")]
     [Authorize(Policy = "CanViewBankAccounts")]
     public async Task<IActionResult> GetPartnerAccounts([FromQuery] string? partnerName, [FromQuery] int? supplierId, CancellationToken ct)
     {
-        var accounts = await _partnerRepo.GetByPartnerAsync(partnerName ?? string.Empty, supplierId, ct);
+        var accounts = await partnerRepo.GetByPartnerAsync(partnerName ?? string.Empty, supplierId, ct);
         var dtos = accounts.Select(a => new PartnerBankAccountDto
         {
             Id = a.Id,
@@ -47,12 +38,13 @@ public class BankAccountsController : ControllerBase
     [Authorize(Policy = "CanManageBankAccounts")]
     public async Task<IActionResult> CreateOrUpdatePartnerAccount([FromBody] PartnerBankAccountCreateDto dto, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
-        bool exists = await _partnerRepo.ExistsAsync(dto.PartnerName, dto.AccountNo, ct);
+        bool exists = await partnerRepo.ExistsAsync(dto.PartnerName, dto.AccountNo, ct);
         if (exists)
         {
-            var existingAccounts = await _partnerRepo.GetByPartnerAsync(dto.PartnerName, dto.SupplierId, ct);
+            var existingAccounts = await partnerRepo.GetByPartnerAsync(dto.PartnerName, dto.SupplierId, ct);
             var match = existingAccounts.FirstOrDefault(a => a.AccountNo == dto.AccountNo);
             if (match != null)
             {
@@ -60,7 +52,7 @@ public class BankAccountsController : ControllerBase
                 match.AccountName = dto.AccountName;
                 match.BankName = dto.BankName;
                 match.IsDefault = dto.IsDefault;
-                await _partnerRepo.UpdateAsync(match, ct);
+                await partnerRepo.UpdateAsync(match, ct);
                 return Ok(new { value = match.Id });
             }
         }
@@ -76,7 +68,7 @@ public class BankAccountsController : ControllerBase
             IsActive = dto.IsActive
         };
 
-        int newId = await _partnerRepo.CreateAsync(model, ct);
+        int newId = await partnerRepo.CreateAsync(model, ct);
         return Ok(new { value = newId });
     }
 
@@ -84,8 +76,10 @@ public class BankAccountsController : ControllerBase
     [Authorize(Policy = "CanManageBankAccounts")]
     public async Task<IActionResult> DeletePartnerAccount(int id, CancellationToken ct)
     {
-        bool success = await _partnerRepo.DeleteAsync(id, ct);
-        if (!success) return NotFound();
+        bool success = await partnerRepo.DeleteAsync(id, ct);
+        if (!success) 
+            return NotFound();
+
         return Ok(new { value = success });
     }
 
@@ -95,8 +89,8 @@ public class BankAccountsController : ControllerBase
     public async Task<IActionResult> GetCompanyAccounts([FromQuery] bool activeOnly = false, CancellationToken ct = default)
     {
         var accounts = activeOnly
-            ? await _companyRepo.GetAllActiveAsync(ct)
-            : await _companyRepo.GetAllAsync(ct);
+            ? await companyRepo.GetAllActiveAsync(ct)
+            : await companyRepo.GetAllAsync(ct);
 
         var dtos = accounts.Select(a => new CompanyBankAccountDto
         {
@@ -116,7 +110,8 @@ public class BankAccountsController : ControllerBase
     [Authorize(Policy = "CanManageBankAccounts")]
     public async Task<IActionResult> CreateCompanyAccount([FromBody] CompanyBankAccountCreateDto dto, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var model = new CompanyBankAccountModel
         {
@@ -128,7 +123,7 @@ public class BankAccountsController : ControllerBase
             AccountType = dto.AccountType
         };
 
-        int newId = await _companyRepo.CreateAsync(model, ct);
+        int newId = await companyRepo.CreateAsync(model, ct);
         return Ok(new { value = newId });
     }
 
@@ -136,10 +131,12 @@ public class BankAccountsController : ControllerBase
     [Authorize(Policy = "CanManageBankAccounts")]
     public async Task<IActionResult> UpdateCompanyAccount(int id, [FromBody] CompanyBankAccountCreateDto dto, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
-        var model = await _companyRepo.GetByIdAsync(id, ct);
-        if (model == null) return NotFound();
+        var model = await companyRepo.GetByIdAsync(id, ct);
+        if (model == null) 
+            return NotFound();
 
         model.BankName = dto.BankName;
         model.AccountNo = dto.AccountNo;
@@ -148,7 +145,7 @@ public class BankAccountsController : ControllerBase
         model.IsActive = dto.IsActive;
         model.AccountType = dto.AccountType;
 
-        bool success = await _companyRepo.UpdateAsync(model, ct);
+        bool success = await companyRepo.UpdateAsync(model, ct);
         return Ok(new { value = success });
     }
 
@@ -156,8 +153,10 @@ public class BankAccountsController : ControllerBase
     [Authorize(Policy = "CanManageBankAccounts")]
     public async Task<IActionResult> DeleteCompanyAccount(int id, CancellationToken ct)
     {
-        bool success = await _companyRepo.DeleteAsync(id, ct);
-        if (!success) return NotFound();
+        bool success = await companyRepo.DeleteAsync(id, ct);
+        if (!success) 
+            return NotFound();
+
         return Ok(new { value = success });
     }
 }

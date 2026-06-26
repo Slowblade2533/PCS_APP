@@ -47,6 +47,12 @@ export class AuthService {
     return user.permissions.includes(permission);
   }
 
+  isSuperuser(): boolean {
+    const user = this.currentUser();
+    if (!user || !user.roles) return false;
+    return user.roles.includes('Owner') || user.roles.includes('IT Administrator');
+  }
+
   initializeAuth(): Observable<boolean> {
     return this.ensureCsrfToken().pipe(
       switchMap(() => this.checkAuthStatus()),

@@ -16,7 +16,9 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
     [Authorize(Policy = "CanViewStock")]
     public async Task<IActionResult> Get([FromQuery] StockSearchDto search, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
+
         return Ok(await stockService.GetStockStatusAsync(search, cancellationToken));
     }
 
@@ -27,7 +29,9 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
         [FromQuery] PaginationParamsDto @params,
         CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
+
         var result = await stockService.GetTransactionsAsync(transactionType, @params, cancellationToken);
         return Ok(result);
     }
@@ -36,9 +40,7 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
     public async Task<IActionResult> Post([FromBody] CreateStockTransactionDto dto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
 
         var requiredPermission = dto.TransactionType.ToUpper() switch
         {
@@ -49,9 +51,7 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
         };
 
         if (!User.HasClaim("permission", requiredPermission))
-        {
             return Forbid();
-        }
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
@@ -78,9 +78,13 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
     [Authorize(Policy = "CanStockAdjust")]
     public async Task<IActionResult> TransferCondition([FromBody] StockConditionTransferDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
+
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim != null) dto.CreatedBy = int.Parse(userIdClaim.Value);
+        if (userIdClaim != null) 
+            dto.CreatedBy = int.Parse(userIdClaim.Value);
+
         var result = await StockAdjustmentExtensions.TransferConditionAsync(connectionFactory, stockRepository, dto);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
@@ -92,9 +96,13 @@ public class StockController(IStockService stockService, ISqlConnectionFactory c
     [Authorize(Policy = "CanStockAdjust")]
     public async Task<IActionResult> Scrap([FromBody] StockScrapDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
+
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim != null) dto.CreatedBy = int.Parse(userIdClaim.Value);
+        if (userIdClaim != null) 
+            dto.CreatedBy = int.Parse(userIdClaim.Value);
+
         var result = await StockAdjustmentExtensions.ScrapStockAsync(connectionFactory, stockRepository, dto);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }

@@ -5,8 +5,18 @@
 
   <div class="bg-base-100 shadow-xl rounded-box p-4 mb-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateFrom()"
+        (ngModelChange)="dateFrom.set($event); onFilterChange()"
+      />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateTo()"
+        (ngModelChange)="dateTo.set($event); onFilterChange()"
+      />
     </div>
   </div>
 
@@ -43,11 +53,19 @@
               <tr>
                 <td class="font-mono font-medium">{{ row.accountCode }}</td>
                 <td class="font-bold">{{ row.accountName }}</td>
-                <td class="text-right font-medium" [class.text-base-content]="getNetDebit(row) > 0" [class.text-base-content/30]="!getNetDebit(row)">
-                  {{ getNetDebit(row) | number:'1.2-2' }}
+                <td
+                  class="text-right font-medium"
+                  [class.text-base-content]="getNetDebit(row) > 0"
+                  [class.text-base-content/30]="!getNetDebit(row)"
+                >
+                  {{ getNetDebit(row) | number: '1.2-2' }}
                 </td>
-                <td class="text-right font-medium" [class.text-base-content]="getNetCredit(row) > 0" [class.text-base-content/30]="!getNetCredit(row)">
-                  {{ getNetCredit(row) | number:'1.2-2' }}
+                <td
+                  class="text-right font-medium"
+                  [class.text-base-content]="getNetCredit(row) > 0"
+                  [class.text-base-content/30]="!getNetCredit(row)"
+                >
+                  {{ getNetCredit(row) | number: '1.2-2' }}
                 </td>
               </tr>
             }
@@ -58,10 +76,10 @@
             <tr>
               <td colspan="2" class="text-right font-bold text-lg">รวมยอดสุทธิ</td>
               <td class="text-right font-bold text-xl text-primary border-t-2 border-primary">
-                {{ totalDebit | number:'1.2-2' }}
+                {{ totalDebit | number: '1.2-2' }}
               </td>
               <td class="text-right font-bold text-xl text-primary border-t-2 border-primary">
-                {{ totalCredit | number:'1.2-2' }}
+                {{ totalCredit | number: '1.2-2' }}
               </td>
             </tr>
           </tfoot>

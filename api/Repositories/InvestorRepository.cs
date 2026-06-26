@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Dapper;
 using PCS_API.Models;
-using PCS_API.Repositories;
 
 namespace PCS_API.Repositories;
 
@@ -13,7 +8,7 @@ public class InvestorRepository(ISqlConnectionFactory connectionFactory) : IInve
     public async Task<IEnumerable<InvestorModel>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM Investor";
+        var query = "SELECT InvestorId, Title, FirstName, LastName, TaxId, Address, Phone, Email, CreatedAt FROM Investor";
         var command = new CommandDefinition(query, cancellationToken: cancellationToken);
         return await conn.QueryAsync<InvestorModel>(command);
     }
@@ -21,7 +16,7 @@ public class InvestorRepository(ISqlConnectionFactory connectionFactory) : IInve
     public async Task<InvestorModel?> GetByIdAsync(Guid investorId, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
-        var query = "SELECT * FROM Investor WHERE InvestorId = @InvestorId";
+        var query = "SELECT InvestorId, Title, FirstName, LastName, TaxId, Address, Phone, Email, CreatedAt FROM Investor WHERE InvestorId = @InvestorId";
         var command = new CommandDefinition(query, new { InvestorId = investorId }, cancellationToken: cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<InvestorModel>(command);
     }
@@ -69,3 +64,4 @@ public class InvestorRepository(ISqlConnectionFactory connectionFactory) : IInve
         return rows > 0;
     }
 }
+

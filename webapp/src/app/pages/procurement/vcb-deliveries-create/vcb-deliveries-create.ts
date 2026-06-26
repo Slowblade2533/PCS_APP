@@ -1,22 +1,25 @@
 import { CommonModule, Location } from '@angular/common';
 import Big from 'big.js';
 import {
-  ChangeDetectorRef,
   Component,
   DestroyRef,
   HostListener,
   OnInit,
   inject,
   signal,
+  computed,
+  effect,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject } from 'rxjs';
-import { debounceTime, finalize } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { debounceTime, finalize, catchError } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
-import { VcbOrder, VcbOrderSearch } from '../../../shared/models/procurement.models';
-import { ProcurementService } from '../../../shared/services/procurement.service';
+import { VcbOrder, VcbOrderSearch } from '../../../shared/models/vcb-orders.models';
+import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
+import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
@@ -28,12 +31,12 @@ import { ImageHoverPreview } from '../../../shared/components/image-hover-previe
   templateUrl: './vcb-deliveries-create.html',
 })
 export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
   apiOrigin = environment.apiUrl.replace('/api', '');
-  private readonly procurementService = inject(ProcurementService);
+  private readonly vcbDeliveriesService = inject(VcbDeliveriesService);
+  private readonly vcbOrdersService = inject(VcbOrdersService);
   private readonly router = inject(Router);
   private readonly swal = inject(SweetAlertService);
   private readonly route = inject(ActivatedRoute);
@@ -42,57 +45,65 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
   isEditMode = signal(false);
   deliveryId = signal<number | null>(null);
 
-  isSearching = signal(false);
+  deliveryResource = rxResource({
+    params: () => this.deliveryId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.vcbDeliveriesService.getVcbDeliveryById(params).pipe(
+        catchError(() => {
+          this.swal.error('ไม่สามารถโหลดข้อมูลใบส่งสินค้าได้');
+          this.location.back();
+          return of(null);
+        }),
+      );
+    },
+  });
+
+  searchParams = signal<VcbOrderSearch>({
+    page: 1,
+    pageSize: 5,
+    searchTerm: '',
+  });
+
+  ordersResource = rxResource({
+    params: () => this.searchParams(),
+    stream: ({ params }) =>
+      this.vcbOrdersService
+        .getVcbOrders(params)
+        .pipe(catchError(() => of({ items: [], totalCount: 0 }))),
+  });
+
+  isSearching = computed(() => this.ordersResource.isLoading());
   isSubmitting = signal(false);
-  searchResults = signal<VcbOrder[]>([]);
+  searchResults = computed(() => this.ordersResource.value()?.items || []);
+  totalCount = computed(() => this.ordersResource.value()?.totalCount || 0);
   searchSubject = new Subject<string>();
-  
+
   selectedOrders = signal<VcbOrder[]>([]);
   deliveryForm!: FormGroup;
   selectedSlipFile: File | null = null;
   slipFilePreviewUrl = signal<string | null>(null);
 
-  searchParams: VcbOrderSearch = {
-    page: 1,
-    pageSize: 5,
-    searchTerm: '',
-  };
-  totalCount = signal(0);
-
   addressHistory: string[] = [];
-  readonly defaultAddress = '49/61 หมู่บ้านพรบดินทร ซอยนวมินทร์ 163 แยก 17-5 นวลจันทร์ เขตบึงกุ่ม กรุงเทพมหานคร 10240';
+  readonly defaultAddress =
+    '49/61 หมู่บ้านพรบดินทร ซอยนวมินทร์ 163 แยก 17-5 นวลจันทร์ เขตบึงกุ่ม กรุงเทพมหานคร 10240';
 
   get items(): FormArray {
     return this.deliveryForm.get('items') as FormArray;
   }
 
   @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
+  unloadNotification($event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
       $event.returnValue = true;
     }
   }
 
-  ngOnInit(): void {
-    this.loadAddressHistory();
-    this.initForm();
-    this.setupOrderSearch();
-    this.loadOrders();
-
-    this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      if (id) {
-        this.isEditMode.set(true);
-        this.deliveryId.set(+id);
-        this.loadDeliveryData(this.deliveryId()!);
-      }
-    });
-  }
-
-  loadDeliveryData(id: number): void {
-    this.procurementService.getVcbDeliveryById(id).subscribe({
-      next: (res: any) => {
-        const delivery = res.value || res.data || res;
+  constructor() {
+    effect(() => {
+      const res = this.deliveryResource.value();
+      if (res) {
+        const delivery: any = res.value || res.data || (res as any).id ? res : undefined;
         if (delivery) {
           this.deliveryForm.patchValue({
             deliveryNo: delivery.deliveryNo,
@@ -118,9 +129,15 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
               const itemForm = this.fb.group({
                 packageBoxNo: [item.packageBoxNo, Validators.required],
                 domesticTrackingNo: [item.domesticTrackingNo],
-                totalWeight: [Number(item.totalWeight ?? 0).toFixed(2), [Validators.required, Validators.min(0.01)]],
+                totalWeight: [
+                  Number(item.totalWeight ?? 0).toFixed(2),
+                  [Validators.required, Validators.min(0.01)],
+                ],
                 boxDimensions: [item.boxDimensions],
-                shippingCost: [Number(item.shippingCost ?? 0).toFixed(2), [Validators.required, Validators.min(0)]],
+                shippingCost: [
+                  Number(item.shippingCost ?? 0).toFixed(2),
+                  [Validators.required, Validators.min(0)],
+                ],
                 subBoxes: this.fb.array([]),
               });
 
@@ -129,13 +146,17 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
                   const subBoxes = JSON.parse(item.containedBoxNumbers);
                   if (Array.isArray(subBoxes)) {
                     const subBoxesForm = itemForm.get('subBoxes') as FormArray;
-                    subBoxes.forEach((sub: any) => {
-                      subBoxesForm.push(this.fb.group({
-                        boxNo: [sub.boxNo, Validators.required],
-                        dimensions: [sub.dimensions || ''],
-                        weight: [Number(sub.weight ?? 0).toFixed(2), [Validators.min(0)]]
-                      }));
-                    });
+                    subBoxes.forEach(
+                      (sub: { boxNo: string; dimensions?: string; weight?: number | string }) => {
+                        subBoxesForm.push(
+                          this.fb.group({
+                            boxNo: [sub.boxNo, Validators.required],
+                            dimensions: [sub.dimensions || ''],
+                            weight: [Number(sub.weight ?? 0).toFixed(2), [Validators.min(0)]],
+                          }),
+                        );
+                      },
+                    );
                   }
                 } catch (e) {}
               }
@@ -143,28 +164,54 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
             });
           }
 
-          if (delivery.vcbOrders && Array.isArray(delivery.vcbOrders)) {
-            this.selectedOrders.set(delivery.vcbOrders.map((o: any) => ({
-              id: o.orderId || o.id,
-              orderNo: o.orderNo
-            })));
+          const legacyVcbOrders = (
+            delivery as unknown as {
+              vcbOrders?: Array<{ orderId?: number; id?: number; orderNo: string }>;
+            }
+          ).vcbOrders;
+          if (legacyVcbOrders && Array.isArray(legacyVcbOrders)) {
+            this.selectedOrders.set(
+              legacyVcbOrders.map(
+                (o) =>
+                  ({
+                    id: (o.orderId || o.id)!,
+                    orderNo: o.orderNo,
+                  }) as VcbOrder,
+              ),
+            );
           } else if (delivery.orders && Array.isArray(delivery.orders)) {
-             this.selectedOrders.set(delivery.orders.map((o: any) => ({
-              id: o.orderId || o.id,
-              orderNo: o.orderNo
-             })));
+            this.selectedOrders.set(
+              delivery.orders.map(
+                (o: any) =>
+                  ({
+                    id: o.orderId,
+                    orderNo: o.orderNo!,
+                  }) as VcbOrder,
+              ),
+            );
           }
 
           this.deliveryForm.markAsPristine();
-          this.cdr.markForCheck();
         }
-      },
-      error: () => {
-        this.swal.error('ไม่สามารถโหลดข้อมูลใบส่งสินค้าได้');
-        this.location.back();
       }
     });
   }
+
+  ngOnInit(): void {
+    this.loadAddressHistory();
+    this.initForm();
+    this.setupOrderSearch();
+
+    this.route.paramMap.subscribe((params) => {
+      const id = params.get('id');
+      if (id) {
+        this.isEditMode.set(true);
+        this.deliveryId.set(+id);
+      }
+    });
+  }
+
+  // Removed loadDeliveryData
 
   hasUnsavedChanges(): boolean {
     return this.deliveryForm.dirty && !this.isSubmitting();
@@ -202,7 +249,8 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   private initForm(): void {
-    const initialAddress = this.addressHistory.length > 0 ? this.addressHistory[0] : this.defaultAddress;
+    const initialAddress =
+      this.addressHistory.length > 0 ? this.addressHistory[0] : this.defaultAddress;
 
     this.deliveryForm = this.fb.group({
       deliveryNo: ['', Validators.required],
@@ -218,18 +266,20 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     });
 
     // Auto-calculate total and totalWeight of parent items from subBoxes
-    this.deliveryForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(val => {
+    this.deliveryForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((val) => {
       const items = val.items || [];
-      
+
       // Auto-calculate totalWeight of each package item if it has subBoxes
       let weightChanged = false;
       this.items.controls.forEach((itemControl) => {
         const subBoxesArray = itemControl.get('subBoxes') as FormArray;
         if (subBoxesArray && subBoxesArray.length > 0) {
-          const subBoxesSum = subBoxesArray.controls.reduce((sum: Big, subBoxControl) => {
-            const w = subBoxControl.get('weight')?.value || 0;
-            return sum.plus(new Big(w || 0));
-          }, new Big(0)).toFixed(2);
+          const subBoxesSum = subBoxesArray.controls
+            .reduce((sum: Big, subBoxControl) => {
+              const w = subBoxControl.get('weight')?.value || 0;
+              return sum.plus(new Big(w || 0));
+            }, new Big(0))
+            .toFixed(2);
 
           const currentTotalWeight = itemControl.get('totalWeight')?.value;
           if (currentTotalWeight !== subBoxesSum) {
@@ -239,24 +289,29 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
         }
       });
 
-      const totalBeforeDiscountBig = items.reduce((sum: Big, item: any) => {
-        return sum.plus(new Big(item.shippingCost || 0));
-      }, new Big(0));
+      const totalBeforeDiscountBig = items.reduce(
+        (sum: Big, item: { shippingCost?: string | number }) => {
+          return sum.plus(new Big(item.shippingCost || 0));
+        },
+        new Big(0),
+      );
       const totalBeforeDiscount = totalBeforeDiscountBig.toFixed(2);
-      
+
       if (this.deliveryForm.get('totalAmountBeforeDiscount')?.value !== totalBeforeDiscount) {
-         this.deliveryForm.patchValue({ totalAmountBeforeDiscount: totalBeforeDiscount }, { emitEvent: false });
+        this.deliveryForm.patchValue(
+          { totalAmountBeforeDiscount: totalBeforeDiscount },
+          { emitEvent: false },
+        );
       }
 
       const discountBig = new Big(val.discountAmount || 0);
       const totalBig = totalBeforeDiscountBig.minus(discountBig);
       const total = totalBig.gt(0) ? totalBig.toFixed(2) : '0.00';
       if (this.deliveryForm.get('totalAmount')?.value !== total) {
-         this.deliveryForm.patchValue({ totalAmount: total }, { emitEvent: false });
+        this.deliveryForm.patchValue({ totalAmount: total }, { emitEvent: false });
       }
 
       if (weightChanged) {
-        this.cdr.markForCheck();
       }
     });
   }
@@ -281,7 +336,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     const subBoxForm = this.fb.group({
       boxNo: ['', Validators.required],
       dimensions: [''],
-      weight: ['0.00', [Validators.min(0)]]
+      weight: ['0.00', [Validators.min(0)]],
     });
     this.getSubBoxes(itemIndex).push(subBoxForm);
   }
@@ -332,14 +387,13 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     this.items.removeAt(index);
   }
 
-  onFileChange(event: any): void {
-    const file = event.target.files[0];
+  onFileChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       this.selectedSlipFile = file;
       const reader = new FileReader();
       reader.onload = () => {
         this.slipFilePreviewUrl.set(reader.result as string);
-        this.cdr.markForCheck();
       };
       reader.readAsDataURL(file);
     }
@@ -352,25 +406,9 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     if (fileInput) fileInput.value = '';
   }
 
-  loadOrders(): void {
-    this.isSearching.set(true);
-    this.procurementService
-      .getVcbOrders(this.searchParams)
-      .pipe(
-        finalize(() => {
-          this.isSearching.set(false);
-          this.cdr.markForCheck();
-        }),
-      )
-      .subscribe((res: any) => {
-        this.searchResults.set(res?.items || []);
-        this.totalCount.set(res?.totalCount || 0);
-      });
-  }
-
+  // Removed loadOrders
   onPageChange(page: number): void {
-    this.searchParams.page = page;
-    this.loadOrders();
+    this.searchParams.update((p) => ({ ...p, page }));
   }
 
   onSearchChange(event: Event): void {
@@ -382,9 +420,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     this.searchSubject
       .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
-        this.searchParams.searchTerm = term;
-        this.searchParams.page = 1;
-        this.loadOrders();
+        this.searchParams.update((p) => ({ ...p, searchTerm: term, page: 1 }));
       });
   }
 
@@ -419,7 +455,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     this.saveAddressHistory(formValue.shippingAddress);
 
     const formData = new FormData();
-    
+
     const dto = {
       deliveryNo: formValue.deliveryNo,
       orderDate: new Date(formValue.orderDate).toISOString(),
@@ -431,18 +467,32 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
       transferredAmount: Number(formValue.transferredAmount || 0).toFixed(2),
       notes: formValue.notes,
       orderIds: this.selectedOrders().map((o) => o.id),
-      items: formValue.items.map((item: any) => ({
-        packageBoxNo: item.packageBoxNo,
-        domesticTrackingNo: item.domesticTrackingNo,
-        totalWeight: Number(item.totalWeight || 0).toFixed(2),
-        boxDimensions: item.boxDimensions,
-        containedBoxNumbers: item.subBoxes && item.subBoxes.length > 0 ? JSON.stringify(item.subBoxes.map((sub: any) => ({
-          boxNo: sub.boxNo,
-          dimensions: sub.dimensions || '',
-          weight: Number(sub.weight || 0).toFixed(2)
-        }))) : null,
-        shippingCost: Number(item.shippingCost || 0).toFixed(2)
-      }))
+      items: formValue.items.map(
+        (item: {
+          packageBoxNo: string;
+          domesticTrackingNo?: string;
+          totalWeight: string | number;
+          boxDimensions?: string;
+          subBoxes?: { boxNo: string; dimensions?: string; weight?: string | number }[];
+          shippingCost: string | number;
+        }) => ({
+          packageBoxNo: item.packageBoxNo,
+          domesticTrackingNo: item.domesticTrackingNo,
+          totalWeight: Number(item.totalWeight || 0).toFixed(2),
+          boxDimensions: item.boxDimensions,
+          containedBoxNumbers:
+            item.subBoxes && item.subBoxes.length > 0
+              ? JSON.stringify(
+                  item.subBoxes.map((sub) => ({
+                    boxNo: sub.boxNo,
+                    dimensions: sub.dimensions || '',
+                    weight: Number(sub.weight || 0).toFixed(2),
+                  })),
+                )
+              : null,
+          shippingCost: Number(item.shippingCost || 0).toFixed(2),
+        }),
+      ),
     };
 
     formData.append('data', JSON.stringify(dto));
@@ -452,27 +502,32 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     }
 
     this.isSubmitting.set(true);
-    
-    const request = this.isEditMode() && this.deliveryId()
-      ? this.procurementService.updateVcbDelivery(this.deliveryId()!, formData)
-      : this.procurementService.createVcbDelivery(formData);
+
+    const request =
+      this.isEditMode() && this.deliveryId()
+        ? this.vcbDeliveriesService.updateVcbDelivery(this.deliveryId()!, formData)
+        : this.vcbDeliveriesService.createVcbDelivery(formData);
 
     request.subscribe({
-      next: (res: any) => {
+      next: (res) => {
         this.isSubmitting.set(false);
-        this.cdr.markForCheck();
-        if (res.isSuccess || res.id || res.message) {
+        if (
+          res.isSuccess ||
+          (res as unknown as { id?: number }).id ||
+          (res as unknown as { message?: string }).message
+        ) {
           this.deliveryForm.markAsPristine();
-          this.swal.success(this.isEditMode() ? 'อัปเดตใบส่งสินค้าสำเร็จ' : 'สร้างใบส่งสินค้าสำเร็จ').then(() => {
-            this.router.navigate(['/procurement/vcb-deliveries']);
-          });
+          this.swal
+            .success(this.isEditMode() ? 'อัปเดตใบส่งสินค้าสำเร็จ' : 'สร้างใบส่งสินค้าสำเร็จ')
+            .then(() => {
+              this.router.navigate(['/procurement/vcb-deliveries']);
+            });
         } else {
           this.swal.error(res.error || 'เกิดข้อผิดพลาด');
         }
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        this.cdr.markForCheck();
         this.swal.error(err.error?.error || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
       },
     });
@@ -487,7 +542,12 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
       return '/logistics/nim_express.jpg';
     } else if (cmp.includes('thaipost') || cmp.includes('ไปรษณีย์ไทย')) {
       return '/logistics/thaipost_ems.jpg';
-    } else if (cmp.includes('blue & white') || cmp.includes('blue &amp; white') || cmp.includes('blue and white') || cmp.includes('blue & white logistic')) {
+    } else if (
+      cmp.includes('blue & white') ||
+      cmp.includes('blue &amp; white') ||
+      cmp.includes('blue and white') ||
+      cmp.includes('blue & white logistic')
+    ) {
       return '/logistics/blue_n_white.jpg';
     } else if (cmp.includes('dhl')) {
       return '/logistics/dhl.jpg';

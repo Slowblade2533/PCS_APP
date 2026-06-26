@@ -1,9 +1,8 @@
-using System.Threading.RateLimiting;
+﻿using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.FileProviders;
 using PCS_API.Handlers;
 using PCS_API.Models;
 using PCS_API.Repositories;
@@ -124,6 +123,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBranchRepository, BranchRepository>();
 builder.Services.AddScoped<IBranchService, BranchService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -140,20 +140,30 @@ builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
 
-// ── Financial, Sales & Procurement modules ───────────────────────────────────
-builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+// โ”€โ”€ Financial, Sales & Procurement modules โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+builder.Services.AddScoped<IChartOfAccountRepository, ChartOfAccountRepository>();
+builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
+builder.Services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
+builder.Services.AddScoped<ITaxInvoiceService, TaxInvoiceService>();
+builder.Services.AddScoped<IFinancialTransactionRepository, FinancialTransactionRepository>();
+builder.Services.AddScoped<IFinancialTransactionService, FinancialTransactionService>();
+builder.Services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
+builder.Services.AddScoped<IFinancialReportService, FinancialReportService>();
 builder.Services.AddScoped<IPartnerBankAccountRepository, PartnerBankAccountRepository>();
 builder.Services.AddScoped<ICompanyBankAccountRepository, CompanyBankAccountRepository>();
 builder.Services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
+builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
-// ── Investors & Investments modules ──────────────────────────────────────────
+// โ”€โ”€ Investors & Investments modules โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 builder.Services.AddScoped<IInvestorRepository, InvestorRepository>();
 builder.Services.AddScoped<IInvestorBankAccountRepository, InvestorBankAccountRepository>();
 builder.Services.AddScoped<IInvestmentRepository, InvestmentRepository>();
 builder.Services.AddScoped<IInvestorService, InvestorService>();
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
+builder.Services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
 builder.Services.AddSingleton<ImageCleanupChannel>();
 builder.Services.AddHostedService<ImageCleanupBackgroundService>();
 builder.Services.AddHostedService<TempFileCleanupBackgroundService>();
@@ -176,7 +186,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ── Security Headers ─────────────────────────────────────────────────────────
+// โ”€โ”€ Security Headers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 // Applied early so every response carries them, including error responses.
 app.Use(async (context, next) =>
 {
@@ -195,10 +205,10 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ── Public static files (non-upload assets) ──────────────────────────────────
+// โ”€โ”€ Public static files (non-upload assets) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 app.UseStaticFiles();
 
-// ── Protected uploaded files ──────────────────────────────────────────────────
+// โ”€โ”€ Protected uploaded files โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 // Requires authentication. The path /api/uploads/* is served only if the
 // request carries a valid AuthCookie. Unauthenticated callers receive 401.
 var uploadsPath = Path.Combine(
@@ -249,7 +259,7 @@ app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWe
     await context.Response.SendFileAsync(requestedFile);
 });
 
-// ── Custom CSRF Validation Middleware ─────────────────────────────────────────
+// โ”€โ”€ Custom CSRF Validation Middleware โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 // Validates the double-submit cookie pattern for all state-changing requests.
 // Exemptions: GET/HEAD/OPTIONS/TRACE (safe methods), login, and csrf-token endpoints.
 app.Use(async (context, next) =>
@@ -299,3 +309,4 @@ app.Use(async (context, next) =>
 app.MapControllers();
 
 app.Run();
+

@@ -12,13 +12,27 @@
         [ngModel]="searchTerm()"
         (input)="onSearch($event)"
       />
-      <select class="select select-bordered w-full" [ngModel]="selectedTaxType()" (ngModelChange)="selectedTaxType.set($event); onFilterChange()">
+      <select
+        class="select select-bordered w-full"
+        [ngModel]="selectedTaxType()"
+        (ngModelChange)="selectedTaxType.set($event); onFilterChange()"
+      >
         <option value="">ทุกประเภท</option>
         <option value="INPUT_TAX">ภาษีซื้อ (Input Tax)</option>
         <option value="OUTPUT_TAX">ภาษีขาย (Output Tax)</option>
       </select>
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateFrom()"
+        (ngModelChange)="dateFrom.set($event); onFilterChange()"
+      />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateTo()"
+        (ngModelChange)="dateTo.set($event); onFilterChange()"
+      />
     </div>
   </div>
 
@@ -52,12 +66,14 @@
             </tr>
           } @else if (data().items.length === 0) {
             <tr>
-              <td colspan="8" class="text-center py-8 text-base-content/60">ไม่พบข้อมูลใบกำกับภาษี</td>
+              <td colspan="8" class="text-center py-8 text-base-content/60">
+                ไม่พบข้อมูลใบกำกับภาษี
+              </td>
             </tr>
           } @else {
             @for (item of data().items; track item.taxInvoiceId) {
               <tr>
-                <td>{{ item.taxInvoiceDate | date:'dd/MM/yyyy' }}</td>
+                <td>{{ item.taxInvoiceDate | date: 'dd/MM/yyyy' }}</td>
                 <td class="font-medium text-primary">{{ item.taxInvoiceNo }}</td>
                 <td>
                   @if (item.taxType === 'INPUT') {
@@ -68,9 +84,11 @@
                 </td>
                 <td>{{ item.partnerName }}</td>
                 <td>{{ item.partnerTaxId || '-' }}</td>
-                <td class="text-right">{{ item.baseAmount | number:'1.2-2' }}</td>
-                <td class="text-right font-medium text-error">{{ item.vatAmount | number:'1.2-2' }}</td>
-                <td class="text-right font-bold">{{ item.totalAmount | number:'1.2-2' }}</td>
+                <td class="text-right">{{ item.baseAmount | number: '1.2-2' }}</td>
+                <td class="text-right font-medium text-error">
+                  {{ item.vatAmount | number: '1.2-2' }}
+                </td>
+                <td class="text-right font-bold">{{ item.totalAmount | number: '1.2-2' }}</td>
               </tr>
             }
           }
@@ -82,22 +100,24 @@
     @if (data().totalCount > 0) {
       <div class="flex justify-between items-center p-4 bg-base-200/50">
         <span class="text-sm text-base-content/70">
-          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง 
-          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }} 
+          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง
+          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }}
           จากทั้งหมด {{ data().totalCount }} รายการ
         </span>
         <div class="join">
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber === 1"
-            (click)="onPageChange(data().pageNumber - 1)">
+            (click)="onPageChange(data().pageNumber - 1)"
+          >
             «
           </button>
           <button class="join-item btn btn-sm">หน้า {{ data().pageNumber }}</button>
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber * data().pageSize >= data().totalCount"
-            (click)="onPageChange(data().pageNumber + 1)">
+            (click)="onPageChange(data().pageNumber + 1)"
+          >
             »
           </button>
         </div>

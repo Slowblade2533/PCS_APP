@@ -123,8 +123,8 @@
               แสดงรายการทั้งหมด <span class="font-bold">{{ totalCount() }}</span>
             </div>
             <app-pagination
-              [page]="searchParams.page"
-              [pageSize]="searchParams.pageSize"
+              [page]="searchParams().page"
+              [pageSize]="searchParams().pageSize"
               [totalCount]="totalCount()"
               (pageChange)="onPageChange($event)"
             >
@@ -159,9 +159,9 @@
             type="button"
             class="btn btn-sm btn-ghost"
             (click)="
+              selectedDeliveryId.set(null);
               selectedDelivery.set(null);
               shipmentForm.patchValue({ deliveryId: null });
-              searchResults.set([]);
               items.clear()
             "
           >
@@ -173,7 +173,9 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-4">
         <div class="card bg-base-100 shadow-xl border border-base-200">
           <div class="card-body p-4">
-            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">ใบสั่งซื้อที่เกี่ยวข้อง (Orders)</h2>
+            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">
+              ใบสั่งซื้อที่เกี่ยวข้อง (Orders)
+            </h2>
             <div class="flex flex-wrap gap-2">
               @for (order of selectedDelivery()?.orders; track order.orderId) {
                 <div class="badge badge-primary p-3">{{ order.orderNo }}</div>
@@ -186,7 +188,9 @@
 
         <div class="card bg-base-100 shadow-xl border border-base-200">
           <div class="card-body p-4">
-            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">กล่องพัสดุที่ส่งมากับบิลนี้ (Boxes)</h2>
+            <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-2">
+              กล่องพัสดุที่ส่งมากับบิลนี้ (Boxes)
+            </h2>
             <div class="overflow-visible">
               <table class="table table-sm table-zebra w-full">
                 <thead class="sticky top-0 bg-base-100">
@@ -202,17 +206,35 @@
                       <td class="text-center">
                         @if (getParsedSubBoxes(item.containedBoxNumbers).length > 0) {
                           <div class="dropdown dropdown-hover dropdown-end">
-                            <div tabindex="0" role="button" class="btn btn-xs btn-outline btn-info">ดู {{ getParsedSubBoxes(item.containedBoxNumbers).length }} กล่อง</div>
-                            <ul tabindex="0" class="dropdown-content z-[99] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-200">
-                              <li class="menu-title text-xs border-b border-base-200 pb-1 mb-1">รายการกล่อง CX</li>
-                              @for (sub of getParsedSubBoxes(item.containedBoxNumbers); track sub.boxNo) {
+                            <div tabindex="0" role="button" class="btn btn-xs btn-outline btn-info">
+                              ดู {{ getParsedSubBoxes(item.containedBoxNumbers).length }} กล่อง
+                            </div>
+                            <ul
+                              tabindex="0"
+                              class="dropdown-content z-[99] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-200"
+                            >
+                              <li class="menu-title text-xs border-b border-base-200 pb-1 mb-1">
+                                รายการกล่อง CX
+                              </li>
+                              @for (
+                                sub of getParsedSubBoxes(item.containedBoxNumbers);
+                                track sub.boxNo
+                              ) {
                                 <li>
-                                  <a [class.line-through]="isBoxReceived(sub.boxNo)" [class.text-success]="isBoxReceived(sub.boxNo)" [class.opacity-60]="isBoxReceived(sub.boxNo)">
-                                    {{ sub.boxNo }} 
+                                  <a
+                                    [class.line-through]="isBoxReceived(sub.boxNo)"
+                                    [class.text-success]="isBoxReceived(sub.boxNo)"
+                                    [class.opacity-60]="isBoxReceived(sub.boxNo)"
+                                  >
+                                    {{ sub.boxNo }}
                                     @if (isBoxReceived(sub.boxNo)) {
-                                      <span class="badge badge-success badge-sm ml-auto">รับแล้ว</span>
+                                      <span class="badge badge-success badge-sm ml-auto"
+                                        >รับแล้ว</span
+                                      >
                                     } @else {
-                                      <span class="text-xs opacity-60 ml-auto">{{ sub.weight || 0 }}kg</span>
+                                      <span class="text-xs opacity-60 ml-auto"
+                                        >{{ sub.weight || 0 }}kg</span
+                                      >
                                     }
                                   </a>
                                 </li>
@@ -225,7 +247,11 @@
                       </td>
                     </tr>
                   } @empty {
-                    <tr><td colspan="2" class="text-center text-sm text-base-content/50">ไม่มีข้อมูลกล่อง</td></tr>
+                    <tr>
+                      <td colspan="2" class="text-center text-sm text-base-content/50">
+                        ไม่มีข้อมูลกล่อง
+                      </td>
+                    </tr>
                   }
                 </tbody>
               </table>
@@ -257,13 +283,34 @@
                 >
                   <div class="avatar mr-1">
                     <div class="w-6 h-6 rounded bg-base-200">
-                      <img [src]="ordItem.imageUrl ? apiOrigin + ordItem.imageUrl : 'assets/images/no-image.png'" onerror="this.src='assets/images/no-image.png'" />
+                      <img
+                        [src]="
+                          ordItem.imageUrl
+                            ? apiOrigin + ordItem.imageUrl
+                            : 'assets/images/no-image.png'
+                        "
+                        onerror="this.src = 'assets/images/no-image.png'"
+                      />
                     </div>
                   </div>
-                  <span>+ {{ ordItem.productName }} (เหลือ x{{ ordItem.remainingQuantity ?? ordItem.quantity }})</span>
-                  
-                  <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none">
-                    <img [src]="ordItem.imageUrl ? apiOrigin + ordItem.imageUrl : 'assets/images/no-image.png'" class="w-full h-full object-contain rounded" onerror="this.src='assets/images/no-image.png'" />
+                  <span
+                    >+ {{ ordItem.productName }} (เหลือ x{{
+                      ordItem.remainingQuantity ?? ordItem.quantity
+                    }})</span
+                  >
+
+                  <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none"
+                  >
+                    <img
+                      [src]="
+                        ordItem.imageUrl
+                          ? apiOrigin + ordItem.imageUrl
+                          : 'assets/images/no-image.png'
+                      "
+                      class="w-full h-full object-contain rounded"
+                      onerror="this.src = 'assets/images/no-image.png'"
+                    />
                   </div>
                 </button>
               }
@@ -290,10 +337,27 @@
                 <div class="flex flex-col md:flex-row gap-4 mb-4">
                   <div class="avatar group relative">
                     <div class="w-16 h-16 rounded bg-base-200 cursor-pointer">
-                      <img [src]="item.get('imageUrl')?.value ? apiOrigin + item.get('imageUrl')?.value : 'assets/images/no-image.png'" onerror="this.src='assets/images/no-image.png'" />
+                      <img
+                        [src]="
+                          item.get('imageUrl')?.value
+                            ? apiOrigin + item.get('imageUrl')?.value
+                            : 'assets/images/no-image.png'
+                        "
+                        onerror="this.src = 'assets/images/no-image.png'"
+                      />
                     </div>
-                    <div class="absolute left-full top-0 ml-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none">
-                      <img [src]="item.get('imageUrl')?.value ? apiOrigin + item.get('imageUrl')?.value : 'assets/images/no-image.png'" class="w-full h-full object-contain rounded" onerror="this.src='assets/images/no-image.png'" />
+                    <div
+                      class="absolute left-full top-0 ml-2 hidden group-hover:block z-[99] bg-base-100 p-1 shadow-2xl border border-base-300 rounded-box w-48 h-48 pointer-events-none"
+                    >
+                      <img
+                        [src]="
+                          item.get('imageUrl')?.value
+                            ? apiOrigin + item.get('imageUrl')?.value
+                            : 'assets/images/no-image.png'
+                        "
+                        class="w-full h-full object-contain rounded"
+                        onerror="this.src = 'assets/images/no-image.png'"
+                      />
                     </div>
                   </div>
                   <div class="flex-1">
@@ -427,19 +491,29 @@
 
           <div class="form-control bg-base-200/50 p-4 rounded-lg border border-base-300">
             <label class="cursor-pointer label justify-start gap-4">
-              <input type="checkbox" formControlName="isForceCloseOrder" class="checkbox checkbox-primary" />
+              <input
+                type="checkbox"
+                formControlName="isForceCloseOrder"
+                class="checkbox checkbox-primary"
+              />
               <div>
-                <span class="label-text font-bold text-base-content block">ปิดออเดอร์ทั้งหมดในบิลขนส่งนี้ทันที (Force Close Orders)</span>
-                <span class="label-text-alt text-base-content/60">ติ๊กเมื่อสินค้าที่เหลือในออเดอร์เหล่านี้จะไม่มีการจัดส่งมาอีกแล้ว (หากยอดไม่ครบ ต้องใส่หมายเหตุหรือยอดคืนเงิน)</span>
+                <span class="label-text font-bold text-base-content block"
+                  >ปิดออเดอร์ทั้งหมดในบิลขนส่งนี้ทันที (Force Close Orders)</span
+                >
+                <span class="label-text-alt text-base-content/60"
+                  >ติ๊กเมื่อสินค้าที่เหลือในออเดอร์เหล่านี้จะไม่มีการจัดส่งมาอีกแล้ว (หากยอดไม่ครบ
+                  ต้องใส่หมายเหตุหรือยอดคืนเงิน)</span
+                >
               </div>
             </label>
           </div>
         </div>
       </div>
 
-
       <div class="flex justify-end gap-4 mt-4">
-        <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
+        <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">
+          ยกเลิก
+        </button>
         <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting()">
           @if (isSubmitting()) {
             <span class="loading loading-spinner loading-sm"></span>

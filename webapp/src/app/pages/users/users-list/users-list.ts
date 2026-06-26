@@ -57,7 +57,11 @@ export class UsersList implements OnInit {
       .get('selectedIsActive')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isActive) => {
-        this.query.update((q) => ({ ...q, isActive: isActive === null ? undefined : isActive, page: 1 }));
+        this.query.update((q) => ({
+          ...q,
+          isActive: isActive === null ? undefined : isActive,
+          page: 1,
+        }));
         this.refresh$.next();
       });
 

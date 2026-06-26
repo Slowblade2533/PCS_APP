@@ -2,7 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Investment, InvestmentCreateRequest, InvestmentDetailResponse, InvestmentRepaymentRequest } from '../models/investment.models';
+import {
+  Investment,
+  InvestmentCreateRequest,
+  InvestmentDetailResponse,
+  InvestmentRepaymentRequest,
+} from '../models/investment.models';
 
 @Injectable({ providedIn: 'root' })
 export class InvestmentService {
@@ -29,7 +34,14 @@ export class InvestmentService {
     return this.http.delete<{ success: boolean }>(`${this.apiUrl}/${id}`);
   }
 
-  payInstallment(investmentId: string, scheduleId: string, payload: InvestmentRepaymentRequest): Observable<{ success: boolean }> {
-    return this.http.post<{ success: boolean }>(`${this.apiUrl}/${investmentId}/installments/${scheduleId}/pay`, payload);
+  payInstallment(
+    investmentId: string,
+    scheduleId: string,
+    payload: InvestmentRepaymentRequest,
+  ): Observable<{ success: boolean }> {
+    return this.http.post<{ success: boolean }>(
+      `${this.apiUrl}/${investmentId}/installments/${scheduleId}/pay`,
+      payload,
+    );
   }
 }

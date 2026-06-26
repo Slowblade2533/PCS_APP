@@ -79,7 +79,9 @@
 
           <div class="form-control md:col-span-2 lg:col-span-3">
             <label class="label"
-              ><span class="label-text font-medium">หลักฐานการชำระเงิน/มัดจำ (สลิปโอนเงิน)</span></label
+              ><span class="label-text font-medium"
+                >หลักฐานการชำระเงิน/มัดจำ (สลิปโอนเงิน)</span
+              ></label
             >
             <input
               type="file"
@@ -155,10 +157,7 @@
               >
                 @for (prod of searchResults(); track prod.productId) {
                   <li>
-                    <a
-                      (click)="selectProduct(prod); searchResults.set([])"
-                      class="flex items-center gap-3"
-                    >
+                    <a (click)="selectProduct(prod)" class="flex items-center gap-3">
                       <div class="w-10 h-10 shrink-0">
                         @if (prod.imageUrl) {
                           <app-image-hover-preview
@@ -238,7 +237,9 @@
                 }
               </div>
               <div>
-                <h3 class="font-bold text-lg text-primary">{{ selectedProduct()?.productNameTh }}</h3>
+                <h3 class="font-bold text-lg text-primary">
+                  {{ selectedProduct()?.productNameTh }}
+                </h3>
                 <p class="text-sm opacity-70">
                   เลือกรุ่น/ตัวเลือกสินค้าด้านล่าง (คลิกเพื่อเพิ่มลงออเดอร์)
                 </p>
@@ -461,7 +462,9 @@
     </div>
 
     <div class="flex justify-end gap-4 mt-4">
-      <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
+      <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">
+        ยกเลิก
+      </button>
       <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting()">
         @if (isSubmitting()) {
           <span class="loading loading-spinner loading-sm"></span>

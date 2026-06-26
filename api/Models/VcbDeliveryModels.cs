@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace PCS_API.Models;
 
 public class VcbDeliveryModel

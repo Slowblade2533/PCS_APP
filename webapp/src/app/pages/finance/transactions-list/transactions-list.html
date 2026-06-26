@@ -2,7 +2,14 @@
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">รายรับ-รายจ่าย</h1>
     <a routerLink="/finance/transactions/create" class="btn btn-primary">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-5"
+      >
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
       บันทึกรายการ
@@ -18,13 +25,27 @@
         [ngModel]="searchTerm()"
         (input)="onSearch($event)"
       />
-      <select class="select select-bordered w-full" [ngModel]="selectedType()" (ngModelChange)="selectedType.set($event); onFilterChange()">
+      <select
+        class="select select-bordered w-full"
+        [ngModel]="selectedType()"
+        (ngModelChange)="selectedType.set($event); onFilterChange()"
+      >
         @for (opt of typeOptions; track opt.value) {
           <option [value]="opt.value">{{ opt.label }}</option>
         }
       </select>
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event); onFilterChange()" />
-      <input type="date" class="input input-bordered w-full" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event); onFilterChange()" />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateFrom()"
+        (ngModelChange)="dateFrom.set($event); onFilterChange()"
+      />
+      <input
+        type="date"
+        class="input input-bordered w-full"
+        [ngModel]="dateTo()"
+        (ngModelChange)="dateTo.set($event); onFilterChange()"
+      />
     </div>
   </div>
 
@@ -61,43 +82,101 @@
             </tr>
           } @else if (data().items.length === 0) {
             <tr>
-              <td colspan="11" class="text-center py-8 text-base-content/60">ไม่พบรายการรายรับ-รายจ่าย</td>
+              <td colspan="11" class="text-center py-8 text-base-content/60">
+                ไม่พบรายการรายรับ-รายจ่าย
+              </td>
             </tr>
           } @else {
             @for (item of data().items; track item.transactionId) {
               <tr class="hover:bg-base-200/20">
-                <td class="font-bold text-primary font-mono">{{ item.documentNo || 'TX-' + item.transactionId }}</td>
-                <td>{{ item.transactionDate | date:'dd/MM/yyyy' }}</td>
+                <td class="font-bold text-primary font-mono">
+                  {{ item.documentNo || 'TX-' + item.transactionId }}
+                </td>
+                <td>{{ item.transactionDate | date: 'dd/MM/yyyy' }}</td>
                 <td>
-                  <span class="badge {{ getTypeBadgeClass(item.transactionType) }} badge-sm font-semibold">
+                  <span
+                    class="badge {{
+                      getTypeBadgeClass(item.transactionType)
+                    }} badge-sm font-semibold"
+                  >
                     {{ getTypeLabel(item.transactionType) }}
                   </span>
                 </td>
                 <td>
                   @switch (item.status) {
-                    @case ('DRAFT') { <span class="badge badge-warning badge-xs py-2 px-3 font-bold">DRAFT</span> }
-                    @case ('VOID') { <span class="badge badge-error badge-xs py-2 px-3 font-bold">VOID</span> }
-                    @default { <span class="badge badge-success text-white badge-xs py-2 px-3 font-bold">POSTED</span> }
+                    @case ('DRAFT') {
+                      <span class="badge badge-warning badge-xs py-2 px-3 font-bold">DRAFT</span>
+                    }
+                    @case ('VOID') {
+                      <span class="badge badge-error badge-xs py-2 px-3 font-bold">VOID</span>
+                    }
+                    @default {
+                      <span class="badge badge-success text-white badge-xs py-2 px-3 font-bold"
+                        >POSTED</span
+                      >
+                    }
                   }
                 </td>
-                <td class="max-w-xs truncate" [title]="item.description">{{ item.description || '-' }}</td>
+                <td class="max-w-xs truncate" [title]="item.description">
+                  {{ item.description || '-' }}
+                </td>
                 <td>{{ item.partnerName || '-' }}</td>
                 <td>{{ item.paymentMethod || '-' }}</td>
                 <td class="font-mono text-xs">{{ item.paymentRefNo || '-' }}</td>
-                <td class="text-right font-bold font-mono" [class.text-success]="item.transactionType === 'INVESTMENT' || item.transactionType === 'SALES' || item.transactionType === 'TRANSFER_IN' || item.transactionType === 'RECEIPT'" [class.text-error]="item.transactionType !== 'INVESTMENT' && item.transactionType !== 'SALES' && item.transactionType !== 'TRANSFER_IN' && item.transactionType !== 'RECEIPT'">
-                  {{ item.totalAmount | number:'1.2-2' }}
+                <td
+                  class="text-right font-bold font-mono"
+                  [class.text-success]="
+                    item.transactionType === 'INVESTMENT' ||
+                    item.transactionType === 'SALES' ||
+                    item.transactionType === 'TRANSFER_IN' ||
+                    item.transactionType === 'RECEIPT'
+                  "
+                  [class.text-error]="
+                    item.transactionType !== 'INVESTMENT' &&
+                    item.transactionType !== 'SALES' &&
+                    item.transactionType !== 'TRANSFER_IN' &&
+                    item.transactionType !== 'RECEIPT'
+                  "
+                >
+                  {{ item.totalAmount | number: '1.2-2' }}
                 </td>
                 <td class="text-center">
                   @if (item.attachmentUrl) {
-                    <a [href]="item.attachmentUrl.startsWith('http') ? item.attachmentUrl : apiOrigin + item.attachmentUrl" target="_blank" class="btn btn-ghost btn-xs btn-circle text-info" title="เปิดดูไฟล์แนบ">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" /></svg>
+                    <a
+                      [href]="
+                        item.attachmentUrl.startsWith('http')
+                          ? item.attachmentUrl
+                          : apiOrigin + item.attachmentUrl
+                      "
+                      target="_blank"
+                      class="btn btn-ghost btn-xs btn-circle text-info"
+                      title="เปิดดูไฟล์แนบ"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13"
+                        />
+                      </svg>
                     </a>
                   } @else {
                     -
                   }
                 </td>
                 <td class="text-right">
-                  <a [routerLink]="['/finance/transactions', item.transactionId]" class="btn btn-ghost btn-xs">รายละเอียด</a>
+                  <a
+                    [routerLink]="['/finance/transactions', item.transactionId]"
+                    class="btn btn-ghost btn-xs"
+                    >รายละเอียด</a
+                  >
                 </td>
               </tr>
             }
@@ -110,22 +189,24 @@
     @if (data().totalCount > 0) {
       <div class="flex justify-between items-center p-4 bg-base-200/50">
         <span class="text-sm text-base-content/70">
-          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง 
-          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }} 
+          แสดงรายการที่ {{ (data().pageNumber - 1) * data().pageSize + 1 }} ถึง
+          {{ Math.min(data().pageNumber * data().pageSize, data().totalCount) }}
           จากทั้งหมด {{ data().totalCount }} รายการ
         </span>
         <div class="join">
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber === 1"
-            (click)="onPageChange(data().pageNumber - 1)">
+            (click)="onPageChange(data().pageNumber - 1)"
+          >
             «
           </button>
           <button class="join-item btn btn-sm">หน้า {{ data().pageNumber }}</button>
-          <button 
-            class="join-item btn btn-sm" 
+          <button
+            class="join-item btn btn-sm"
             [disabled]="data().pageNumber * data().pageSize >= data().totalCount"
-            (click)="onPageChange(data().pageNumber + 1)">
+            (click)="onPageChange(data().pageNumber + 1)"
+          >
             »
           </button>
         </div>

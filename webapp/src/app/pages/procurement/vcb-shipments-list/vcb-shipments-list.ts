@@ -1,18 +1,21 @@
 import { CommonModule } from '@angular/common';
 import Big from 'big.js';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../environments/environment';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
-import { VcbShipment, VcbShipmentSearch } from '../../../shared/models/procurement.models';
-import { ProcurementService } from '../../../shared/services/procurement.service';
+import { VcbShipment, VcbShipmentSearch } from '../../../shared/models/vcb-shipments.models';
+import { PagedResult } from '../../../shared/models/pagination.models';
+import { VcbShipmentsService } from '../../../shared/services/vcb-shipments.service';
+import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
 import { SweetAlertService, escapeHtml } from '../../../shared/services/sweet-alert.service';
+import { AuthService } from '../../../shared/services/auth.service';
 
-function formatNumberWithCommas(value: any): string {
+function formatNumberWithCommas(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '0.00';
   const num = typeof value === 'number' ? value : parseFloat(value);
   return isNaN(num)
@@ -28,24 +31,37 @@ function formatNumberWithCommas(value: any): string {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, PaginationComponent],
   templateUrl: './vcb-shipments-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VcbShipmentsListComponent implements OnInit {
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly procurementService = inject(ProcurementService);
+  private readonly vcbShipmentsService = inject(VcbShipmentsService);
+  private readonly vcbDeliveriesService = inject(VcbDeliveriesService);
   private readonly swal = inject(SweetAlertService);
+  private readonly authService = inject(AuthService);
 
-  isLoading = signal(false);
-  searchParams: VcbShipmentSearch = {
-    page: 1,
-    pageSize: 10,
-    searchTerm: '',
-    status: '',
-  };
-  shipments = signal<VcbShipment[]>([]);
-  totalCount = signal(0);
-  totalPages = signal(0);
+  page = signal(1);
+  pageSize = signal(10);
+  searchTerm = signal('');
+  status = signal('');
+
+  shipmentsResource = rxResource<PagedResult<VcbShipment>, VcbShipmentSearch>({
+    params: () => ({
+      page: this.page(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      status: this.status(),
+    }),
+    stream: ({ params }) => this.vcbShipmentsService.getVcbShipments(params),
+  });
+
+  shipments = computed(() => this.shipmentsResource.value()?.items || []);
+  totalCount = computed(() => this.shipmentsResource.value()?.totalCount || 0);
+  totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
+  isLoading = computed(() => this.shipmentsResource.isLoading());
+
+  isSuperuser(): boolean {
+    return this.authService.isSuperuser();
+  }
 
   filterForm = new FormGroup({
     searchTerm: new FormControl(''),
@@ -54,7 +70,6 @@ export class VcbShipmentsListComponent implements OnInit {
 
   ngOnInit(): void {
     this.setupFilters();
-    this.loadShipments();
   }
 
   getStatusBadgeClass(status: string): string {
@@ -83,50 +98,38 @@ export class VcbShipmentsListComponent implements OnInit {
     }
   }
 
-  loadShipments(): void {
-    this.isLoading.set(true);
-    this.procurementService.getVcbShipments(this.searchParams).subscribe({
-      next: (res) => {
-        this.shipments.set(res.items || []);
-        this.totalCount.set(res.totalCount || 0);
-        this.totalPages.set(Math.ceil(this.totalCount() / this.searchParams.pageSize));
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
   onPageChange(page: number): void {
-    this.searchParams.page = page;
-    this.loadShipments();
+    this.page.set(page);
   }
 
   viewDetails(shipmentId: number, billNo: string): void {
     const apiOrigin = environment.apiUrl.replace('/api', '');
-    this.procurementService.getVcbShipmentById(shipmentId).subscribe((res: any) => {
-      const shipment = res.value || res.data || res;
+    this.vcbShipmentsService.getVcbShipmentById(shipmentId).subscribe((res) => {
+      const shipment: any = res.value || res.data || ((res as any).id ? res : undefined);
       if (shipment && shipment.items && shipment.items.length > 0) {
-        this.procurementService.getVcbDeliveryById(shipment.deliveryId).subscribe((deliveryRes: any) => {
-          const delivery = deliveryRes.value || deliveryRes.data || deliveryRes || {};
-          
+        this.vcbDeliveriesService.getVcbDeliveryById(shipment.deliveryId).subscribe((deliveryRes) => {
+          const delivery: any = deliveryRes.value || deliveryRes.data || ((deliveryRes as any).id ? deliveryRes : undefined);
+
           // VCB Orders Nos
-          const orderNos = (delivery.orders || []).map((o: any) => o.orderNo).filter((no: any) => !!no);
-          const orderNosHtml = orderNos.length > 0
-            ? orderNos.map((no: string) => `<span class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[11px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm">${escapeHtml(no)}</span>`).join(' ')
-            : '<span class="text-xs text-base-content/50">-</span>';
+          const orderNos = (delivery?.orders || []).map((o: any) => o.orderNo).filter((no: any) => !!no);
+          const orderNosHtml =
+            orderNos.length > 0
+              ? orderNos
+                  .map(
+                    (no: any) =>
+                      `<span class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[11px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm">${escapeHtml(no as string)}</span>`,
+                  )
+                  .join(' ')
+              : '<span class="text-xs text-base-content/50">-</span>';
 
           // Shipping Logo
-          const shippingLogo = this.getShippingLogo(delivery.domesticShippingCompany);
+          const shippingLogo = this.getShippingLogo(delivery?.domesticShippingCompany);
           const shippingLogoHtml = shippingLogo
             ? `<img src="${shippingLogo}" alt="Logo" class="w-6 h-6 rounded-full object-cover border border-base-200" />`
             : '';
 
           // Format Date Helpers
-          const formatDate = (dateStr: any) => {
+          const formatDate = (dateStr: string | Date | undefined | null) => {
             if (!dateStr) return '-';
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return '-';
@@ -151,29 +154,37 @@ export class VcbShipmentsListComponent implements OnInit {
                 <span class="font-bold text-base-content/60 block text-xs mb-1">บริษัทขนส่ง</span>
                 <div class="flex items-center gap-1.5 mt-1">
                   ${shippingLogoHtml}
-                  <span class="font-medium text-base-content">${escapeHtml(delivery.domesticShippingCompany) || '-'}</span>
+                  <span class="font-medium text-base-content">${escapeHtml(delivery?.domesticShippingCompany || '') || '-'}</span>
                 </div>
               </div>
               <div>
                 <span class="font-bold text-base-content/60 block text-xs mb-1">วันที่ส่งสินค้า</span>
-                <span class="font-medium text-base-content">${formatDate(delivery.orderDate)}</span>
+                <span class="font-medium text-base-content">${formatDate(delivery?.orderDate)}</span>
               </div>
               <div>
                 <span class="font-bold text-base-content/60 block text-xs mb-1">วันที่ได้รับสินค้า</span>
                 <span class="font-medium text-base-content">${formatDate(shipment.receiptDate)}</span>
+              </div>
+              <div>
+                <span class="font-bold text-base-content/60 block text-xs mb-1">ผู้บันทึก</span>
+                <span class="font-medium text-base-content">${escapeHtml(shipment.createdByUsername || '') || '-'} ${shipment.createdAt ? `<span class="text-xs text-base-content/50">(${formatDate(shipment.createdAt)})</span>` : ''}</span>
+              </div>
+              <div>
+                <span class="font-bold text-base-content/60 block text-xs mb-1">ผู้แก้ไขล่าสุด</span>
+                <span class="font-medium text-base-content">${escapeHtml(shipment.updatedByUsername || '') || '-'} ${shipment.updatedByUsername && shipment.updatedAt ? `<span class="text-xs text-base-content/50">(${formatDate(shipment.updatedAt)})</span>` : ''}</span>
               </div>
             </div>
           `;
 
           // Build boxes details html
           let boxesHtml = '';
-          if (delivery.items && delivery.items.length > 0) {
+          if (delivery?.items && delivery.items.length > 0) {
             delivery.items.forEach((boxItem: any) => {
               boxesHtml += `
                 <tr class="font-medium">
                   <td class="p-2 text-primary font-bold">${escapeHtml(boxItem.packageBoxNo)}</td>
-                  <td class="p-2">${escapeHtml(boxItem.domesticTrackingNo) || '-'}</td>
-                  <td class="p-2 text-right">${escapeHtml(boxItem.boxDimensions) || '-'}</td>
+                  <td class="p-2">${escapeHtml(boxItem.domesticTrackingNo || '') || '-'}</td>
+                  <td class="p-2 text-right">${escapeHtml(boxItem.boxDimensions || '') || '-'}</td>
                   <td class="p-2 text-right">${formatNumberWithCommas(boxItem.totalWeight)} kg</td>
                 </tr>
               `;
@@ -196,15 +207,17 @@ export class VcbShipmentsListComponent implements OnInit {
                               </thead>
                               <tbody>
                     `;
-                    subBoxes.forEach((sub: any) => {
-                      boxesHtml += `
+                    subBoxes.forEach(
+                      (sub: { boxNo: string; dimensions?: string; weight?: number | string }) => {
+                        boxesHtml += `
                                 <tr>
                                   <td class="font-semibold text-secondary">${escapeHtml(sub.boxNo)}</td>
-                                  <td>${escapeHtml(sub.dimensions) || '-'}</td>
+                                  <td>${escapeHtml(sub.dimensions || '') || '-'}</td>
                                   <td class="text-right font-medium">${formatNumberWithCommas(sub.weight)} kg</td>
                                 </tr>
                       `;
-                    });
+                      },
+                    );
                     boxesHtml += `
                               </tbody>
                             </table>
@@ -243,7 +256,11 @@ export class VcbShipmentsListComponent implements OnInit {
             </div>
           `;
 
-          let itemsHtml = headerHtml + boxesSectionHtml + `<h4 class="font-bold text-sm text-base-content/80 mb-2">🛍️ รายการสินค้าที่ได้รับ (Received Products)</h4>` + `<div class="overflow-x-auto text-sm text-left"><table class="table table-zebra w-full text-left">
+          let itemsHtml =
+            headerHtml +
+            boxesSectionHtml +
+            `<h4 class="font-bold text-sm text-base-content/80 mb-2">🛍️ รายการสินค้าที่ได้รับ (Received Products)</h4>` +
+            `<div class="overflow-x-auto text-sm text-left"><table class="table table-zebra w-full text-left">
             <thead><tr class="bg-base-200">
               <th class="p-2 w-16 text-center">ภาพ</th>
               <th class="p-2">SKU</th>
@@ -253,7 +270,7 @@ export class VcbShipmentsListComponent implements OnInit {
               <th class="p-2 text-right">จำนวน(ดี/เสีย)</th>
               <th class="p-2 text-right">คืนเงิน</th>
             </tr></thead><tbody>`;
-          
+
           shipment.items.forEach((item: any) => {
             let statusText =
               item.receiptStatus === 'Complete'
@@ -265,8 +282,10 @@ export class VcbShipmentsListComponent implements OnInit {
                     : item.receiptStatus === 'WrongItem'
                       ? '<span class="text-error font-medium">ผิดรุ่น/ผิดสี</span>'
                       : item.receiptStatus;
-            
-            let imgSrc = item.imageUrl ? `${apiOrigin}${item.imageUrl}` : 'assets/images/no-image.png';
+
+            let imgSrc = item.imageUrl
+              ? `${apiOrigin}${item.imageUrl}`
+              : 'assets/images/no-image.png';
 
             itemsHtml += `<tr>
               <td class="p-2 text-center">
@@ -281,7 +300,7 @@ export class VcbShipmentsListComponent implements OnInit {
                 <div class="font-medium text-primary">${escapeHtml(item.productName) || '-'}</div>
                 <div class="text-xs text-base-content/60">${escapeHtml(item.variantName) || '-'}</div>
               </td>
-              <td class="p-2">${escapeHtml(item.boxNumbers) || '-'}</td>
+              <td class="p-2">${escapeHtml(item.boxNumbers || '') || '-'}</td>
               <td class="p-2 text-center">${statusText}</td>
               <td class="p-2 text-right">
                 <span class="text-success font-medium">${item.goodQuantity}</span> / 
@@ -327,11 +346,11 @@ export class VcbShipmentsListComponent implements OnInit {
               };
 
               imgs.forEach((img) => {
-                img.addEventListener('mouseenter', (e: any) => {
-                  const src = e.target.getAttribute('data-img-url');
+                img.addEventListener('mouseenter', (e: Event) => {
+                  const src = (e.target as HTMLElement).getAttribute('data-img-url');
                   previewDiv!.innerHTML = `<img src="${src}" class="max-w-[500px] max-h-[500px] object-contain rounded-md" />`;
                   previewDiv!.style.display = 'block';
-                  updatePos(e);
+                  updatePos(e as MouseEvent);
                 });
                 img.addEventListener('mousemove', updatePos as EventListener);
                 img.addEventListener('mouseleave', () => {
@@ -344,7 +363,7 @@ export class VcbShipmentsListComponent implements OnInit {
               if (previewDiv) {
                 previewDiv.remove();
               }
-            }
+            },
           });
         });
       } else {
@@ -362,7 +381,12 @@ export class VcbShipmentsListComponent implements OnInit {
       return '/logistics/nim_express.jpg';
     } else if (cmp.includes('thaipost') || cmp.includes('ไปรษณีย์ไทย')) {
       return '/logistics/thaipost_ems.jpg';
-    } else if (cmp.includes('blue & white') || cmp.includes('blue &amp; white') || cmp.includes('blue and white') || cmp.includes('blue & white logistic')) {
+    } else if (
+      cmp.includes('blue & white') ||
+      cmp.includes('blue &amp; white') ||
+      cmp.includes('blue and white') ||
+      cmp.includes('blue & white logistic')
+    ) {
       return '/logistics/blue_n_white.jpg';
     } else if (cmp.includes('dhl')) {
       return '/logistics/dhl.jpg';
@@ -371,24 +395,20 @@ export class VcbShipmentsListComponent implements OnInit {
   }
 
   private setupFilters(): void {
-    // Handle Search Term with Debounce
     this.filterForm
       .get('searchTerm')
       ?.valueChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
-        this.searchParams.searchTerm = term || '';
-        this.searchParams.page = 1;
-        this.loadShipments();
+        this.searchTerm.set(term || '');
+        this.page.set(1);
       });
 
-    // Handle Status Change immediately
     this.filterForm
       .get('status')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((status) => {
-        this.searchParams.status = status || '';
-        this.searchParams.page = 1;
-        this.loadShipments();
+        this.status.set(status || '');
+        this.page.set(1);
       });
   }
 }

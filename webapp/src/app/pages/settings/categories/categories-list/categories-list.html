@@ -1,16 +1,15 @@
 <div class="container mx-auto p-6 max-w-6xl">
   <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
     <div>
-      <h1 class="text-2xl font-bold text-fuchsia-600 dark:text-fuchsia-400">🗂️ จัดการหมวดหมู่สินค้า (Categories)</h1>
+      <h1 class="text-2xl font-bold text-fuchsia-600 dark:text-fuchsia-400">
+        🗂️ จัดการหมวดหมู่สินค้า (Categories)
+      </h1>
       <p class="text-sm text-base-content/60 mt-1">
         จัดการลำดับชั้นหมวดหมู่สินค้าแบบกลุ่มหลักและย่อย
       </p>
     </div>
     <div class="flex items-center gap-3 w-full md:w-auto">
-      <select
-        class="select select-bordered w-full md:w-auto"
-        (change)="onLevelChange($event)"
-      >
+      <select class="select select-bordered w-full md:w-auto" (change)="onLevelChange($event)">
         <option value="null" [selected]="selectedLevel() === null">แสดงทั้งหมด</option>
         <option value="1" [selected]="selectedLevel() === 1">เฉพาะกลุ่มหลัก (Level 1)</option>
         <option value="2" [selected]="selectedLevel() === 2">เฉพาะกลุ่มรอง (Level 2)</option>

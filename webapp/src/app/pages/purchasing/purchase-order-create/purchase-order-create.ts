@@ -1,28 +1,40 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { switchMap, tap } from 'rxjs/operators';
-import { PaymentMethod, PurchaseOrderCreatePayload, PurchaseOrderDetail, PurchaseOrderItemCreatePayload, PurchaseOrderStatus } from '../../../shared/models/procurement.models';
-import { PurchaseOrderService } from '../../../shared/services/procurement.service';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { PurchaseOrderCreatePayload, PurchaseOrderDetail, PurchaseOrderItemCreatePayload, PurchaseOrderStatus } from '../../../shared/models/purchase-orders.models';
+import { PaymentMethod } from '../../../shared/models/shared.models';
+import { PurchaseOrdersService } from '../../../shared/services/purchase-orders.service';
 
 @Component({
   selector: 'app-purchase-order-create',
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
   templateUrl: './purchase-order-create.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PurchaseOrderCreate implements OnInit {
-  private poService = inject(PurchaseOrderService);
+  private poService = inject(PurchaseOrdersService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   poId = signal<number | null>(null);
   isViewMode = signal<boolean>(false);
-  detail = signal<PurchaseOrderDetail | null>(null);
+
+  poResource = rxResource({
+    params: () => this.poId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.poService.getById(params).pipe(catchError(() => of(null)));
+    },
+  });
+
+  detail = computed(() => this.poResource.value() || null);
+  loading = computed(() => this.poResource.isLoading());
 
   // Form State
   pONo = signal<string>('');
@@ -41,11 +53,8 @@ export class PurchaseOrderCreate implements OnInit {
   slipAttachmentUrl = signal<string>('');
   notes = signal<string>('');
 
-  items = signal<PurchaseOrderItemCreatePayload[]>([
-    { variantId: 0, quantity: 1, unitPrice: 0 }
-  ]);
+  items = signal<PurchaseOrderItemCreatePayload[]>([{ variantId: 0, quantity: 1, unitPrice: 0 }]);
 
-  loading = signal<boolean>(false);
   submitting = signal<boolean>(false);
   error = signal<string | null>(null);
 
@@ -58,42 +67,25 @@ export class PurchaseOrderCreate implements OnInit {
   ];
 
   ngOnInit() {
-    this.route.paramMap.pipe(
-      tap((params) => {
-        const id = params.get('id');
-        if (id) {
-          this.poId.set(Number(id));
-          this.isViewMode.set(true);
-          this.loading.set(true);
-        }
-      }),
-      switchMap((params) => {
-        const id = params.get('id');
-        if (id) {
-          return this.poService.getById(Number(id));
-        }
-        return [];
-      }),
-      tap((res: any) => {
-        if (res) {
-          this.detail.set(res);
-        }
-        this.loading.set(false);
-      }),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const id = params.get('id');
+      if (id) {
+        this.poId.set(Number(id));
+        this.isViewMode.set(true);
+      }
+    });
   }
 
   addItem() {
-    this.items.update(curr => [...curr, { variantId: 0, quantity: 1, unitPrice: 0 }]);
+    this.items.update((curr) => [...curr, { variantId: 0, quantity: 1, unitPrice: 0 }]);
   }
 
   removeItem(index: number) {
-    this.items.update(curr => curr.filter((_, i) => i !== index));
+    this.items.update((curr) => curr.filter((_, i) => i !== index));
   }
 
   updateItem(index: number, field: keyof PurchaseOrderItemCreatePayload, value: any) {
-    this.items.update(curr => {
+    this.items.update((curr) => {
       const newItems = [...curr];
       (newItems[index] as any)[field] = value;
       return newItems;
@@ -101,7 +93,7 @@ export class PurchaseOrderCreate implements OnInit {
   }
 
   get subTotal(): number {
-    return this.items().reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    return this.items().reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   }
 
   get amountAfterDiscount(): number {
@@ -117,7 +109,7 @@ export class PurchaseOrderCreate implements OnInit {
   }
 
   onSubmit() {
-    if (this.items().some(i => !i.variantId || i.variantId <= 0)) {
+    if (this.items().some((i) => !i.variantId || i.variantId <= 0)) {
       this.error.set('กรุณาระบุรหัสสินค้า (Variant ID) ให้ครบถ้วนในทุกรายการ');
       return;
     }
@@ -138,11 +130,11 @@ export class PurchaseOrderCreate implements OnInit {
       sourceAccountInfo: this.sourceAccountInfo(),
       slipAttachmentUrl: this.slipAttachmentUrl(),
       notes: this.notes(),
-      items: this.items().map(i => ({
+      items: this.items().map((i) => ({
         variantId: Number(i.variantId),
         quantity: Number(i.quantity),
-        unitPrice: Number(i.unitPrice)
-      }))
+        unitPrice: Number(i.unitPrice),
+      })),
     };
 
     this.submitting.set(true);
@@ -155,7 +147,7 @@ export class PurchaseOrderCreate implements OnInit {
       error: (err) => {
         this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
         this.submitting.set(false);
-      }
+      },
     });
   }
 
@@ -171,19 +163,25 @@ export class PurchaseOrderCreate implements OnInit {
       error: (err) => {
         this.error.set(err.error?.message || 'เกิดข้อผิดพลาด');
         this.submitting.set(false);
-      }
+      },
     });
   }
 
   getStatusBadgeClass(status: string | undefined): string {
     if (!status) return '';
     switch (status) {
-      case 'DRAFT': return 'badge-neutral';
-      case 'ORDERED': return 'badge-info';
-      case 'PARTIALLY_RECEIVED': return 'badge-warning';
-      case 'RECEIVED': return 'badge-success';
-      case 'CANCELLED': return 'badge-error';
-      default: return 'badge-ghost';
+      case 'DRAFT':
+        return 'badge-neutral';
+      case 'ORDERED':
+        return 'badge-info';
+      case 'PARTIALLY_RECEIVED':
+        return 'badge-warning';
+      case 'RECEIVED':
+        return 'badge-success';
+      case 'CANCELLED':
+        return 'badge-error';
+      default:
+        return 'badge-ghost';
     }
   }
 
@@ -196,10 +194,14 @@ export class PurchaseOrderCreate implements OnInit {
   getPaymentLabel(method: string | undefined): string {
     if (!method) return '-';
     switch (method) {
-      case 'CASH': return 'เงินสด';
-      case 'TRANSFER': return 'โอนเงิน';
-      case 'CREDIT': return 'เครดิต';
-      default: return method;
+      case 'CASH':
+        return 'เงินสด';
+      case 'TRANSFER':
+        return 'โอนเงิน';
+      case 'CREDIT':
+        return 'เครดิต';
+      default:
+        return method;
     }
   }
 }

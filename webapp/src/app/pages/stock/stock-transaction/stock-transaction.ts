@@ -141,7 +141,8 @@ export class StockTransactionList implements OnInit {
       return;
     }
 
-    const { transactionType, condition, branchId, variantId, quantity, referenceNo, note } = this.form.value;
+    const { transactionType, condition, branchId, variantId, quantity, referenceNo, note } =
+      this.form.value;
     const payload: StockTransactionRequest = {
       transactionType,
       condition,

@@ -1,35 +1,23 @@
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using PCS_API.DTOs;
 using PCS_API.Repositories;
-using System.IO;
 using System.Security.Cryptography;
 
 namespace PCS_API.Services;
 
-public class VcbOrderService : IVcbOrderService
+public class VcbOrderService(IVcbOrderRepository orderRepository, IWebHostEnvironment env) : IVcbOrderService
 {
     private const long MaxSlipFileSizeBytes = 5 * 1024 * 1024; // 5 MB
     private static readonly string[] AllowedSlipExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
-    private readonly IVcbOrderRepository _orderRepository;
-    private readonly IWebHostEnvironment _env;
-
-    public VcbOrderService(IVcbOrderRepository orderRepository, IWebHostEnvironment env)
-    {
-        _orderRepository = orderRepository;
-        _env = env;
-    }
-
     public async Task<ResultDto<PagedResultDto<VcbOrderDto>>> GetPagedAsync(VcbOrderSearchDto search, CancellationToken cancellationToken = default)
     {
-        var result = await _orderRepository.GetPagedAsync(search, cancellationToken);
+        var result = await orderRepository.GetPagedAsync(search, cancellationToken);
         return ResultDto<PagedResultDto<VcbOrderDto>>.Success(result);
     }
 
     public async Task<ResultDto<VcbOrderDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        var order = await orderRepository.GetByIdAsync(id, cancellationToken);
         if (order == null)
             return ResultDto<VcbOrderDto>.Failure("ไม่พบข้อมูลใบสั่งซื้อ VCANBUY");
 
@@ -45,7 +33,7 @@ public class VcbOrderService : IVcbOrderService
         if (!slipSaved && slipResult != null)
             return ResultDto<int>.Failure(slipResult);
 
-        int newId = await _orderRepository.CreateAsync(dto, slipResult, currentUserId, cancellationToken);
+        int newId = await orderRepository.CreateAsync(dto, slipResult, currentUserId, cancellationToken);
         return ResultDto<int>.Success(newId);
     }
 
@@ -58,20 +46,20 @@ public class VcbOrderService : IVcbOrderService
         if (!slipSaved && slipResult != null)
             return ResultDto<bool>.Failure(slipResult);
 
-        bool updated = await _orderRepository.UpdateAsync(id, dto, slipResult, currentUserId, cancellationToken);
+        bool updated = await orderRepository.UpdateAsync(id, dto, slipResult, currentUserId, cancellationToken);
         if (!updated)
             return ResultDto<bool>.Failure("ไม่สามารถแก้ไขออเดอร์นี้ได้ (ออเดอร์อาจไม่อยู่ในสถานะ 'Pending' หรือไม่พบข้อมูล)");
 
         return ResultDto<bool>.Success(true);
     }
 
-    public async Task<ResultDto<bool>> UpdateStatusAsync(int id, string status, CancellationToken cancellationToken = default)
+    public async Task<ResultDto<bool>> UpdateStatusAsync(int id, string status, int currentUserId, CancellationToken cancellationToken = default)
     {
-        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        var order = await orderRepository.GetByIdAsync(id, cancellationToken);
         if (order == null)
             return ResultDto<bool>.Failure("ไม่พบข้อมูลใบสั่งซื้อ VCANBUY");
 
-        bool updated = await _orderRepository.UpdateStatusAsync(id, status, cancellationToken);
+        bool updated = await orderRepository.UpdateStatusAsync(id, status, currentUserId, null, cancellationToken);
         if (!updated)
             return ResultDto<bool>.Failure("อัปเดตสถานะไม่สำเร็จ");
 
@@ -106,7 +94,7 @@ public class VcbOrderService : IVcbOrderService
         var hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
         var hashString = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
-        var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "slips", subFolder);
+        var uploadDir = Path.Combine(env.WebRootPath, "uploads", "slips", subFolder);
         Directory.CreateDirectory(uploadDir); // no-op if already exists
 
         var fileName = $"{hashString}{ext}";

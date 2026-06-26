@@ -1,36 +1,32 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize]
 public class ProductsController(IProductService productService) : ControllerBase
 {
     [HttpPost]
     [Authorize(Policy = "CanCreateProduct")]
-    public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto dto)
+    public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto dto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
 
-        var result = await productService.CreateProductAsync(dto);
+        var result = await productService.CreateProductWithVariantsAsync(dto, cancellationToken);
 
         if (!result.IsSuccess)
-        {
             return BadRequest(new { message = result.ErrorMessage });
-        }
 
         return CreatedAtAction(nameof(CreateProduct),
             new { id = result.Value },
             new
             {
-                message = "สร้างสินค้าสำเร็จ",
+                message = "เธชเธฃเนเธฒเธเธชเธดเธเธเนเธฒเธชเธณเน€เธฃเนเธ",
                 productId = result.Value
             });
     }
@@ -39,43 +35,38 @@ public class ProductsController(IProductService productService) : ControllerBase
     [Authorize(Policy = "CanViewProduct")]
     public async Task<IActionResult> GetProducts([FromQuery] ProductSearchParamsDto searchParams, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
-        var result = await productService.GetProductsAsync(searchParams, cancellationToken);
-
+        var result = await productService.GetPagedProductsAsync(searchParams, cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id}")]
     [Authorize(Policy = "CanViewProduct")]
-    public async Task<IActionResult> GetProductById(int id)
+    public async Task<IActionResult> GetProductById(int id, CancellationToken cancellationToken)
     {
-        var product = await productService.GetProductByIdAsync(id);
-
+        var product = await productService.GetProductDetailAsync(id, cancellationToken);
         if (product == null)
-        {
-            return NotFound(new { message = "ไม่พบข้อมูลสินค้าที่ระบุ" });
-        }
+            return NotFound(new { message = "เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธ—เธตเนเธฃเธฐเธเธธ" });
+
 
         return Ok(product);
     }
 
     [HttpPut("{id}")]
     [Authorize(Policy = "CanEditProduct")]
-    public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductCreateDto dto)
+    public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductCreateDto dto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
-        {
             return BadRequest(ModelState);
-        }
 
-        var result = await productService.UpdateProductAsync(id, dto);
+        var result = await productService.UpdateProductWithVariantsAsync(id, dto, cancellationToken);
 
         if (!result.IsSuccess)
-        {
             return BadRequest(new { message = result.ErrorMessage });
-        }
 
-        return Ok(new { message = "แก้ไขข้อมูลสินค้าสำเร็จ" });
+        return Ok(new { message = "เนเธเนเนเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธชเธณเน€เธฃเนเธ" });
     }
 }
+

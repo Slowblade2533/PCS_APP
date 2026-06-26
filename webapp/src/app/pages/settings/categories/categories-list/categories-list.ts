@@ -20,7 +20,7 @@ export class CategoriesList implements OnInit {
   categories = signal<CategoryDto[]>([]);
   isLoading = signal<boolean>(true);
   selectedLevel = signal<number | null>(3); // Default to Level 3
-  
+
   pageNumber = signal<number>(1);
   pageSize = signal<number>(20);
 

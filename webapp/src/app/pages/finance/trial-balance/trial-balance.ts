@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject } from 'rxjs';
@@ -12,7 +12,6 @@ import { FinancialService } from '../../../shared/services/financial.service';
   standalone: true,
   imports: [FormsModule, DecimalPipe],
   templateUrl: './trial-balance.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TrialBalance implements OnInit {
   private financialService = inject(FinancialService);
@@ -39,7 +38,7 @@ export class TrialBalance implements OnInit {
             catchError((err) => {
               this.error.set('ไม่สามารถดึงข้อมูลรายงานได้');
               return [];
-            })
+            }),
           );
         }),
         tap((res: any) => {
@@ -48,7 +47,7 @@ export class TrialBalance implements OnInit {
           }
           this.loading.set(false);
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
   }

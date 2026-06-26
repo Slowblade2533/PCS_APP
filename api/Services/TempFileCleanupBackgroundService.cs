@@ -1,31 +1,15 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Hosting;
-
 namespace PCS_API.Services
 {
-    public class TempFileCleanupBackgroundService : BackgroundService
+    public class TempFileCleanupBackgroundService(
+            IWebHostEnvironment env,
+            ILogger<TempFileCleanupBackgroundService> logger) : BackgroundService
     {
-        private readonly IWebHostEnvironment _env;
-        private readonly ILogger<TempFileCleanupBackgroundService> _logger;
         private static readonly TimeSpan RunInterval = TimeSpan.FromHours(6);
         private static readonly TimeSpan MaxFileAge = TimeSpan.FromHours(24);
 
-        public TempFileCleanupBackgroundService(
-            IWebHostEnvironment env,
-            ILogger<TempFileCleanupBackgroundService> logger)
-        {
-            _env = env;
-            _logger = logger;
-        }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("TempFileCleanupBackgroundService has started.");
+            logger.LogInformation("TempFileCleanupBackgroundService has started.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -35,7 +19,7 @@ namespace PCS_API.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "An error occurred while cleaning up temporary files.");
+                    logger.LogError(ex, "An error occurred while cleaning up temporary files.");
                 }
 
                 try
@@ -49,21 +33,21 @@ namespace PCS_API.Services
                 }
             }
 
-            _logger.LogInformation("TempFileCleanupBackgroundService has stopped.");
+            logger.LogInformation("TempFileCleanupBackgroundService has stopped.");
         }
 
         private void CleanupTempFiles()
         {
-            var webRootPath = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var webRootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
             var tempFolder = Path.Combine(webRootPath, "uploads", "temp");
 
             if (!Directory.Exists(tempFolder))
             {
-                _logger.LogInformation("Temp upload directory {Path} does not exist. Skipping cleanup.", tempFolder);
+                logger.LogInformation("Temp upload directory {Path} does not exist. Skipping cleanup.", tempFolder);
                 return;
             }
 
-            _logger.LogInformation("Scanning temp upload directory {Path} for old files...", tempFolder);
+            logger.LogInformation("Scanning temp upload directory {Path} for old files...", tempFolder);
 
             var files = Directory.GetFiles(tempFolder);
             var now = DateTime.UtcNow;
@@ -81,22 +65,22 @@ namespace PCS_API.Services
                     {
                         File.Delete(file);
                         deletedCount++;
-                        _logger.LogInformation("Deleted expired temp file: {FileName} (Age: {Age:hh\\:mm\\:ss})", fileInfo.Name, fileAge);
+                        logger.LogInformation("Deleted expired temp file: {FileName} (Age: {Age:hh\\:mm\\:ss})", fileInfo.Name, fileAge);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to inspect/delete temp file: {Path}", file);
+                    logger.LogWarning(ex, "Failed to inspect/delete temp file: {Path}", file);
                 }
             }
 
             if (deletedCount > 0)
             {
-                _logger.LogInformation("Successfully deleted {Count} expired temporary files.", deletedCount);
+                logger.LogInformation("Successfully deleted {Count} expired temporary files.", deletedCount);
             }
             else
             {
-                _logger.LogInformation("No expired temporary files found.");
+                logger.LogInformation("No expired temporary files found.");
             }
         }
     }

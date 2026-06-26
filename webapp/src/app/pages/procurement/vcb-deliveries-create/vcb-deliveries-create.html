@@ -1,8 +1,19 @@
 <div class="container mx-auto p-4 md:p-6 max-w-6xl">
   <div class="flex items-center gap-4 mb-8">
     <button class="btn btn-circle btn-ghost" (click)="location.back()">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+        />
       </svg>
     </button>
     <div>
@@ -28,21 +39,40 @@
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body">
         <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-4">ข้อมูลทั่วไป</h2>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="form-control">
-            <label class="label"><span class="label-text font-medium">เลขที่ใบส่งสินค้า *</span></label>
-            <input type="text" formControlName="deliveryNo" class="input input-bordered focus:input-primary" placeholder="เช่น VCB-DEL-001" />
+            <label class="label"
+              ><span class="label-text font-medium">เลขที่ใบส่งสินค้า *</span></label
+            >
+            <input
+              type="text"
+              formControlName="deliveryNo"
+              class="input input-bordered focus:input-primary"
+              placeholder="เช่น VCB-DEL-001"
+            />
           </div>
 
           <div class="form-control">
-            <label class="label"><span class="label-text font-medium">วันที่ทำรายการ *</span></label>
-            <input type="datetime-local" formControlName="orderDate" class="input input-bordered focus:input-primary" />
+            <label class="label"
+              ><span class="label-text font-medium">วันที่ทำรายการ *</span></label
+            >
+            <input
+              type="datetime-local"
+              formControlName="orderDate"
+              class="input input-bordered focus:input-primary"
+            />
           </div>
 
           <div class="form-control lg:col-span-2">
             <label class="label"><span class="label-text font-medium">ที่อยู่จัดส่ง *</span></label>
-            <input type="text" list="addressHistoryList" formControlName="shippingAddress" class="input input-bordered focus:input-primary" placeholder="ที่อยู่ลูกค้าปลายทาง" />
+            <input
+              type="text"
+              list="addressHistoryList"
+              formControlName="shippingAddress"
+              class="input input-bordered focus:input-primary"
+              placeholder="ที่อยู่ลูกค้าปลายทาง"
+            />
             <datalist id="addressHistoryList">
               @for (addr of addressHistory; track addr) {
                 <option [value]="addr"></option>
@@ -51,14 +81,25 @@
           </div>
 
           <div class="form-control lg:col-span-2">
-            <label class="label"><span class="label-text font-medium">บริษัทขนส่งในประเทศ *</span></label>
+            <label class="label"
+              ><span class="label-text font-medium">บริษัทขนส่งในประเทศ *</span></label
+            >
             <div class="flex items-center gap-2">
               @if (getShippingLogo(deliveryForm.get('domesticShippingCompany')?.value)) {
-                <img [src]="getShippingLogo(deliveryForm.get('domesticShippingCompany')?.value)" alt="Logo" class="w-8 h-8 rounded-full object-cover border border-base-200 flex-shrink-0" />
+                <img
+                  [src]="getShippingLogo(deliveryForm.get('domesticShippingCompany')?.value)"
+                  alt="Logo"
+                  class="w-8 h-8 rounded-full object-cover border border-base-200 flex-shrink-0"
+                />
               }
-              <select formControlName="domesticShippingCompany" class="select select-bordered focus:select-primary flex-1">
+              <select
+                formControlName="domesticShippingCompany"
+                class="select select-bordered focus:select-primary flex-1"
+              >
                 <option value="Sixth Party Logistics (6PT)">Sixth Party Logistics (6PT)</option>
-                <option value="นิ่มซี่เส็งเอ็กซ์เพรส (NIM Express)">นิ่มซี่เส็งเอ็กซ์เพรส (NIM Express)</option>
+                <option value="นิ่มซี่เส็งเอ็กซ์เพรส (NIM Express)">
+                  นิ่มซี่เส็งเอ็กซ์เพรส (NIM Express)
+                </option>
                 <option value="ไปรษณีย์ไทย (ThaiPost EMS)">ไปรษณีย์ไทย (ThaiPost EMS)</option>
                 <option value="Blue & White Logistic">Blue & White Logistic</option>
                 <option value="DHL">DHL</option>
@@ -68,7 +109,12 @@
 
           <div class="form-control lg:col-span-2">
             <label class="label"><span class="label-text font-medium">หมายเหตุ</span></label>
-            <input type="text" formControlName="notes" class="input input-bordered focus:input-primary" placeholder="หมายเหตุเพิ่มเติม" />
+            <input
+              type="text"
+              formControlName="notes"
+              class="input input-bordered focus:input-primary"
+              placeholder="หมายเหตุเพิ่มเติม"
+            />
           </div>
         </div>
       </div>
@@ -81,28 +127,50 @@
           <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-50">
             <h2 class="card-title text-lg m-0">เลือกใบสั่งซื้อที่เกี่ยวข้อง *</h2>
           </div>
-          
+
           <!-- Search box -->
           <div class="p-4 border-b border-base-200">
             <div class="relative mb-4">
-              <input type="text" class="input input-bordered w-full pl-10" placeholder="ค้นหาใบสั่งซื้อ..." (input)="onSearchChange($event)" />
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 absolute left-3 top-3 text-base-content/50">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              <input
+                type="text"
+                class="input input-bordered w-full pl-10"
+                placeholder="ค้นหาใบสั่งซื้อ..."
+                (input)="onSearchChange($event)"
+              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="size-5 absolute left-3 top-3 text-base-content/50"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                />
               </svg>
             </div>
-            
+
             <div class="max-h-48 overflow-y-auto border border-base-200 rounded-lg">
               @if (isSearching()) {
-                <div class="p-4 text-center"><span class="loading loading-spinner text-primary"></span></div>
+                <div class="p-4 text-center">
+                  <span class="loading loading-spinner text-primary"></span>
+                </div>
               } @else if (searchResults().length > 0) {
                 <table class="table table-sm table-zebra">
                   <tbody>
                     @for (order of searchResults(); track order.id) {
                       <tr class="cursor-pointer hover:bg-base-200" (click)="selectOrder(order)">
-                        <td><div class="font-bold text-primary">{{ order.orderNo }}</div></td>
-                        <td>{{ order.orderDate | date:'dd/MM/yyyy' }}</td>
+                        <td>
+                          <div class="font-bold text-primary">{{ order.orderNo }}</div>
+                        </td>
+                        <td>{{ order.orderDate | date: 'dd/MM/yyyy' }}</td>
                         <td class="text-right">
-                          <button type="button" class="btn btn-xs btn-outline btn-primary">เพิ่ม</button>
+                          <button type="button" class="btn btn-xs btn-outline btn-primary">
+                            เพิ่ม
+                          </button>
                         </td>
                       </tr>
                     }
@@ -116,15 +184,28 @@
 
           <!-- Selected Orders -->
           <div class="p-4 bg-base-50/50">
-            <h3 class="font-medium text-sm mb-2">ใบสั่งซื้อที่เลือก ({{ selectedOrders().length }})</h3>
+            <h3 class="font-medium text-sm mb-2">
+              ใบสั่งซื้อที่เลือก ({{ selectedOrders().length }})
+            </h3>
             @if (selectedOrders().length > 0) {
               <div class="flex flex-wrap gap-2">
                 @for (order of selectedOrders(); track order.id) {
                   <div class="badge badge-primary badge-lg gap-2 p-3">
                     {{ order.orderNo }}
                     <button type="button" (click)="removeOrder(order.id)">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 hover:text-error transition-colors">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4 hover:text-error transition-colors"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -140,37 +221,96 @@
       <!-- Payment / Amount Info -->
       <div class="card bg-base-100 shadow-xl border border-base-200">
         <div class="card-body">
-          <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-4">ข้อมูลค่าใช้จ่ายและหลักฐาน</h2>
-          
+          <h2 class="card-title text-lg border-b border-base-200 pb-2 mb-4">
+            ข้อมูลค่าใช้จ่ายและหลักฐาน
+          </h2>
+
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="form-control">
               <label class="label"><span class="label-text font-medium">ยอดรวมก่อนลด</span></label>
-              <input type="number" formControlName="totalAmountBeforeDiscount" class="input input-bordered bg-base-200 text-right" min="0" step="0.01" readonly />
+              <input
+                type="number"
+                formControlName="totalAmountBeforeDiscount"
+                class="input input-bordered bg-base-200 text-right"
+                min="0"
+                step="0.01"
+                readonly
+              />
             </div>
             <div class="form-control">
-              <label class="label"><span class="label-text font-medium text-error">ส่วนลด</span></label>
-              <input type="number" formControlName="discountAmount" (blur)="formatFinancial('discountAmount')" class="input input-bordered focus:input-primary text-right text-error" min="0" step="0.01" />
+              <label class="label"
+                ><span class="label-text font-medium text-error">ส่วนลด</span></label
+              >
+              <input
+                type="number"
+                formControlName="discountAmount"
+                (blur)="formatFinancial('discountAmount')"
+                class="input input-bordered focus:input-primary text-right text-error"
+                min="0"
+                step="0.01"
+              />
             </div>
             <div class="form-control">
-              <label class="label"><span class="label-text font-bold text-info">ยอดรวมสุทธิ</span></label>
-              <input type="number" formControlName="totalAmount" class="input input-bordered bg-base-200 text-right font-bold text-info" readonly />
+              <label class="label"
+                ><span class="label-text font-bold text-info">ยอดรวมสุทธิ</span></label
+              >
+              <input
+                type="number"
+                formControlName="totalAmount"
+                class="input input-bordered bg-base-200 text-right font-bold text-info"
+                readonly
+              />
             </div>
             <div class="form-control">
-              <label class="label"><span class="label-text font-bold text-success">ยอดที่โอนจริง</span></label>
-              <input type="number" formControlName="transferredAmount" (blur)="formatFinancial('transferredAmount')" class="input input-bordered focus:input-success text-right font-bold text-success" min="0" step="0.01" />
+              <label class="label"
+                ><span class="label-text font-bold text-success">ยอดที่โอนจริง</span></label
+              >
+              <input
+                type="number"
+                formControlName="transferredAmount"
+                (blur)="formatFinancial('transferredAmount')"
+                class="input input-bordered focus:input-success text-right font-bold text-success"
+                min="0"
+                step="0.01"
+              />
             </div>
           </div>
 
           <div class="form-control">
-            <label class="label"><span class="label-text font-medium">หลักฐานการโอนเงิน (สลิป)</span></label>
-            <input type="file" id="slipFile" class="file-input file-input-bordered w-full" accept="image/*" (change)="onFileChange($event)" />
+            <label class="label"
+              ><span class="label-text font-medium">หลักฐานการโอนเงิน (สลิป)</span></label
+            >
+            <input
+              type="file"
+              id="slipFile"
+              class="file-input file-input-bordered w-full"
+              accept="image/*"
+              (change)="onFileChange($event)"
+            />
           </div>
-          
+
           @if (slipFilePreviewUrl()) {
             <div class="mt-4 relative inline-block">
-              <app-image-hover-preview [imageUrl]="slipFilePreviewUrl()!" altText="Slip Preview" imageClass="max-h-48 rounded-lg shadow-md border border-base-200 cursor-pointer w-auto object-contain"></app-image-hover-preview>
-              <button type="button" class="btn btn-circle btn-sm btn-error absolute -top-2 -right-2 shadow" (click)="clearFile()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <app-image-hover-preview
+                [imageUrl]="slipFilePreviewUrl()!"
+                altText="Slip Preview"
+                imageClass="max-h-48 rounded-lg shadow-md border border-base-200 cursor-pointer w-auto object-contain"
+              ></app-image-hover-preview>
+              <button
+                type="button"
+                class="btn btn-circle btn-sm btn-error absolute -top-2 -right-2 shadow"
+                (click)="clearFile()"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-4"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           }
@@ -184,7 +324,16 @@
         <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-50">
           <h2 class="card-title text-lg m-0">รายการพัสดุ (กล่อง) *</h2>
           <button type="button" class="btn btn-sm btn-primary" (click)="addItem()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="size-4"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
             เพิ่มกล่อง
           </button>
         </div>
@@ -209,36 +358,96 @@
                   <tr>
                     <td class="text-center font-medium">{{ i + 1 }}</td>
                     <td>
-                      <input type="text" formControlName="packageBoxNo" class="input input-sm input-bordered w-full min-w-[120px]" placeholder="เลขที่กล่อง (TX...)" />
+                      <input
+                        type="text"
+                        formControlName="packageBoxNo"
+                        class="input input-sm input-bordered w-full min-w-[120px]"
+                        placeholder="เลขที่กล่อง (TX...)"
+                      />
                     </td>
                     <td>
-                      <input type="text" formControlName="domesticTrackingNo" class="input input-sm input-bordered w-full min-w-[120px]" placeholder="Tracking No" />
+                      <input
+                        type="text"
+                        formControlName="domesticTrackingNo"
+                        class="input input-sm input-bordered w-full min-w-[120px]"
+                        placeholder="Tracking No"
+                      />
                     </td>
                     <td>
-                      <input type="number" formControlName="totalWeight" class="input input-sm input-bordered w-24 text-right" min="0.01" step="0.01" [readonly]="getSubBoxes(i).length > 0" [class.bg-base-200]="getSubBoxes(i).length > 0" (blur)="formatWeight(i)" />
+                      <input
+                        type="number"
+                        formControlName="totalWeight"
+                        class="input input-sm input-bordered w-24 text-right"
+                        min="0.01"
+                        step="0.01"
+                        [readonly]="getSubBoxes(i).length > 0"
+                        [class.bg-base-200]="getSubBoxes(i).length > 0"
+                        (blur)="formatWeight(i)"
+                      />
                     </td>
                     <td>
-                      <input type="text" formControlName="boxDimensions" class="input input-sm input-bordered w-full min-w-[100px]" placeholder="เช่น 50x50x50" />
+                      <input
+                        type="text"
+                        formControlName="boxDimensions"
+                        class="input input-sm input-bordered w-full min-w-[100px]"
+                        placeholder="เช่น 50x50x50"
+                      />
                     </td>
                     <td class="text-center">
-                      <button type="button" class="btn btn-xs btn-outline btn-primary" (click)="addSubBox(i)">+ เพิ่มกล่องย่อย</button>
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-outline btn-primary"
+                        (click)="addSubBox(i)"
+                      >
+                        + เพิ่มกล่องย่อย
+                      </button>
                     </td>
                     <td>
-                      <input type="number" formControlName="shippingCost" class="input input-sm input-bordered w-24 text-right" min="0" step="0.01" (blur)="formatFinancial('shippingCost', i)" />
+                      <input
+                        type="number"
+                        formControlName="shippingCost"
+                        class="input input-sm input-bordered w-24 text-right"
+                        min="0"
+                        step="0.01"
+                        (blur)="formatFinancial('shippingCost', i)"
+                      />
                     </td>
                     <td class="text-center">
-                      <button type="button" class="btn btn-ghost btn-xs text-error" (click)="removeItem(i)">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-xs text-error"
+                        (click)="removeItem(i)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="1.5"
+                          stroke="currentColor"
+                          class="size-5"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                          />
+                        </svg>
                       </button>
                     </td>
                   </tr>
-                  
+
                   @if (getSubBoxes(i).length > 0) {
                     <tr>
                       <td></td>
                       <td colspan="7" class="p-2 bg-base-50">
-                        <div class="border border-base-200 rounded-lg p-3 bg-base-100" formArrayName="subBoxes">
-                          <h4 class="text-xs font-bold text-base-content/70 mb-2">รายการกล่องย่อย (CX...) ภายใต้กล่อง {{ item.get('packageBoxNo')?.value || 'ที่ ' + (i+1) }}</h4>
+                        <div
+                          class="border border-base-200 rounded-lg p-3 bg-base-100"
+                          formArrayName="subBoxes"
+                        >
+                          <h4 class="text-xs font-bold text-base-content/70 mb-2">
+                            รายการกล่องย่อย (CX...) ภายใต้กล่อง
+                            {{ item.get('packageBoxNo')?.value || 'ที่ ' + (i + 1) }}
+                          </h4>
                           <table class="table table-xs">
                             <thead>
                               <tr>
@@ -249,12 +458,47 @@
                               </tr>
                             </thead>
                             <tbody>
-                              @for (sub of getSubBoxes(i).controls; track sub; let subIndex = $index) {
+                              @for (
+                                sub of getSubBoxes(i).controls;
+                                track sub;
+                                let subIndex = $index
+                              ) {
                                 <tr [formGroupName]="subIndex">
-                                  <td><input type="text" formControlName="boxNo" class="input input-xs input-bordered w-full min-w-[120px]" placeholder="เช่น CX260528..." /></td>
-                                  <td><input type="text" formControlName="dimensions" class="input input-xs input-bordered w-full min-w-[100px]" placeholder="เช่น 27x19x19cm" /></td>
-                                  <td><input type="number" formControlName="weight" class="input input-xs input-bordered w-full text-right" min="0" step="0.01" (blur)="formatWeight(i, subIndex)" /></td>
-                                  <td class="text-center"><button type="button" class="btn btn-xs btn-ghost text-error px-1" (click)="removeSubBox(i, subIndex)">✕</button></td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      formControlName="boxNo"
+                                      class="input input-xs input-bordered w-full min-w-[120px]"
+                                      placeholder="เช่น CX260528..."
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="text"
+                                      formControlName="dimensions"
+                                      class="input input-xs input-bordered w-full min-w-[100px]"
+                                      placeholder="เช่น 27x19x19cm"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      formControlName="weight"
+                                      class="input input-xs input-bordered w-full text-right"
+                                      min="0"
+                                      step="0.01"
+                                      (blur)="formatWeight(i, subIndex)"
+                                    />
+                                  </td>
+                                  <td class="text-center">
+                                    <button
+                                      type="button"
+                                      class="btn btn-xs btn-ghost text-error px-1"
+                                      (click)="removeSubBox(i, subIndex)"
+                                    >
+                                      ✕
+                                    </button>
+                                  </td>
                                 </tr>
                               }
                             </tbody>
@@ -280,12 +524,36 @@
 
     <!-- Submit buttons -->
     <div class="flex justify-end gap-3 pt-4 border-t border-base-200">
-      <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">ยกเลิก</button>
-      <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="deliveryForm.invalid || items.length === 0 || selectedOrders().length === 0 || isSubmitting()">
+      <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">
+        ยกเลิก
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary min-w-[120px]"
+        [disabled]="
+          deliveryForm.invalid ||
+          items.length === 0 ||
+          selectedOrders().length === 0 ||
+          isSubmitting()
+        "
+      >
         @if (isSubmitting()) {
           <span class="loading loading-spinner"></span>
         } @else {
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" /></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
+            />
+          </svg>
         }
         @if (isEditMode()) {
           บันทึกการแก้ไข

@@ -4,8 +4,8 @@ using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize(Policy = "CanViewUsers")]
 public class RolesController(IUserService userService) : ControllerBase
 {

@@ -5,8 +5,8 @@ using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize(Policy = "CanViewUsers")]
 public class UsersController(IUserService userService) : ControllerBase
 {
@@ -28,7 +28,8 @@ public class UsersController(IUserService userService) : ControllerBase
     public async Task<IActionResult> GetUserById(int id)
     {
         var user = await userService.GetUserByIdAsync(id);
-        if (user == null) return NotFound();
+        if (user == null) 
+            return NotFound();
         
         return Ok(user);
     }

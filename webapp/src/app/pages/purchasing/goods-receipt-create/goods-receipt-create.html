@@ -5,7 +5,9 @@
         {{ isViewMode() ? 'รายละเอียดใบรับสินค้า (Goods Receipt)' : 'สร้างใบรับสินค้าใหม่' }}
       </h1>
       @if (isViewMode() && detail()) {
-        <span class="badge {{ getStatusBadgeClass(detail()?.status) }} badge-lg font-semibold uppercase">
+        <span
+          class="badge {{ getStatusBadgeClass(detail()?.status) }} badge-lg font-semibold uppercase"
+        >
           {{ detail()?.status }}
         </span>
       }
@@ -13,8 +15,14 @@
     <div class="flex gap-2">
       <a routerLink="/purchasing/goods-receipts" class="btn btn-ghost">กลับไปหน้ารายการ</a>
       @if (isViewMode() && detail()?.status === 'PENDING') {
-        <button class="btn btn-success text-white" [disabled]="submitting()" (click)="completeReceipt()">
-          @if (submitting()) { <span class="loading loading-spinner"></span> }
+        <button
+          class="btn btn-success text-white"
+          [disabled]="submitting()"
+          (click)="completeReceipt()"
+        >
+          @if (submitting()) {
+            <span class="loading loading-spinner"></span>
+          }
           ยืนยันการรับสินค้าเข้าสต๊อค
         </button>
       }
@@ -35,11 +43,28 @@
     <!-- ถ้ายังไม่ได้เลือก PO ให้แสดงแจ้งเตือน -->
     @if (!isViewMode() && !sourcePoId()) {
       <div class="alert alert-warning shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-        <span>กรุณาสร้างใบรับสินค้า (Goods Receipt) ผ่านทางใบสั่งซื้อ (Purchase Order) ที่อยู่ในสถานะสั่งซื้อแล้ว</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="stroke-current shrink-0 h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <span
+          >กรุณาสร้างใบรับสินค้า (Goods Receipt) ผ่านทางใบสั่งซื้อ (Purchase Order)
+          ที่อยู่ในสถานะสั่งซื้อแล้ว</span
+        >
       </div>
       <div class="mt-6 flex justify-center">
-        <a routerLink="/purchasing/purchase-orders" class="btn btn-primary">ไปที่หน้ารายการใบสั่งซื้อ</a>
+        <a routerLink="/purchasing/purchase-orders" class="btn btn-primary"
+          >ไปที่หน้ารายการใบสั่งซื้อ</a
+        >
       </div>
     }
 
@@ -47,29 +72,65 @@
     @if (isViewMode() && detail()) {
       <div class="bg-base-100 shadow-xl rounded-box p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div><span class="text-base-content/60 block text-sm">เลขที่ใบรับ</span><p class="font-medium text-lg text-primary">{{ detail()?.receiptNo }}</p></div>
-          <div><span class="text-base-content/60 block text-sm">วันที่รับสินค้า</span><p class="font-medium">{{ detail()?.receiptDate | date:'dd/MM/yyyy' }}</p></div>
-          <div><span class="text-base-content/60 block text-sm">อ้างอิงใบสั่งซื้อ (PO No)</span>
-            <a [routerLink]="['/purchasing/purchase-orders', detail()?.purchaseOrderId]" class="font-medium text-info hover:underline">
+          <div>
+            <span class="text-base-content/60 block text-sm">เลขที่ใบรับ</span>
+            <p class="font-medium text-lg text-primary">{{ detail()?.receiptNo }}</p>
+          </div>
+          <div>
+            <span class="text-base-content/60 block text-sm">วันที่รับสินค้า</span>
+            <p class="font-medium">{{ detail()?.receiptDate | date: 'dd/MM/yyyy' }}</p>
+          </div>
+          <div>
+            <span class="text-base-content/60 block text-sm">อ้างอิงใบสั่งซื้อ (PO No)</span>
+            <a
+              [routerLink]="['/purchasing/purchase-orders', detail()?.purchaseOrderId]"
+              class="font-medium text-info hover:underline"
+            >
               {{ detail()?.pONo }}
             </a>
           </div>
-          
+
           <div class="col-span-full border-t pt-4 mt-2">
             <h3 class="font-bold mb-3">ข้อมูลการจัดส่ง</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div><span class="text-base-content/60 block text-sm">บริษัทขนส่ง</span><p class="font-medium">{{ detail()?.shippingCompany || '-' }}</p></div>
-              <div><span class="text-base-content/60 block text-sm">เลขพัสดุ (Tracking No)</span><p class="font-medium">{{ detail()?.trackingNo || '-' }}</p></div>
-              <div><span class="text-base-content/60 block text-sm">ค่าจัดส่งเพิ่มเติม (ถ้ามี)</span><p class="font-medium text-error">{{ detail()?.shippingCost | number:'1.2-2' }} บาท</p></div>
-              <div><span class="text-base-content/60 block text-sm">ผู้จำหน่าย</span><p class="font-medium">{{ detail()?.supplierName }}</p></div>
+              <div>
+                <span class="text-base-content/60 block text-sm">บริษัทขนส่ง</span>
+                <p class="font-medium">{{ detail()?.shippingCompany || '-' }}</p>
+              </div>
+              <div>
+                <span class="text-base-content/60 block text-sm">เลขพัสดุ (Tracking No)</span>
+                <p class="font-medium">{{ detail()?.trackingNo || '-' }}</p>
+              </div>
+              <div>
+                <span class="text-base-content/60 block text-sm">ค่าจัดส่งเพิ่มเติม (ถ้ามี)</span>
+                <p class="font-medium text-error">
+                  {{ detail()?.shippingCost | number: '1.2-2' }} บาท
+                </p>
+              </div>
+              <div>
+                <span class="text-base-content/60 block text-sm">ผู้จำหน่าย</span>
+                <p class="font-medium">{{ detail()?.supplierName }}</p>
+              </div>
             </div>
             @if (detail()?.shippingCost && detail()?.shippingCost! > 0) {
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 bg-base-200/50 p-4 rounded-lg">
-                <div><span class="text-base-content/60 block text-sm">การชำระค่าขนส่ง</span><p class="font-medium">{{ getPaymentLabel(detail()?.shippingPaymentMethod) }}</p></div>
-                <div><span class="text-base-content/60 block text-sm">เลขอ้างอิงชำระค่าส่ง</span><p class="font-medium">{{ detail()?.shippingPaymentRefNo || '-' }}</p></div>
-                <div><span class="text-base-content/60 block text-sm">สลิปค่าขนส่ง</span>
+                <div>
+                  <span class="text-base-content/60 block text-sm">การชำระค่าขนส่ง</span>
+                  <p class="font-medium">{{ getPaymentLabel(detail()?.shippingPaymentMethod) }}</p>
+                </div>
+                <div>
+                  <span class="text-base-content/60 block text-sm">เลขอ้างอิงชำระค่าส่ง</span>
+                  <p class="font-medium">{{ detail()?.shippingPaymentRefNo || '-' }}</p>
+                </div>
+                <div>
+                  <span class="text-base-content/60 block text-sm">สลิปค่าขนส่ง</span>
                   @if (detail()?.shippingSlipUrl) {
-                    <a [href]="detail()?.shippingSlipUrl" target="_blank" class="btn btn-outline btn-xs mt-1">ดูเอกสาร</a>
+                    <a
+                      [href]="detail()?.shippingSlipUrl"
+                      target="_blank"
+                      class="btn btn-outline btn-xs mt-1"
+                      >ดูเอกสาร</a
+                    >
                   } @else {
                     <p class="font-medium">-</p>
                   }
@@ -98,62 +159,129 @@
                 <td class="font-medium text-xs">{{ item.sku }}</td>
                 <td>
                   <div class="font-medium">{{ item.productName }}</div>
-                  @if (item.variantName) { <div class="text-xs text-base-content/60">{{ item.variantName }}</div> }
+                  @if (item.variantName) {
+                    <div class="text-xs text-base-content/60">{{ item.variantName }}</div>
+                  }
                 </td>
-                <td class="text-right font-medium bg-base-200/30">{{ item.expectedQuantity | number }}</td>
-                <td class="text-right font-bold text-success">{{ item.receivedQuantity | number }}</td>
-                <td class="text-right font-medium text-warning">{{ item.defectiveQuantity | number }}</td>
-                <td class="text-right font-medium text-error">{{ item.damagedQuantity | number }}</td>
+                <td class="text-right font-medium bg-base-200/30">
+                  {{ item.expectedQuantity | number }}
+                </td>
+                <td class="text-right font-bold text-success">
+                  {{ item.receivedQuantity | number }}
+                </td>
+                <td class="text-right font-medium text-warning">
+                  {{ item.defectiveQuantity | number }}
+                </td>
+                <td class="text-right font-medium text-error">
+                  {{ item.damagedQuantity | number }}
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
-
     } @else if (!isViewMode() && sourcePoId() && sourcePoDetail()) {
-      
       <!-- Create Mode -->
       <form (ngSubmit)="onSubmit()" class="bg-base-100 shadow-xl rounded-box p-6 space-y-8">
-        
         <div class="alert alert-info shadow-sm mb-4">
-          <span>อ้างอิงจากใบสั่งซื้อ: <span class="font-bold">{{ sourcePoDetail()?.pONo }}</span> (ผู้จำหน่าย: {{ sourcePoDetail()?.supplierName }})</span>
+          <span
+            >อ้างอิงจากใบสั่งซื้อ:
+            <span class="font-bold">{{ sourcePoDetail()?.pONo }}</span> (ผู้จำหน่าย:
+            {{ sourcePoDetail()?.supplierName }})</span
+          >
         </div>
 
         <section>
           <h2 class="text-xl font-bold border-b pb-2 mb-4">ข้อมูลการรับสินค้า (Receiving Info)</h2>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">เลขที่ใบรับ (กำหนดเอง) <span class="text-error">*</span></span></div>
-              <input type="text" class="input input-bordered w-full font-bold text-primary" placeholder="เช่น GR-2026-0001" [ngModel]="receiptNo()" (ngModelChange)="receiptNo.set($event)" name="receiptNo" required />
+              <div class="label">
+                <span class="label-text font-medium"
+                  >เลขที่ใบรับ (กำหนดเอง) <span class="text-error">*</span></span
+                >
+              </div>
+              <input
+                type="text"
+                class="input input-bordered w-full font-bold text-primary"
+                placeholder="เช่น GR-2026-0001"
+                [ngModel]="receiptNo()"
+                (ngModelChange)="receiptNo.set($event)"
+                name="receiptNo"
+                required
+              />
             </label>
             <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">วันที่รับสินค้า <span class="text-error">*</span></span></div>
-              <input type="date" class="input input-bordered w-full" [ngModel]="receiptDate()" (ngModelChange)="receiptDate.set($event)" name="receiptDate" required />
+              <div class="label">
+                <span class="label-text font-medium"
+                  >วันที่รับสินค้า <span class="text-error">*</span></span
+                >
+              </div>
+              <input
+                type="date"
+                class="input input-bordered w-full"
+                [ngModel]="receiptDate()"
+                (ngModelChange)="receiptDate.set($event)"
+                name="receiptDate"
+                required
+              />
             </label>
             <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">บริษัทขนส่ง (ถ้ามี)</span></div>
-              <input type="text" class="input input-bordered w-full" [ngModel]="shippingCompany()" (ngModelChange)="shippingCompany.set($event)" name="shippingCompany" />
+              <div class="label">
+                <span class="label-text font-medium">บริษัทขนส่ง (ถ้ามี)</span>
+              </div>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                [ngModel]="shippingCompany()"
+                (ngModelChange)="shippingCompany.set($event)"
+                name="shippingCompany"
+              />
             </label>
             <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">หมายเลขพัสดุ / Tracking No</span></div>
-              <input type="text" class="input input-bordered w-full" [ngModel]="trackingNo()" (ngModelChange)="trackingNo.set($event)" name="trackingNo" />
+              <div class="label">
+                <span class="label-text font-medium">หมายเลขพัสดุ / Tracking No</span>
+              </div>
+              <input
+                type="text"
+                class="input input-bordered w-full"
+                [ngModel]="trackingNo()"
+                (ngModelChange)="trackingNo.set($event)"
+                name="trackingNo"
+              />
             </label>
           </div>
         </section>
 
         <!-- ค่าใช้จ่ายขนส่งเพิ่มเติมที่เกิด ณ วันรับ -->
         <section>
-          <h2 class="text-xl font-bold border-b pb-2 mb-4">ค่าใช้จ่ายเพิ่มเติม ณ วันรับสินค้า (ถ้ามี)</h2>
+          <h2 class="text-xl font-bold border-b pb-2 mb-4">
+            ค่าใช้จ่ายเพิ่มเติม ณ วันรับสินค้า (ถ้ามี)
+          </h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <label class="form-control w-full">
-              <div class="label"><span class="label-text font-medium">ค่าขนส่งปลายทาง (บาท)</span></div>
-              <input type="number" min="0" step="0.01" class="input input-bordered w-full text-error" [ngModel]="shippingCost()" (ngModelChange)="shippingCost.set($event)" name="shippingCost" />
+              <div class="label">
+                <span class="label-text font-medium">ค่าขนส่งปลายทาง (บาท)</span>
+              </div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                class="input input-bordered w-full text-error"
+                [ngModel]="shippingCost()"
+                (ngModelChange)="shippingCost.set($event)"
+                name="shippingCost"
+              />
             </label>
-            
+
             @if (shippingCost() > 0) {
               <label class="form-control w-full">
                 <div class="label"><span class="label-text font-medium">ช่องทางการชำระ</span></div>
-                <select class="select select-bordered w-full" [ngModel]="shippingPaymentMethod()" (ngModelChange)="shippingPaymentMethod.set($event)" name="shippingPaymentMethod">
+                <select
+                  class="select select-bordered w-full"
+                  [ngModel]="shippingPaymentMethod()"
+                  (ngModelChange)="shippingPaymentMethod.set($event)"
+                  name="shippingPaymentMethod"
+                >
                   <option value="">-- เลือก --</option>
                   <option value="CASH">เงินสด</option>
                   <option value="TRANSFER">โอนเงิน</option>
@@ -161,16 +289,38 @@
                 </select>
               </label>
               <label class="form-control w-full">
-                <div class="label"><span class="label-text font-medium">บัญชีต้นทางที่ใช้จ่าย (ของเรา)</span></div>
-                <input type="text" class="input input-bordered w-full" [ngModel]="shippingSourceAccount()" (ngModelChange)="shippingSourceAccount.set($event)" name="shippingSourceAccount" />
+                <div class="label">
+                  <span class="label-text font-medium">บัญชีต้นทางที่ใช้จ่าย (ของเรา)</span>
+                </div>
+                <input
+                  type="text"
+                  class="input input-bordered w-full"
+                  [ngModel]="shippingSourceAccount()"
+                  (ngModelChange)="shippingSourceAccount.set($event)"
+                  name="shippingSourceAccount"
+                />
               </label>
               <label class="form-control w-full">
-                <div class="label"><span class="label-text font-medium">เลขอ้างอิงชำระเงิน</span></div>
-                <input type="text" class="input input-bordered w-full" [ngModel]="shippingPaymentRefNo()" (ngModelChange)="shippingPaymentRefNo.set($event)" name="shippingPaymentRefNo" />
+                <div class="label">
+                  <span class="label-text font-medium">เลขอ้างอิงชำระเงิน</span>
+                </div>
+                <input
+                  type="text"
+                  class="input input-bordered w-full"
+                  [ngModel]="shippingPaymentRefNo()"
+                  (ngModelChange)="shippingPaymentRefNo.set($event)"
+                  name="shippingPaymentRefNo"
+                />
               </label>
               <label class="form-control w-full md:col-span-2">
                 <div class="label"><span class="label-text font-medium">URL สลิปโอนเงิน</span></div>
-                <input type="text" class="input input-bordered w-full" [ngModel]="shippingSlipUrl()" (ngModelChange)="shippingSlipUrl.set($event)" name="shippingSlipUrl" />
+                <input
+                  type="text"
+                  class="input input-bordered w-full"
+                  [ngModel]="shippingSlipUrl()"
+                  (ngModelChange)="shippingSlipUrl.set($event)"
+                  name="shippingSlipUrl"
+                />
               </label>
             }
           </div>
@@ -180,40 +330,86 @@
         <section>
           <div class="border-b pb-2 mb-4">
             <h2 class="text-xl font-bold">รายการสินค้า (Items to Receive)</h2>
-            <p class="text-sm text-base-content/60">ระบุจำนวนสินค้าที่ได้รับจริง โดยแยกตามสภาพสินค้า (จำนวนที่ได้รับไม่จำเป็นต้องเท่ากับยอดที่ค้างรับ)</p>
+            <p class="text-sm text-base-content/60">
+              ระบุจำนวนสินค้าที่ได้รับจริง โดยแยกตามสภาพสินค้า
+              (จำนวนที่ได้รับไม่จำเป็นต้องเท่ากับยอดที่ค้างรับ)
+            </p>
           </div>
 
           <div class="space-y-4">
             @if (items().length === 0) {
-              <div class="text-center py-8 text-base-content/60">สินค้ารับครบถ้วนแล้ว ไม่มีรายการค้างรับ</div>
+              <div class="text-center py-8 text-base-content/60">
+                สินค้ารับครบถ้วนแล้ว ไม่มีรายการค้างรับ
+              </div>
             }
-            
+
             @for (item of items(); track $index) {
               @if (getPoItem(item.pOItemId); as poItem) {
-                <div class="flex flex-col md:flex-row gap-4 items-start p-4 bg-base-200/50 rounded-lg">
+                <div
+                  class="flex flex-col md:flex-row gap-4 items-start p-4 bg-base-200/50 rounded-lg"
+                >
                   <div class="flex-1">
                     <div class="font-medium">{{ poItem.productName }}</div>
-                    @if (poItem.variantName) { <div class="text-sm text-base-content/70">{{ poItem.variantName }}</div> }
-                    <div class="text-xs font-mono mt-1 text-base-content/50">SKU: {{ poItem.sku }} | ค้างรับ (Expected): <span class="font-bold text-base-content">{{ item.expectedQuantity }}</span> ชิ้น</div>
+                    @if (poItem.variantName) {
+                      <div class="text-sm text-base-content/70">{{ poItem.variantName }}</div>
+                    }
+                    <div class="text-xs font-mono mt-1 text-base-content/50">
+                      SKU: {{ poItem.sku }} | ค้างรับ (Expected):
+                      <span class="font-bold text-base-content">{{ item.expectedQuantity }}</span>
+                      ชิ้น
+                    </div>
                   </div>
-                  
+
                   <!-- แยกสภาพรับ -->
                   <div class="w-full md:w-32">
                     <label class="form-control w-full">
-                      <div class="label"><span class="label-text font-medium text-xs text-success">ปกติ (Normal)</span></div>
-                      <input type="number" min="0" class="input input-bordered input-sm w-full font-bold text-success" [ngModel]="item.receivedQuantity" (ngModelChange)="updateItem($index, 'receivedQuantity', $event)" [name]="'rcv_'+$index" />
+                      <div class="label">
+                        <span class="label-text font-medium text-xs text-success"
+                          >ปกติ (Normal)</span
+                        >
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        class="input input-bordered input-sm w-full font-bold text-success"
+                        [ngModel]="item.receivedQuantity"
+                        (ngModelChange)="updateItem($index, 'receivedQuantity', $event)"
+                        [name]="'rcv_' + $index"
+                      />
                     </label>
                   </div>
                   <div class="w-full md:w-32">
                     <label class="form-control w-full">
-                      <div class="label"><span class="label-text font-medium text-xs text-warning">มีตำหนิ (Defective)</span></div>
-                      <input type="number" min="0" class="input input-bordered input-sm w-full font-bold text-warning" [ngModel]="item.defectiveQuantity" (ngModelChange)="updateItem($index, 'defectiveQuantity', $event)" [name]="'def_'+$index" />
+                      <div class="label">
+                        <span class="label-text font-medium text-xs text-warning"
+                          >มีตำหนิ (Defective)</span
+                        >
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        class="input input-bordered input-sm w-full font-bold text-warning"
+                        [ngModel]="item.defectiveQuantity"
+                        (ngModelChange)="updateItem($index, 'defectiveQuantity', $event)"
+                        [name]="'def_' + $index"
+                      />
                     </label>
                   </div>
                   <div class="w-full md:w-32">
                     <label class="form-control w-full">
-                      <div class="label"><span class="label-text font-medium text-xs text-error">เสียหาย (Damaged)</span></div>
-                      <input type="number" min="0" class="input input-bordered input-sm w-full font-bold text-error" [ngModel]="item.damagedQuantity" (ngModelChange)="updateItem($index, 'damagedQuantity', $event)" [name]="'dmg_'+$index" />
+                      <div class="label">
+                        <span class="label-text font-medium text-xs text-error"
+                          >เสียหาย (Damaged)</span
+                        >
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        class="input input-bordered input-sm w-full font-bold text-error"
+                        [ngModel]="item.damagedQuantity"
+                        (ngModelChange)="updateItem($index, 'damagedQuantity', $event)"
+                        [name]="'dmg_' + $index"
+                      />
                     </label>
                   </div>
                 </div>
@@ -225,14 +421,18 @@
         <!-- Actions -->
         <div class="flex justify-end gap-4 mt-6">
           <a routerLink="/purchasing/goods-receipts" class="btn btn-ghost">ยกเลิก</a>
-          <button type="submit" class="btn btn-primary" [disabled]="submitting() || items().length === 0">
-            @if (submitting()) { <span class="loading loading-spinner"></span> }
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="submitting() || items().length === 0"
+          >
+            @if (submitting()) {
+              <span class="loading loading-spinner"></span>
+            }
             บันทึกเป็นรอตรวจสอบ (PENDING)
           </button>
         </div>
-
       </form>
-
     }
   }
 </div>

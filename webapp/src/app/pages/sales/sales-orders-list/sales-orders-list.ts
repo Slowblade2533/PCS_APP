@@ -1,36 +1,61 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { PagedResult } from '../../../shared/models/pagination.models';
-import { SalesOrderListItem, SalesOrderSearchParams, SalesOrderStatus } from '../../../shared/models/procurement.models';
-import { SalesOrderService } from '../../../shared/services/procurement.service';
+import {
+  SalesOrderListItem,
+  SalesOrderSearchParams,
+  SalesOrderStatus,
+} from '../../../shared/models/sales-orders.models';
+import { SalesOrdersService } from '../../../shared/services/sales-orders.service';
 
 @Component({
   selector: 'app-sales-orders-list',
   standalone: true,
   imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
   templateUrl: './sales-orders-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SalesOrdersList implements OnInit {
-  private salesService = inject(SalesOrderService);
+export class SalesOrdersList {
+  private salesService = inject(SalesOrdersService);
   private destroyRef = inject(DestroyRef);
-
-  data = signal<PagedResult<SalesOrderListItem>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20, totalPages: 0 });
-  loading = signal<boolean>(false);
-  error = signal<string | null>(null);
 
   searchTerm = signal<string>('');
   selectedStatus = signal<string>('');
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
+  pageNumber = signal<number>(1);
+  pageSize = signal<number>(20);
+
+  dataResource = rxResource<PagedResult<SalesOrderListItem>, SalesOrderSearchParams>({
+    params: () => ({
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      status: this.selectedStatus() as SalesOrderStatus | '',
+      dateFrom: this.dateFrom(),
+      dateTo: this.dateTo(),
+    }),
+    stream: ({ params }) => this.salesService.getAll(params),
+  });
+
+  data = computed(
+    () =>
+      this.dataResource.value() || {
+        items: [],
+        totalCount: 0,
+        pageNumber: 1,
+        pageSize: 20,
+        totalPages: 0,
+      },
+  );
+  loading = computed(() => this.dataResource.isLoading());
+  error = computed(() => (this.dataResource.error() ? 'ไม่สามารถดึงข้อมูลรายการได้' : null));
 
   private searchSubject = new Subject<string>();
-  private refresh$ = new BehaviorSubject<void>(undefined);
 
   statusOptions: { value: string; label: string }[] = [
     { value: '', label: 'ทั้งหมด' },
@@ -39,51 +64,13 @@ export class SalesOrdersList implements OnInit {
     { value: 'CANCELLED', label: 'ยกเลิก' },
   ];
 
-  ngOnInit() {
+  constructor() {
     this.searchSubject
-      .pipe(
-        debounceTime(350),
-        distinctUntilChanged(),
-        tap((term) => {
-          this.searchTerm.set(term);
-          this.data.update((d) => ({ ...d, pageNumber: 1 }));
-          this.refresh$.next();
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
-
-    this.refresh$
-      .pipe(
-        tap(() => {
-          this.loading.set(true);
-          this.error.set(null);
-        }),
-        switchMap(() => {
-          const params: SalesOrderSearchParams = {
-            pageNumber: this.data().pageNumber,
-            pageSize: this.data().pageSize,
-            searchTerm: this.searchTerm(),
-            status: this.selectedStatus() as SalesOrderStatus | '',
-            dateFrom: this.dateFrom(),
-            dateTo: this.dateTo()
-          };
-          return this.salesService.getAll(params).pipe(
-            catchError((err) => {
-              this.error.set('ไม่สามารถดึงข้อมูลรายการได้');
-              return [];
-            })
-          );
-        }),
-        tap((res: any) => {
-          if (res && res.items) {
-            this.data.set(res);
-          }
-          this.loading.set(false);
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((term) => {
+        this.searchTerm.set(term);
+        this.pageNumber.set(1);
+      });
   }
 
   onSearch(event: Event) {
@@ -92,21 +79,23 @@ export class SalesOrdersList implements OnInit {
   }
 
   onFilterChange() {
-    this.data.update((d) => ({ ...d, pageNumber: 1 }));
-    this.refresh$.next();
+    this.pageNumber.set(1);
   }
 
   onPageChange(newPage: number) {
-    this.data.update((d) => ({ ...d, pageNumber: newPage }));
-    this.refresh$.next();
+    this.pageNumber.set(newPage);
   }
 
   getStatusBadgeClass(status: string): string {
     switch (status) {
-      case 'DRAFT': return 'badge-neutral';
-      case 'COMPLETED': return 'badge-success';
-      case 'CANCELLED': return 'badge-error';
-      default: return 'badge-ghost';
+      case 'DRAFT':
+        return 'badge-neutral';
+      case 'COMPLETED':
+        return 'badge-success';
+      case 'CANCELLED':
+        return 'badge-error';
+      default:
+        return 'badge-ghost';
     }
   }
 
@@ -118,10 +107,14 @@ export class SalesOrdersList implements OnInit {
   getPaymentLabel(method: string | undefined): string {
     if (!method) return '-';
     switch (method) {
-      case 'CASH': return 'เงินสด';
-      case 'TRANSFER': return 'โอนเงิน';
-      case 'CREDIT': return 'เครดิต';
-      default: return method;
+      case 'CASH':
+        return 'เงินสด';
+      case 'TRANSFER':
+        return 'โอนเงิน';
+      case 'CREDIT':
+        return 'เครดิต';
+      default:
+        return method;
     }
   }
 

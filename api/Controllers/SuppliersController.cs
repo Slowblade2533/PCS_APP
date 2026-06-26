@@ -5,9 +5,10 @@ using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[Authorize]
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
+[Authorize]
+
 public class SuppliersController(ISupplierService supplierService) : ControllerBase
 {
     [HttpGet]
@@ -21,17 +22,21 @@ public class SuppliersController(ISupplierService supplierService) : ControllerB
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await supplierService.GetByIdAsync(id, cancellationToken);
-        if (!result.IsSuccess) return NotFound(result);
+        if (!result.IsSuccess) 
+            return NotFound(result);
+
         return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SupplierCreateDto dto, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var result = await supplierService.CreateAsync(dto, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }
@@ -39,10 +44,12 @@ public class SuppliersController(ISupplierService supplierService) : ControllerB
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] SupplierCreateDto dto, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var result = await supplierService.UpdateAsync(id, dto, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }

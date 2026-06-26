@@ -5,8 +5,8 @@ using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize]
 public class CategoriesController(ICategoryService categoryService) : ControllerBase
 {
@@ -29,7 +29,9 @@ public class CategoriesController(ICategoryService categoryService) : Controller
     public async Task<IActionResult> GetCategoryById(int id)
     {
         var category = await categoryService.GetCategoryByIdAsync(id);
-        if (category == null) return NotFound(new { message = "ไม่พบข้อมูลหมวดหมู่" });
+        if (category == null) 
+            return NotFound(new { message = "ไม่พบข้อมูลหมวดหมู่" });
+
         return Ok(category);
     }
 
@@ -37,10 +39,12 @@ public class CategoriesController(ICategoryService categoryService) : Controller
     [Authorize(Policy = "CanManageSettings")]
     public async Task<IActionResult> CreateCategory([FromBody] CategoryCreateDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var result = await categoryService.CreateCategoryAsync(dto);
-        if (!result.IsSuccess) return BadRequest(new { message = result.ErrorMessage });
+        if (!result.IsSuccess) 
+            return BadRequest(new { message = result.ErrorMessage });
 
         return CreatedAtAction(nameof(GetCategoryById), new { id = result.CategoryId }, new
         {
@@ -53,10 +57,12 @@ public class CategoriesController(ICategoryService categoryService) : Controller
     [Authorize(Policy = "CanManageSettings")]
     public async Task<IActionResult> CreateCategoryBatch([FromBody] CategoryBatchCreateDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var result = await categoryService.CreateCategoryBatchAsync(dto);
-        if (!result.IsSuccess) return BadRequest(new { message = result.ErrorMessage });
+        if (!result.IsSuccess) 
+            return BadRequest(new { message = result.ErrorMessage });
 
         return Ok(new
         {
@@ -69,10 +75,12 @@ public class CategoriesController(ICategoryService categoryService) : Controller
     [Authorize(Policy = "CanManageSettings")]
     public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryUpdateDto dto)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         var result = await categoryService.UpdateCategoryAsync(id, dto);
-        if (!result.IsSuccess) return BadRequest(new { message = result.ErrorMessage });
+        if (!result.IsSuccess) 
+            return BadRequest(new { message = result.ErrorMessage });
 
         return Ok(new { message = "แก้ไขหมวดหมู่สำเร็จ" });
     }
@@ -82,7 +90,8 @@ public class CategoriesController(ICategoryService categoryService) : Controller
     public async Task<IActionResult> DeleteCategory(int id)
     {
         var result = await categoryService.DeleteCategoryAsync(id);
-        if (!result.IsSuccess) return BadRequest(new { message = result.ErrorMessage });
+        if (!result.IsSuccess) 
+            return BadRequest(new { message = result.ErrorMessage });
 
         return Ok(new { message = "ลบหมวดหมู่สำเร็จ" });
     }

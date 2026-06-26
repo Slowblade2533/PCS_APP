@@ -1,7 +1,9 @@
 <div class="container mx-auto p-6 max-w-6xl">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
     <div>
-      <h1 class="text-2xl font-bold text-orange-600 dark:text-orange-400">🚚 บริหารรถขนส่ง VCANBUY</h1>
+      <h1 class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+        🚚 บริหารรถขนส่ง VCANBUY
+      </h1>
       <p class="text-base-content/60 mt-1">จัดการรายการใบส่งสินค้าจาก VCANBUY ถึงลูกค้า</p>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -100,7 +102,10 @@
                   @if (item.orderNumbers) {
                     <div class="mt-1 flex flex-wrap gap-1">
                       @for (ord of getSplitOrderNumbers(item.orderNumbers); track ord) {
-                        <span class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[10px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm">{{ ord }}</span>
+                        <span
+                          class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[10px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm"
+                          >{{ ord }}</span
+                        >
                       }
                     </div>
                   }
@@ -108,12 +113,18 @@
                 <td>
                   <div class="flex items-center gap-2">
                     @if (getShippingLogo(item.domesticShippingCompany)) {
-                      <img [src]="getShippingLogo(item.domesticShippingCompany)" alt="Logo" class="w-8 h-8 rounded-full object-cover border border-base-200" />
+                      <img
+                        [src]="getShippingLogo(item.domesticShippingCompany)"
+                        alt="Logo"
+                        class="w-8 h-8 rounded-full object-cover border border-base-200"
+                      />
                     }
                     <div class="font-medium">{{ item.domesticShippingCompany }}</div>
                   </div>
                 </td>
-                <td class="text-right font-semibold text-info">{{ item.totalAmount | number: '1.2-2' }}</td>
+                <td class="text-right font-semibold text-info">
+                  {{ item.totalAmount | number: '1.2-2' }}
+                </td>
                 <td class="text-center">
                   @if (item.transferSlipUrl) {
                     <div class="w-10 h-10 mx-auto">
@@ -158,27 +169,27 @@
                         />
                       </svg>
                     </button>
-                      <a
-                        class="btn btn-ghost btn-xs text-warning join-item"
-                        title="แก้ไข"
-                        [routerLink]="['/procurement/vcb-deliveries', item.id]"
-                        [queryParams]="{ mode: 'edit' }"
+                    <a
+                      class="btn btn-ghost btn-xs text-warning join-item"
+                      title="แก้ไข"
+                      [routerLink]="['/procurement/vcb-deliveries', item.id]"
+                      [queryParams]="{ mode: 'edit' }"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="size-4"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke-width="1.5"
-                          stroke="currentColor"
-                          class="size-4"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                          />
-                        </svg>
-                      </a>
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                        />
+                      </svg>
+                    </a>
                   </div>
                 </td>
               </tr>
@@ -196,26 +207,18 @@
       </div>
 
       <div class="p-4 border-t border-base-200 bg-base-50 flex justify-between items-center">
-        <div class="text-sm text-base-content/70">
-          แสดงรายการที่
-          <span class="font-bold">{{
-            totalCount() === 0 ? 0 : (searchParams.page - 1) * searchParams.pageSize + 1
-          }}</span>
+        <div class="text-sm text-base-content/60 px-4 mt-4 md:mt-0">
+          แสดง {{ totalCount() === 0 ? 0 : (page() - 1) * pageSize() + 1 }}
           ถึง
-          <span class="font-bold">{{
-            searchParams.page * searchParams.pageSize > totalCount()
-              ? totalCount()
-              : searchParams.page * searchParams.pageSize
-          }}</span>
-          จากทั้งหมด <span class="font-bold">{{ totalCount() }}</span>
+          {{ page() * pageSize() > totalCount() ? totalCount() : page() * pageSize() }}
+          จาก {{ totalCount() }} รายการ
         </div>
         <app-pagination
-          [page]="searchParams.page"
-          [pageSize]="searchParams.pageSize"
+          [page]="page()"
+          [pageSize]="pageSize()"
           [totalCount]="totalCount()"
           (pageChange)="onPageChange($event)"
-        >
-        </app-pagination>
+        ></app-pagination>
       </div>
     </div>
   </div>

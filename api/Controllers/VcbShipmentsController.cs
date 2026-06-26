@@ -6,9 +6,9 @@ using System.Security.Claims;
 
 namespace PCS_API.Controllers;
 
-[Authorize]
+[Route("api/vcb-shipments")]
 [ApiController]
-[Route("api/[controller]")]
+[Authorize]
 public class VcbShipmentsController(IVcbShipmentService shipmentService) : ControllerBase
 {
     private int GetCurrentUserId()
@@ -20,6 +20,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     public async Task<IActionResult> GetPaged([FromQuery] VcbShipmentSearchDto search, CancellationToken cancellationToken)
     {
         var result = await shipmentService.GetPagedAsync(search, cancellationToken);
+
         return Ok(result);
     }
 
@@ -27,18 +28,22 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await shipmentService.GetByIdAsync(id, cancellationToken);
-        if (!result.IsSuccess) return NotFound(result);
+        if (!result.IsSuccess) 
+            return NotFound(result);
+
         return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] VcbShipmentCreateDto dto, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
         int userId = GetCurrentUserId();
         var result = await shipmentService.CreateAsync(dto, userId, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }
@@ -46,11 +51,13 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(status)) return BadRequest("กรุณาระบุสถานะ");
+        if (string.IsNullOrEmpty(status)) 
+            return BadRequest("กรุณาระบุสถานะ");
 
         int userId = GetCurrentUserId();
         var result = await shipmentService.UpdateStatusAsync(id, status, userId, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }
@@ -58,10 +65,15 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] VcbShipmentCreateDto dto, CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) 
+            return BadRequest(ModelState);
 
-        var result = await shipmentService.UpdateAsync(id, dto, cancellationToken);
-        if (!result.IsSuccess) return BadRequest(result);
+        int userId = GetCurrentUserId();
+        bool isSuperuser = User.IsInRole("Owner") || User.IsInRole("IT Administrator");
+
+        var result = await shipmentService.UpdateAsync(id, dto, userId, isSuperuser, cancellationToken);
+        if (!result.IsSuccess) 
+            return BadRequest(result);
 
         return Ok(result);
     }

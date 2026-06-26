@@ -5,8 +5,8 @@ using PCS_API.Services;
 
 namespace PCS_API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 [Authorize]
 public class BranchesController(IBranchService branchService) : ControllerBase
 {
@@ -21,7 +21,9 @@ public class BranchesController(IBranchService branchService) : ControllerBase
     public async Task<IActionResult> GetBranch(int id)
     {
         var branch = await branchService.GetBranchByIdAsync(id);
-        if (branch == null) return NotFound(new { message = "Branch not found" });
+        if (branch == null) 
+            return NotFound(new { message = "Branch not found" });
+
         return Ok(branch);
     }
 
@@ -29,7 +31,8 @@ public class BranchesController(IBranchService branchService) : ControllerBase
     public async Task<IActionResult> UpdateBranch(int id, [FromBody] BranchUpdateDto dto)
     {
         var result = await branchService.UpdateBranchAsync(id, dto);
-        if (!result) return NotFound(new { message = "Branch not found" });
+        if (!result) 
+            return NotFound(new { message = "Branch not found" });
         
         return Ok(new { message = "Branch updated successfully" });
     }

@@ -5,7 +5,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
   selector: 'app-product-review-modal',
   standalone: true,
   imports: [CommonModule, DecimalPipe],
-  templateUrl: './product-review-modal.component.html'
+  templateUrl: './product-review-modal.component.html',
 })
 export class ProductReviewModalComponent {
   showModal = input<boolean>(false);

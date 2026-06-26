@@ -1,9 +1,19 @@
-import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  effect,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin, Observable } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError, debounceTime } from 'rxjs/operators';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import { CategorySearchComponent } from '../../../shared/components/category-search/category-search';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
@@ -48,6 +58,19 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
 
   readonly apiOrigin = environment.apiUrl;
 
+  productDetailResource = rxResource({
+    params: () => this.productId(),
+    stream: ({ params }) => {
+      if (!params) return of(undefined);
+      return this.productService.getProductById(params).pipe(
+        catchError((err) => {
+          console.error('Error loading product:', err);
+          return of(null);
+        }),
+      );
+    },
+  });
+
   productForm: FormGroup = this.fb.group({
     productNameTh: ['', [Validators.required]],
     productNameEn: [''],
@@ -72,6 +95,22 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     return this.productForm.get('variants') as FormArray;
   }
 
+  constructor() {
+    effect(() => {
+      const product = this.productDetailResource.value();
+      if (product) {
+        untracked(() => {
+          this.patchProductForm(product);
+        });
+      } else if (product === null && !this.productDetailResource.isLoading() && this.productId()) {
+        untracked(() => {
+          this.submitError.set('ไม่พบข้อมูลสินค้าชิ้นนี้ในระบบ หรือไม่สามารถดึงข้อมูลได้');
+          this.isFormReady.set(true);
+        });
+      }
+    });
+  }
+
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     const modeParam = this.route.snapshot.queryParamMap.get('mode');
@@ -79,7 +118,6 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     if (idParam) {
       this.productId.set(Number(idParam));
       this.currentMode.set(modeParam === 'view' ? 'view' : 'edit');
-      this.loadProductDetail(this.productId()!);
     } else {
       this.currentMode.set('create');
       this.isFormReady.set(true);
@@ -94,64 +132,46 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     return this.productForm.dirty && !this.isSubmitting();
   }
 
-  loadProductDetail(id: number) {
-    this.productService
-      .getProductById(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (product) => {
-          if (!product) {
-            this.submitError.set('ไม่พบข้อมูลสินค้าชิ้นนี้ในระบบ');
-            this.isFormReady.set(true);
-            return;
-          }
+  patchProductForm(product: any) {
+    const nameTh = product.productNameTh;
+    const nameEn = product.productNameEn;
+    const desc = product.description;
+    const brand = product.brandName;
+    const catId = product.categoryId;
+    const type = product.productType;
+    const status = product.productStatus;
+    const isTracked = product.isStockTracked ?? true;
+    const invGroup = product.inventoryGroup ?? 'ForSale';
 
-          const nameTh = product.productNameTh;
-          const nameEn = product.productNameEn;
-          const desc = product.description;
-          const brand = product.brandName;
-          const catId = product.categoryId;
-          const type = product.productType;
-          const status = product.productStatus;
-          const isTracked = product.isStockTracked ?? true;
-          const invGroup = product.inventoryGroup ?? 'ForSale';
+    this.productForm.patchValue({
+      productNameTh: nameTh,
+      productNameEn: nameEn,
+      description: desc,
+      brandName: brand,
+      categoryId: catId,
+      productType: type || 'Product',
+      productStatus: status || 'Available',
+      isStockTracked: isTracked,
+      inventoryGroup: invGroup,
+    });
 
-          this.productForm.patchValue({
-            productNameTh: nameTh,
-            productNameEn: nameEn,
-            description: desc,
-            brandName: brand,
-            categoryId: catId,
-            productType: type || 'Product',
-            productStatus: status || 'Available',
-            isStockTracked: isTracked,
-            inventoryGroup: invGroup,
-          });
+    this.variants.clear();
+    const variantsData = product.variants;
 
-          this.variants.clear();
-          const variantsData = product.variants;
-
-          if (variantsData && Array.isArray(variantsData)) {
-            variantsData.forEach((v: any) => {
-              this.addVariantWithData(v);
-            });
-          }
-
-          if (this.currentMode() === 'view') {
-            this.productForm.disable();
-          }
-
-          this.isFormReady.set(true);
-          this.originalFormValue.set(this.productForm.getRawValue());
-          this.isModified.set(false); // เริ่มต้นยังไม่ได้แก้ไขอะไร
-          this.trackFormChanges();
-        },
-        error: (err) => {
-          console.error('Error loading product:', err);
-          this.submitError.set('ไม่สามารถดึงข้อมูลรายละเอียดสินค้าได้');
-          this.isFormReady.set(true);
-        },
+    if (variantsData && Array.isArray(variantsData)) {
+      variantsData.forEach((v: any) => {
+        this.addVariantWithData(v);
       });
+    }
+
+    if (this.currentMode() === 'view') {
+      this.productForm.disable();
+    }
+
+    this.isFormReady.set(true);
+    this.originalFormValue.set(this.productForm.getRawValue());
+    this.isModified.set(false); // เริ่มต้นยังไม่ได้แก้ไขอะไร
+    this.trackFormChanges();
   }
 
   trackFormChanges(): void {
@@ -401,12 +421,30 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       stagedFile: [null],
       stagedPreviewUrl: [null],
       unitOfMeasure: [v.unitOfMeasure ?? 'อัน', [Validators.required]],
-      width: [v.width != null && Math.round(Number(v.width)) >= 1 ? Math.round(Number(v.width)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
-      length: [v.length != null && Math.round(Number(v.length)) >= 1 ? Math.round(Number(v.length)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
-      height: [v.height != null && Math.round(Number(v.height)) >= 1 ? Math.round(Number(v.height)) : 1, [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')]],
-      weight: [v.weight ? Number(v.weight).toFixed(2) : '0.00', [Validators.required, Validators.min(0)]],
-      basePrice: [v.basePrice ? Number(v.basePrice).toFixed(2) : '0.00', [Validators.required, Validators.min(0)]],
-      discountPrice: [v.discountPrice ? Number(v.discountPrice).toFixed(2) : '0.00', [Validators.min(0)]],
+      width: [
+        v.width != null && Math.round(Number(v.width)) >= 1 ? Math.round(Number(v.width)) : 1,
+        [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')],
+      ],
+      length: [
+        v.length != null && Math.round(Number(v.length)) >= 1 ? Math.round(Number(v.length)) : 1,
+        [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')],
+      ],
+      height: [
+        v.height != null && Math.round(Number(v.height)) >= 1 ? Math.round(Number(v.height)) : 1,
+        [Validators.required, Validators.min(1), Validators.pattern('^[0-9]+$')],
+      ],
+      weight: [
+        v.weight ? Number(v.weight).toFixed(2) : '0.00',
+        [Validators.required, Validators.min(0)],
+      ],
+      basePrice: [
+        v.basePrice ? Number(v.basePrice).toFixed(2) : '0.00',
+        [Validators.required, Validators.min(0)],
+      ],
+      discountPrice: [
+        v.discountPrice ? Number(v.discountPrice).toFixed(2) : '0.00',
+        [Validators.min(0)],
+      ],
       currentQuantity: [v.currentQuantity ?? 0, [Validators.required, Validators.min(0)]],
       reorderPoint: [v.reorderPoint ?? 0, [Validators.required, Validators.min(0)]],
     });
@@ -616,7 +654,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
               fg.patchValue({
                 imageUrl: res.imageUrl,
                 stagedFile: null,
-                stagedPreviewUrl: null
+                stagedPreviewUrl: null,
               });
             });
             saveProduct();
@@ -627,7 +665,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
             const errMsg = 'ไม่สามารถอัปโหลดรูปภาพสินค้าได้ กรุณาลองใหม่อีกครั้ง';
             this.submitError.set(errMsg);
             this.swal.error(errMsg);
-          }
+          },
         });
     } else {
       saveProduct();

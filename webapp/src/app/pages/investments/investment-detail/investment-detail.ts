@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
-import { CompanyBankAccount } from '../../../shared/models/financial.models';
-import { Investment, InvestmentInterestSchedule, InvestmentSchedule } from '../../../shared/models/investment.models';
-import { Investor, InvestorBankAccount } from '../../../shared/models/investor.models';
+import { InvestmentSchedule } from '../../../shared/models/investment.models';
 import { FinancialService } from '../../../shared/services/financial.service';
 import { InvestmentService } from '../../../shared/services/investment.service';
 import { InvestorService } from '../../../shared/services/investor.service';
@@ -17,7 +17,6 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, ImageHoverPreview],
   templateUrl: './investment-detail.html',
-  styleUrl: './investment-detail.css',
 })
 export class InvestmentDetail implements OnInit {
   apiOrigin = environment.apiUrl.replace('/api', '');
@@ -30,7 +29,13 @@ export class InvestmentDetail implements OnInit {
   isImage(url: string | null | undefined): boolean {
     if (!url) return false;
     const lower = url.toLowerCase();
-    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.gif');
+    return (
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.webp') ||
+      lower.endsWith('.gif')
+    );
   }
 
   getFileUrl(url: string | null | undefined): string {
@@ -48,14 +53,55 @@ export class InvestmentDetail implements OnInit {
   private readonly financialService = inject(FinancialService);
   private readonly swal = inject(SweetAlertService);
 
-  investmentId = '';
-  investment = signal<Investment | null>(null);
-  schedules = signal<InvestmentSchedule[]>([]);
-  interestSchedules = signal<InvestmentInterestSchedule[]>([]);
-  investor = signal<Investor | null>(null);
-  investorBankAccounts = signal<InvestorBankAccount[]>([]);
-  companyBankAccounts = signal<CompanyBankAccount[]>([]);
-  isLoading = signal<boolean>(true);
+  investmentId = signal<string>('');
+
+  investmentResource = rxResource({
+    params: () => this.investmentId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.investmentService.getInvestmentById(params);
+    },
+  });
+
+  investment = computed(() => this.investmentResource.value()?.investment || null);
+  schedules = computed(() => {
+    const schedules = this.investmentResource.value()?.schedules || [];
+    return [...schedules].sort((a, b) => a.installmentNumber - b.installmentNumber);
+  });
+  interestSchedules = computed(() => {
+    const interestSchedules = this.investmentResource.value()?.interestSchedules || [];
+    return [...interestSchedules].sort((a, b) => a.startMonth - b.startMonth);
+  });
+
+  investorId = computed(() => this.investment()?.investorId);
+
+  investorResource = rxResource({
+    params: () => this.investorId(),
+    stream: ({ params }) => {
+      if (!params) return of(null);
+      return this.investorService.getInvestorById(params);
+    },
+  });
+
+  investor = computed(() => this.investorResource.value()?.investor || null);
+  investorBankAccounts = computed(() => this.investorResource.value()?.bankAccounts || []);
+
+  companyBankAccountsResource = rxResource({
+    params: () => true,
+    stream: () => this.financialService.getCompanyBankAccounts(),
+  });
+
+  companyBankAccounts = computed(
+    () => this.companyBankAccountsResource.value()?.filter((b) => b.isActive) || [],
+  );
+
+  isLoading = computed(
+    () =>
+      this.investmentResource.isLoading() ||
+      this.investorResource.isLoading() ||
+      this.companyBankAccountsResource.isLoading(),
+  );
+
   isSubmittingRepayment = signal<boolean>(false);
   isUploadingSlip = signal<boolean>(false);
 
@@ -67,9 +113,7 @@ export class InvestmentDetail implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.investmentId = id;
-      this.loadInvestmentDetail();
-      this.loadCompanyBankAccounts();
+      this.investmentId.set(id);
       this.initRepaymentForm();
     } else {
       this.swal.error('ไม่พบรหัสการลงทุน');
@@ -78,48 +122,7 @@ export class InvestmentDetail implements OnInit {
   }
 
   loadInvestmentDetail(): void {
-    this.isLoading.set(true);
-    this.investmentService.getInvestmentById(this.investmentId).subscribe({
-      next: (data) => {
-        this.investment.set(data.investment);
-        this.schedules.set(data.schedules.sort((a, b) => a.installmentNumber - b.installmentNumber));
-        this.interestSchedules.set(data.interestSchedules.sort((a, b) => a.startMonth - b.startMonth));
-
-        // Load investor details
-        this.loadInvestorDetail(data.investment.investorId);
-      },
-      error: (err) => {
-        console.error('Failed to load investment detail', err);
-        this.swal.error('ไม่สามารถโหลดรายละเอียดสัญญาการร่วมลงทุนได้');
-        this.isLoading.set(false);
-      },
-    });
-  }
-
-  loadInvestorDetail(investorId: string): void {
-    this.investorService.getInvestorById(investorId).subscribe({
-      next: (data) => {
-        this.investor.set(data.investor);
-        this.investorBankAccounts.set(data.bankAccounts);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to load investor details', err);
-        // Do not block showing the investment details if investor bank accounts fail to load
-        this.isLoading.set(false);
-      },
-    });
-  }
-
-  loadCompanyBankAccounts(): void {
-    this.financialService.getCompanyBankAccounts().subscribe({
-      next: (data) => {
-        this.companyBankAccounts.set(data.filter((b) => b.isActive));
-      },
-      error: (err) => {
-        console.error('Failed to load company bank accounts', err);
-      },
-    });
+    this.investmentResource.reload();
   }
 
   initRepaymentForm(): void {
@@ -146,7 +149,7 @@ export class InvestmentDetail implements OnInit {
   openRepaymentModal(schedule: InvestmentSchedule): void {
     this.selectedSchedule.set(schedule);
     const totalDue = schedule.principalAmount + schedule.interestAmount;
-    
+
     this.repaymentForm.patchValue({
       paidAmount: Math.round(totalDue * 100) / 100,
       isCash: this.investment()?.isCash || false,
@@ -194,31 +197,37 @@ export class InvestmentDetail implements OnInit {
     const schedule = this.selectedSchedule()!;
     const payload = this.repaymentForm.value;
 
-    this.investmentService.payInstallment(this.investmentId, schedule.scheduleId, payload).subscribe({
-      next: () => {
-        this.swal.success('บันทึกการชำระเงินเรียบร้อย');
-        this.isSubmittingRepayment.set(false);
-        this.closeRepaymentModal();
-        this.loadInvestmentDetail(); // Reload to update status and remaining balances
-      },
-      error: (err) => {
-        console.error('Failed to submit repayment', err);
-        this.swal.error(err.error?.message || 'บันทึกการชำระเงินล้มเหลว กรุณาตรวจสอบข้อมูล');
-        this.isSubmittingRepayment.set(false);
-      },
-    });
+    this.investmentService
+      .payInstallment(this.investmentId(), schedule.scheduleId, payload)
+      .subscribe({
+        next: () => {
+          this.swal.success('บันทึกการชำระเงินเรียบร้อย');
+          this.isSubmittingRepayment.set(false);
+          this.closeRepaymentModal();
+          this.loadInvestmentDetail(); // Reload to update status and remaining balances
+        },
+        error: (err) => {
+          console.error('Failed to submit repayment', err);
+          this.swal.error(err.error?.message || 'บันทึกการชำระเงินล้มเหลว กรุณาตรวจสอบข้อมูล');
+          this.isSubmittingRepayment.set(false);
+        },
+      });
   }
 
   getCompanyName(bankId?: number): string {
     if (!bankId) return '-';
     const bank = this.companyBankAccounts().find((b) => b.id === bankId);
-    return bank ? `${bank.bankName} - ${bank.accountNo} (${bank.accountName})` : `บัญชีธนาคาร ID: ${bankId}`;
+    return bank
+      ? `${bank.bankName} - ${bank.accountNo} (${bank.accountName})`
+      : `บัญชีธนาคาร ID: ${bankId}`;
   }
 
   getInvestorBankDetails(bankId?: string): string {
     if (!bankId) return '-';
     const bank = this.investorBankAccounts().find((b) => b.bankAccountId === bankId);
-    return bank ? `${bank.bankName} - ${bank.accountNumber} (${bank.accountType === 'Saving' ? 'ออมทรัพย์' : 'กระแสรายวัน'})` : '-';
+    return bank
+      ? `${bank.bankName} - ${bank.accountNumber} (${bank.accountType === 'Saving' ? 'ออมทรัพย์' : 'กระแสรายวัน'})`
+      : '-';
   }
 
   getTypeLabel(type?: number): string {
@@ -229,29 +238,42 @@ export class InvestmentDetail implements OnInit {
 
   getStatusLabel(status?: number): string {
     switch (status) {
-      case 0: return 'กำลังดำเนินการ (Active)';
-      case 1: return 'ชำระคืนครบแล้ว (Repaid)';
-      case 2: return 'ผิดนัดชำระ (Defaulted)';
-      case 3: return 'ยกเลิกสัญญา (Cancelled)';
-      default: return '-';
+      case 0:
+        return 'กำลังดำเนินการ (Active)';
+      case 1:
+        return 'ชำระคืนครบแล้ว (Repaid)';
+      case 2:
+        return 'ผิดนัดชำระ (Defaulted)';
+      case 3:
+        return 'ยกเลิกสัญญา (Cancelled)';
+      default:
+        return '-';
     }
   }
 
   getScheduleStatusBadgeClass(status: number): string {
     switch (status) {
-      case 0: return 'badge-info';
-      case 1: return 'badge-success';
-      case 2: return 'badge-error';
-      default: return 'badge-ghost';
+      case 0:
+        return 'badge-info';
+      case 1:
+        return 'badge-success';
+      case 2:
+        return 'badge-error';
+      default:
+        return 'badge-ghost';
     }
   }
 
   getScheduleStatusLabel(status: number): string {
     switch (status) {
-      case 0: return 'ค้างชำระ';
-      case 1: return 'ชำระแล้ว';
-      case 2: return 'เกินกำหนดชำระ';
-      default: return 'ไม่ทราบ';
+      case 0:
+        return 'ค้างชำระ';
+      case 1:
+        return 'ชำระแล้ว';
+      case 2:
+        return 'เกินกำหนดชำระ';
+      default:
+        return 'ไม่ทราบ';
     }
   }
 }

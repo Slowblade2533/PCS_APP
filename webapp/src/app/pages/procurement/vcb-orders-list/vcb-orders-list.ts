@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import Big from 'big.js';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
@@ -9,11 +9,12 @@ import Swal from 'sweetalert2';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
-import { VcbOrder, VcbOrderSearch } from '../../../shared/models/procurement.models';
-import { ProcurementService } from '../../../shared/services/procurement.service';
+import { VcbOrder, VcbOrderSearch } from '../../../shared/models/vcb-orders.models';
+import { PagedResult } from '../../../shared/models/pagination.models';
+import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { SweetAlertService, escapeHtml } from '../../../shared/services/sweet-alert.service';
 
-function formatNumberWithCommas(value: any): string {
+function formatNumberWithCommas(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '0.00';
   const num = typeof value === 'number' ? value : parseFloat(value);
   return isNaN(num)
@@ -27,27 +28,41 @@ function formatNumberWithCommas(value: any): string {
 @Component({
   selector: 'app-vcb-orders-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, PaginationComponent, ImageHoverPreview],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    PaginationComponent,
+    ImageHoverPreview,
+  ],
   templateUrl: './vcb-orders-list.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VcbOrdersListComponent implements OnInit {
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly procurementService = inject(ProcurementService);
+  private readonly vcbOrdersService = inject(VcbOrdersService);
   private readonly swal = inject(SweetAlertService);
 
-  orders = signal<VcbOrder[]>([]);
+  page = signal(1);
+  pageSize = signal(10);
+  searchTerm = signal('');
+  status = signal('');
+
+  ordersResource = rxResource<PagedResult<VcbOrder>, VcbOrderSearch>({
+    params: () => ({
+      page: this.page(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm(),
+      status: this.status(),
+    }),
+    stream: ({ params }) => this.vcbOrdersService.getVcbOrders(params),
+  });
+
+  orders = computed(() => this.ordersResource.value()?.items || []);
+  totalCount = computed(() => this.ordersResource.value()?.totalCount || 0);
+  totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
+  isLoading = computed(() => this.ordersResource.isLoading());
+
   apiOrigin = environment.apiUrl.replace('/api', '');
-  searchParams: VcbOrderSearch = {
-    page: 1,
-    pageSize: 10,
-    searchTerm: '',
-    status: '',
-  };
-  totalCount = signal(0);
-  totalPages = signal(0);
-  isLoading = signal(false);
 
   filterForm = new FormGroup({
     searchTerm: new FormControl(''),
@@ -56,7 +71,6 @@ export class VcbOrdersListComponent implements OnInit {
 
   ngOnInit(): void {
     this.setupFilters();
-    this.loadOrders();
   }
 
   private setupFilters(): void {
@@ -65,9 +79,8 @@ export class VcbOrdersListComponent implements OnInit {
       .get('searchTerm')
       ?.valueChanges.pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
-        this.searchParams.searchTerm = term || '';
-        this.searchParams.page = 1;
-        this.loadOrders();
+        this.searchTerm.set(term || '');
+        this.page.set(1);
       });
 
     // Handle Status Change immediately
@@ -75,32 +88,13 @@ export class VcbOrdersListComponent implements OnInit {
       .get('status')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((status) => {
-        this.searchParams.status = status || '';
-        this.searchParams.page = 1;
-        this.loadOrders();
+        this.status.set(status || '');
+        this.page.set(1);
       });
   }
 
-  loadOrders(): void {
-    this.isLoading.set(true);
-    this.procurementService.getVcbOrders(this.searchParams).subscribe({
-      next: (res) => {
-        this.orders.set(res.items || []);
-        this.totalCount.set(res.totalCount || 0);
-        this.totalPages.set(Math.ceil(this.totalCount() / this.searchParams.pageSize));
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
   onPageChange(page: number): void {
-    this.searchParams.page = page;
-    this.loadOrders();
+    this.page.set(page);
   }
 
   getStatusBadgeClass(status: string): string {
@@ -135,7 +129,7 @@ export class VcbOrdersListComponent implements OnInit {
 
   viewDetails(orderId: number, orderNo: string): void {
     const apiOrigin = environment.apiUrl.replace('/api', '');
-    this.procurementService.getVcbOrderById(orderId).subscribe((res) => {
+    this.vcbOrdersService.getVcbOrderById(orderId).subscribe((res) => {
       const order = res.value || res.data;
       if (order && order.items && order.items.length > 0) {
         let slipSectionHtml = '';
@@ -146,6 +140,8 @@ export class VcbOrdersListComponent implements OnInit {
               <div class="text-left flex-1">
                 <div class="mb-1"><strong>วันที่สั่งซื้อ:</strong> ${new Date(order.orderDate).toLocaleString('th-TH')}</div>
                 <div class="mb-1"><strong>สาขาที่รับเข้า:</strong> ${order.branchId === 1 ? 'สาขาหลัก (Main Branch)' : order.branchId}</div>
+                <div class="mb-1"><strong>ผู้บันทึก:</strong> ${escapeHtml(order.createdByUsername || '') || '-'} ${order.createdAt ? `<span class="text-xs text-base-content/50">(${new Date(order.createdAt).toLocaleString('th-TH')})</span>` : ''}</div>
+                <div class="mb-1"><strong>ผู้แก้ไขล่าสุด:</strong> ${escapeHtml(order.updatedByUsername || '') || '-'} ${order.updatedByUsername && order.updatedAt ? `<span class="text-xs text-base-content/50">(${new Date(order.updatedAt).toLocaleString('th-TH')})</span>` : ''}</div>
                 <div><strong>หมายเหตุ:</strong> ${escapeHtml(order.notes || '') || '-'}</div>
               </div>
               <div class="flex flex-col items-center gap-1 shrink-0 bg-base-100 p-2 rounded-lg border border-base-200">
@@ -161,18 +157,24 @@ export class VcbOrdersListComponent implements OnInit {
             <div class="mb-4 text-left bg-base-50 p-4 rounded-lg border border-base-200">
               <div class="mb-1"><strong>วันที่สั่งซื้อ:</strong> ${new Date(order.orderDate).toLocaleString('th-TH')}</div>
               <div class="mb-1"><strong>สาขาที่รับเข้า:</strong> ${order.branchId === 1 ? 'สาขาหลัก (Main Branch)' : order.branchId}</div>
+              <div class="mb-1"><strong>ผู้บันทึก:</strong> ${escapeHtml(order.createdByUsername || '') || '-'} ${order.createdAt ? `<span class="text-xs text-base-content/50">(${new Date(order.createdAt).toLocaleString('th-TH')})</span>` : ''}</div>
+              <div class="mb-1"><strong>ผู้แก้ไขล่าสุด:</strong> ${escapeHtml(order.updatedByUsername || '') || '-'} ${order.updatedByUsername && order.updatedAt ? `<span class="text-xs text-base-content/50">(${new Date(order.updatedAt).toLocaleString('th-TH')})</span>` : ''}</div>
               <div><strong>หมายเหตุ:</strong> ${escapeHtml(order.notes || '') || '-'}</div>
             </div>
           `;
         }
 
-        let itemsHtml = slipSectionHtml + `<div class="overflow-x-auto text-sm text-left"><table class="table table-zebra w-full">
+        let itemsHtml =
+          slipSectionHtml +
+          `<div class="overflow-x-auto text-sm text-left"><table class="table table-zebra w-full">
           <thead><tr class="bg-base-200">
             <th class="p-2 w-12 text-center">รูป</th><th class="p-2">SKU</th><th class="p-2">ชื่อสินค้า</th><th class="p-2 text-right">จำนวน</th><th class="p-2 text-right">ราคา/ชิ้น</th><th class="p-2 text-right">รวม</th>
           </tr></thead><tbody>`;
         order.items.forEach((item) => {
           const pricePerUnit =
-            item.quantity > 0 ? formatNumberWithCommas(new Big(item.totalPrice).div(item.quantity).toNumber()) : '0.00';
+            item.quantity > 0
+              ? formatNumberWithCommas(new Big(item.totalPrice).div(item.quantity).toNumber())
+              : '0.00';
           const imgUrl = item.imageUrl ? `${apiOrigin}${item.imageUrl}` : 'assets/no-image.png';
           itemsHtml += `<tr>
             <td class="p-2 text-center">
@@ -229,11 +231,11 @@ export class VcbOrdersListComponent implements OnInit {
             };
 
             imgs.forEach((img) => {
-              img.addEventListener('mouseenter', (e: any) => {
-                const src = e.target.getAttribute('data-img-url');
+              img.addEventListener('mouseenter', (e: Event) => {
+                const src = (e.target as HTMLElement).getAttribute('data-img-url');
                 previewDiv!.innerHTML = `<img src="${src}" class="max-w-[500px] max-h-[500px] object-contain rounded-md" />`;
                 previewDiv!.style.display = 'block';
-                updatePos(e);
+                updatePos(e as MouseEvent);
               });
               img.addEventListener('mousemove', updatePos as EventListener);
               img.addEventListener('mouseleave', () => {

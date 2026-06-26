@@ -1,43 +1,30 @@
 using Dapper;
-using Microsoft.Data.SqlClient;
+using PCS_API.Repositories;
 
 namespace PCS_API.Services;
 
-public class ImageCleanupBackgroundService : BackgroundService
-{
-    private readonly ImageCleanupChannel _channel;
-    private readonly IWebHostEnvironment _env;
-    private readonly string _connectionString;
-    private readonly ILogger<ImageCleanupBackgroundService> _logger;
-
-    public ImageCleanupBackgroundService(
+public class ImageCleanupBackgroundService(
         ImageCleanupChannel channel,
         IWebHostEnvironment env,
-        IConfiguration config,
-        ILogger<ImageCleanupBackgroundService> logger)
-    {
-        _channel = channel;
-        _env = env;
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
-        _logger = logger;
-    }
-
+        ISqlConnectionFactory connectionFactory,
+        ILogger<ImageCleanupBackgroundService> logger) : BackgroundService
+{
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var filesToCheck in _channel.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var filesToCheck in channel.Reader.ReadAllAsync(stoppingToken))
         {
             try
             {
                 var distinctFiles = filesToCheck.Distinct().ToList();
                 if (!distinctFiles.Any()) continue;
 
-                await using var conn = new SqlConnection(_connectionString);
+                using var conn = connectionFactory.CreateConnection();
                 var usedImages = await conn.QueryAsync<string>(
                     "SELECT DISTINCT ImageUrl FROM ProductVariants WHERE ImageUrl IN @Urls",
                     new { Urls = distinctFiles });
 
                 var filesToDelete = distinctFiles.Except(usedImages).ToList();
-                var webRootPath = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var webRootPath = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
 
                 foreach (var file in filesToDelete)
                 {
@@ -47,18 +34,18 @@ public class ImageCleanupBackgroundService : BackgroundService
                         if (File.Exists(fullPath))
                         {
                             File.Delete(fullPath);
-                            _logger.LogInformation("Deleted orphan image: {Path}", file);
+                            logger.LogInformation("Deleted orphan image: {Path}", file);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to delete orphan image: {Path}", file);
+                        logger.LogWarning(ex, "Failed to delete orphan image: {Path}", file);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during image cleanup batch");
+                logger.LogError(ex, "Error during image cleanup batch");
             }
         }
     }
