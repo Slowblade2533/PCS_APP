@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
 using System.Text;
@@ -214,13 +214,13 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
         }
     }
 
-    public async Task<(int DeliveryId, string Status, bool IsForceCloseOrder)> GetShipmentInfoAsync(int id, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
+    public async Task<(int DeliveryId, string Status, bool IsForceCloseOrder, DateTime ReceiptDate)> GetShipmentInfoAsync(int id, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default)
     {
         var conn = transaction?.Connection ?? connectionFactory.CreateConnection();
         try
         {
-            string sql = "SELECT DeliveryId, Status, IsForceCloseOrder FROM dbo.VcbShipments WHERE Id = @Id;";
-            return await conn.QuerySingleOrDefaultAsync<(int, string, bool)>(new CommandDefinition(sql, new { Id = id }, transaction: transaction, cancellationToken: cancellationToken));
+            string sql = "SELECT DeliveryId, Status, IsForceCloseOrder, ReceiptDate FROM dbo.VcbShipments WHERE Id = @Id;";
+            return await conn.QuerySingleOrDefaultAsync<(int, string, bool, DateTime)>(new CommandDefinition(sql, new { Id = id }, transaction: transaction, cancellationToken: cancellationToken));
         }
         finally
         {

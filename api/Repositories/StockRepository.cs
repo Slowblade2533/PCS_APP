@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using Dapper;
 using PCS_API.Models;
 using System.Data;
@@ -12,7 +12,7 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
         var conn = transaction.Connection!;
         string sql = @"
             INSERT INTO dbo.StockTransactions (VariantId, TransactionType, Condition, Quantity, UnitCost, ReferenceDoc, Notes, CreatedAt, CreatedBy, RequestId, BranchId, QuantityBefore, QuantityAfter)
-            VALUES (@VariantId, @TransactionType, @Condition, @Quantity, @UnitCost, @ReferenceDoc, @Notes, GETDATE(), @CreatedBy, @RequestId, @BranchId, @QuantityBefore, @QuantityAfter);
+            VALUES (@VariantId, @TransactionType, @Condition, @Quantity, @UnitCost, @ReferenceDoc, @Notes, COALESCE(@CreatedAt, GETDATE()), @CreatedBy, @RequestId, @BranchId, @QuantityBefore, @QuantityAfter);
             SELECT CAST(SCOPE_IDENTITY() as int);";
 
         return await conn.ExecuteScalarAsync<int>(sql, tx, transaction: transaction);

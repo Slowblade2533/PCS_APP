@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Models;
 
 namespace PCS_API.Repositories;
@@ -12,7 +12,7 @@ public interface IVcbShipmentRepository
     Task<bool> UpdateAsync(int id, VcbShipmentCreateDto dto, int currentUserId, bool isSuperuser, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);
     
     // Extracted read methods for Orchestration
-    Task<(int DeliveryId, string Status, bool IsForceCloseOrder)> GetShipmentInfoAsync(int id, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);
+    Task<(int DeliveryId, string Status, bool IsForceCloseOrder, DateTime ReceiptDate)> GetShipmentInfoAsync(int id, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);
     Task<IEnumerable<VcbShipmentItemModel>> GetShipmentItemsAsync(int id, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);
     Task<IEnumerable<string>> GetReceivedShipmentBoxesAsync(int deliveryId, int? excludeShipmentId = null, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);
     Task<List<int>> GetOrderIdsByShipmentIdAsync(int shipmentId, System.Data.IDbTransaction? transaction = null, CancellationToken cancellationToken = default);

@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 using System.Text.Json;
 using System.Data;
@@ -98,7 +98,7 @@ public class VcbShipmentService(
 
             if (status == "Completed")
             {
-                await ProcessCompletionLogicAsync(id, shipmentInfo.DeliveryId, shipmentInfo.IsForceCloseOrder, items, currentUserId, tx, cancellationToken);
+                await ProcessCompletionLogicAsync(id, shipmentInfo.DeliveryId, shipmentInfo.IsForceCloseOrder, items, currentUserId, shipmentInfo.ReceiptDate, tx, cancellationToken);
             }
 
             await tx.CommitAsync(cancellationToken);
@@ -164,7 +164,7 @@ public class VcbShipmentService(
             if (shipmentInfo.Status == "Completed")
             {
                 var newItems = await shipmentRepository.GetShipmentItemsAsync(id, tx, cancellationToken);
-                await ProcessCompletionLogicAsync(id, dto.DeliveryId, dto.IsForceCloseOrder, newItems, currentUserId, tx, cancellationToken);
+                await ProcessCompletionLogicAsync(id, dto.DeliveryId, dto.IsForceCloseOrder, newItems, currentUserId, shipmentInfo.ReceiptDate, tx, cancellationToken);
             }
 
             await tx.CommitAsync(cancellationToken);
@@ -177,7 +177,7 @@ public class VcbShipmentService(
         }
     }
 
-    private async Task ProcessCompletionLogicAsync(int shipmentId, int deliveryId, bool isForceClose, IEnumerable<VcbShipmentItemModel> items, int currentUserId, IDbTransaction tx, CancellationToken cancellationToken)
+    private async Task ProcessCompletionLogicAsync(int shipmentId, int deliveryId, bool isForceClose, IEnumerable<VcbShipmentItemModel> items, int currentUserId, DateTime receiptDate, IDbTransaction tx, CancellationToken cancellationToken)
     {
         var deliveryItems = await deliveryRepository.GetDeliveryBoxesAsync(deliveryId, tx, cancellationToken);
         var expectedCxBoxes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -261,6 +261,7 @@ public class VcbShipmentService(
                     Quantity = item.GoodQuantity,
                     UnitCost = 0,
                     Notes = $"รับสินค้าจาก VCANBUY Shipment #{shipmentId}",
+                    CreatedAt = receiptDate,
                     CreatedBy = currentUserId
                 }, tx);
             }
@@ -276,6 +277,7 @@ public class VcbShipmentService(
                     Quantity = item.DefectiveQuantity,
                     UnitCost = 0,
                     Notes = $"รับสินค้าตำหนิจาก VCANBUY Shipment #{shipmentId}",
+                    CreatedAt = receiptDate,
                     CreatedBy = currentUserId
                 }, tx);
             }
