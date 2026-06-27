@@ -27,6 +27,7 @@ import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.se
 import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { VcbShipmentsService } from '../../../shared/services/vcb-shipments.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
+import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
   selector: 'app-vcb-shipments-create',
@@ -43,10 +44,13 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly swal = inject(SweetAlertService);
+  private readonly authService = inject(AuthService);
   public readonly location = inject(Location);
   public readonly apiOrigin = environment.apiUrl.replace('/api', '');
 
   isEditMode = signal(false);
+  isEditing = signal(false);
+  canEdit = computed(() => this.authService.hasPermission('vcb-shipment:edit'));
   shipmentId = signal<number | null>(null);
   selectedDeliveryId = signal<number | null>(null);
 
@@ -180,6 +184,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   applyEditData(shipment: any, fullDelivery: any, orderResponses: any[]): void {
     this.shipmentForm.patchValue({
       deliveryId: shipment.deliveryId,
+      receiptDate: shipment.receiptDate ? this.formatDate(new Date(shipment.receiptDate)) : this.formatDate(new Date()),
       notes: shipment.notes,
       isForceCloseOrder: shipment.isForceCloseOrder,
     });
@@ -247,9 +252,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       this.items.clear();
       shipment.items.forEach((sItem: any) => {
         const matchingOrderItem = tempOrderItems.find((aoi) => aoi.id === sItem.orderItemId);
-        const expectedQty = matchingOrderItem
-          ? (matchingOrderItem.remainingQuantity ?? matchingOrderItem.quantity)
-          : sItem.expectedQuantity;
+        const expectedQty = sItem.expectedQuantity;
 
         const itemForm = this.fb.group({
           orderItemId: [sItem.orderItemId, Validators.required],
@@ -288,6 +291,33 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
 
         this.items.push(itemForm);
       });
+
+      if (this.isEditMode() && !this.isEditing()) {
+        this.shipmentForm.disable();
+      }
+    }
+  }
+
+  toggleEditMode(): void {
+    if (this.isEditing()) {
+      // Cancel Edit
+      this.isEditing.set(false);
+      const data = this.shipmentDataResource.value();
+      if (data) {
+        this.applyEditData(data.shipment, data.delivery, data.orderResponses as any[]);
+      }
+    } else {
+      // Enter Edit
+      this.isEditing.set(true);
+      this.shipmentForm.enable();
+      // Re-disable goodQuantity and defectiveQuantity if status is WrongItem
+      for (let i = 0; i < this.items.length; i++) {
+        const itemForm = this.items.at(i);
+        if (itemForm.get('receiptStatus')?.value === 'WrongItem') {
+          itemForm.get('goodQuantity')?.disable();
+          itemForm.get('defectiveQuantity')?.disable();
+        }
+      }
     }
   }
 
@@ -388,6 +418,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     this.isSubmitting.set(true);
     const dto: VcbShipmentCreate = {
       deliveryId: formValue.deliveryId,
+      receiptDate: formValue.receiptDate ? new Date(formValue.receiptDate).toISOString() : null,
       notes: formValue.notes,
       isForceCloseOrder: formValue.isForceCloseOrder,
       items: formValue.items.map(
@@ -419,26 +450,33 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
           this.isSubmitting.set(false);
           if (res.isSuccess) {
             this.shipmentForm.markAsPristine();
-            this.swal.success('แก้ไขใบรับสินค้าสำเร็จ').then(() => {
-              this.swal
-                .confirm(
-                  'คุณต้องการกดยืนยันการรับสินค้าเข้าสต็อกทันทีเลยหรือไม่?',
-                  'ใช่, ยืนยันรับเข้า',
-                  'เก็บไว้เป็นฉบับร่างก่อน',
-                )
-                .then((result) => {
-                  if (result.isConfirmed) {
-                    this.vcbShipmentsService
-                      .updateVcbShipmentStatus(this.shipmentId()!, 'Completed')
-                      .subscribe(() => {
-                        this.swal.success('รับเข้าสต็อกเรียบร้อย');
-                        this.router.navigate(['/procurement/vcb-shipments']);
-                      });
-                  } else {
-                    this.router.navigate(['/procurement/vcb-shipments']);
-                  }
-                });
-            });
+            const currentStatus = this.shipmentDataResource.value()?.shipment?.status;
+            if (currentStatus === 'Completed') {
+              this.swal.success('แก้ไขข้อมูลใบรับสินค้าและปรับปรุงสต็อกสำเร็จ').then(() => {
+                this.router.navigate(['/procurement/vcb-shipments']);
+              });
+            } else {
+              this.swal.success('แก้ไขใบรับสินค้าสำเร็จ').then(() => {
+                this.swal
+                  .confirm(
+                    'คุณต้องการกดยืนยันการรับสินค้าเข้าสต็อกทันทีเลยหรือไม่?',
+                    'ใช่, ยืนยันรับเข้า',
+                    'เก็บไว้เป็นฉบับร่างก่อน',
+                  )
+                  .then((result) => {
+                    if (result.isConfirmed) {
+                      this.vcbShipmentsService
+                        .updateVcbShipmentStatus(this.shipmentId()!, 'Completed')
+                        .subscribe(() => {
+                          this.swal.success('รับเข้าสต็อกเรียบร้อย');
+                          this.router.navigate(['/procurement/vcb-shipments']);
+                        });
+                    } else {
+                      this.router.navigate(['/procurement/vcb-shipments']);
+                    }
+                  });
+              });
+            }
           } else {
             this.swal.error(res.error || 'เกิดข้อผิดพลาด');
           }
@@ -639,6 +677,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
   private initForm(): void {
     this.shipmentForm = this.fb.group({
       deliveryId: [null, Validators.required],
+      receiptDate: [this.formatDate(new Date())],
       notes: [''],
       isForceCloseOrder: [false],
       items: this.fb.array([], Validators.required),

@@ -180,7 +180,10 @@ export class UserCreate implements OnInit, HasUnsavedChanges {
         }),
       )
       .subscribe({
-        next: () => this.router.navigate(['/users']),
+        next: () => {
+          this.form.markAsPristine();
+          this.router.navigate(['/users']);
+        },
         error: (err) => {
           this.errorMsg.set(err.error?.message ?? 'เกิดข้อผิดพลาด กรุณาลองใหม่');
         },

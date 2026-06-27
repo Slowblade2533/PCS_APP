@@ -58,7 +58,7 @@ public class StockService(IStockRepository repo, ISqlConnectionFactory connectio
             bool variantExists = await repo.VariantExistsAsync(dto.VariantId, dbTransaction);
             if (!variantExists)
             {
-                throw new KeyNotFoundException("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒ (Product Variant) เธ—เธตเนเธฃเธฐเธเธธ");
+                throw new KeyNotFoundException("ไม่พบข้อมูลสินค้า (Product Variant) ที่ระบุ");
             }
 
             if (dto.TransactionType.ToUpper() == "DAMAGE" && dto.Condition.ToUpper() != "DAMAGE")
@@ -81,7 +81,7 @@ public class StockService(IStockRepository repo, ISqlConnectionFactory connectio
                     Quantity = afterFrom - beforeFrom,
                     UnitCost = dto.UnitCost,
                     ReferenceDoc = dto.ReferenceDoc,
-                    Notes = dto.Notes ?? $"เธขเนเธฒเธขเนเธเธชเธ เธฒเธเธเธณเธฃเธธเธ” {dto.Quantity} เธเธดเนเธ",
+                    Notes = dto.Notes ?? $"ย้ายไปสภาพชำรุด {dto.Quantity} ชิ้น",
                     CreatedBy = userId,
                     RequestId = dto.RequestId,
                     BranchId = dto.BranchId,
@@ -99,7 +99,7 @@ public class StockService(IStockRepository repo, ISqlConnectionFactory connectio
                     Quantity = afterTo - beforeTo,
                     UnitCost = dto.UnitCost,
                     ReferenceDoc = dto.ReferenceDoc,
-                    Notes = dto.Notes ?? $"เธขเนเธฒเธขเธกเธฒเธเธฒเธเธชเธ เธฒเธ{condFrom}เน€เธเธทเนเธญเธเธเธฒเธเธเธณเธฃเธธเธ” {dto.Quantity} เธเธดเนเธ",
+                    Notes = dto.Notes ?? $"ย้ายมาจากสภาพ{condFrom}เนื่องจากชำรุด {dto.Quantity} ชิ้น",
                     CreatedBy = userId,
                     RequestId = Guid.NewGuid(), // Separate RequestId for the auto-move insert
                     BranchId = dto.BranchId,

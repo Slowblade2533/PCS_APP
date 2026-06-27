@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
 using System.Text;
@@ -88,11 +88,12 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
         {
             string insertSql = @"
                 INSERT INTO dbo.VcbShipments (ReceiptNo, ReceiptDate, DeliveryId, Status, Notes, IsForceCloseOrder, CreatedBy, CreatedAt, UpdatedAt)
-                VALUES ('RECV' + FORMAT(GETDATE(), 'yyMMddHHmmss'), GETDATE(), @DeliveryId, 'Draft', @Notes, @IsForceCloseOrder, @CreatedBy, GETDATE(), GETDATE());
+                VALUES ('RECV' + FORMAT(GETDATE(), 'yyMMddHHmmss'), @ReceiptDate, @DeliveryId, 'Draft', @Notes, @IsForceCloseOrder, @CreatedBy, GETDATE(), GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() as int);";
             
             int shipmentId = await conn.QuerySingleAsync<int>(new CommandDefinition(insertSql, new
             {
+                ReceiptDate = dto.ReceiptDate ?? DateTime.UtcNow,
                 DeliveryId = dto.DeliveryId,
                 Notes = dto.Notes,
                 IsForceCloseOrder = dto.IsForceCloseOrder,
@@ -156,6 +157,7 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
             string updateParentSql = @"
                 UPDATE dbo.VcbShipments 
                 SET DeliveryId = @DeliveryId,
+                    ReceiptDate = @ReceiptDate,
                     Notes = @Notes,
                     IsForceCloseOrder = @IsForceCloseOrder,
                     UpdatedAt = GETDATE(),
@@ -166,6 +168,7 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
             {
                 Id = id,
                 DeliveryId = dto.DeliveryId,
+                ReceiptDate = dto.ReceiptDate ?? DateTime.UtcNow,
                 Notes = dto.Notes,
                 IsForceCloseOrder = dto.IsForceCloseOrder,
                 UpdatedBy = currentUserId,

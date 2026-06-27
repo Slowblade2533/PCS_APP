@@ -30,7 +30,7 @@ public class VcbDeliveryService(
             // Validate size (max 5MB)
             if (slipFile.Length > 5 * 1024 * 1024)
             {
-                throw new ArgumentException("เธเธเธฒเธ”เนเธเธฅเนเธ•เนเธญเธเนเธกเนเน€เธเธดเธ 5MB");
+                throw new ArgumentException("ขนาดไฟล์ต้องไม่เกิน 5MB");
             }
 
             // Validate extension
@@ -38,7 +38,7 @@ public class VcbDeliveryService(
             var allowedExts = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             if (!allowedExts.Contains(ext))
             {
-                throw new ArgumentException("เธฃเธญเธเธฃเธฑเธเน€เธเธเธฒเธฐเนเธเธฅเนเธฃเธนเธเธ เธฒเธ JPG, PNG, WEBP เน€เธ—เนเธฒเธเธฑเนเธ");
+                throw new ArgumentException("รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, WEBP เท่านั้น");
             }
 
             string uploadDir = Path.Combine(env.WebRootPath, "uploads", "slips", "deliveries");
@@ -77,7 +77,7 @@ public class VcbDeliveryService(
                     Amount = dto.TransferredAmount,
                     ReferenceType = "VcbDeliveryCost",
                     ReferenceId = newId,
-                    Notes = $"เธเนเธฒเธเธเธชเนเธ VCANBUY เธเธดเธฅ: {dto.DeliveryNo}",
+                    Notes = $"ค่าขนส่ง VCANBUY บิล: {dto.DeliveryNo}",
                     CreatedBy = currentUserId
                 }, tx, cancellationToken);
 
@@ -88,7 +88,7 @@ public class VcbDeliveryService(
                     TransactionType = "FREIGHT_VCB",
                     ReferenceType = "VcbDelivery",
                     ReferenceId = newId,
-                    Description = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}",
+                    Description = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}",
                     TotalAmount = dto.TransferredAmount,
                     PaymentMethod = "TRANSFER",
                     AttachmentUrl = transferSlipUrl,
@@ -102,8 +102,8 @@ public class VcbDeliveryService(
                     CreatedBy = currentUserId,
                     LedgerEntries = new List<LedgerEntryCreateDto>
                     {
-                        new() { AccountId = 14, DebitAmount = dto.TransferredAmount, CreditAmount = 0, Memo = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}" },
-                        new() { AccountId = 2, DebitAmount = 0, CreditAmount = dto.TransferredAmount, Memo = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}" }
+                        new() { AccountId = 14, DebitAmount = dto.TransferredAmount, CreditAmount = 0, Memo = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}" },
+                        new() { AccountId = 2, DebitAmount = 0, CreditAmount = dto.TransferredAmount, Memo = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}" }
                     }
                 };
 
@@ -126,10 +126,10 @@ public class VcbDeliveryService(
 
         if (slipFile != null && slipFile.Length > 0)
         {
-            if (slipFile.Length > 5 * 1024 * 1024) throw new ArgumentException("เธเธเธฒเธ”เนเธเธฅเนเธ•เนเธญเธเนเธกเนเน€เธเธดเธ 5MB");
+            if (slipFile.Length > 5 * 1024 * 1024) throw new ArgumentException("ขนาดไฟล์ต้องไม่เกิน 5MB");
             var ext = Path.GetExtension(slipFile.FileName).ToLowerInvariant();
             var allowedExts = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            if (!allowedExts.Contains(ext)) throw new ArgumentException("เธฃเธญเธเธฃเธฑเธเน€เธเธเธฒเธฐเนเธเธฅเนเธฃเธนเธเธ เธฒเธ JPG, PNG, WEBP เน€เธ—เนเธฒเธเธฑเนเธ");
+            if (!allowedExts.Contains(ext)) throw new ArgumentException("รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, WEBP เท่านั้น");
 
             string uploadDir = Path.Combine(env.WebRootPath, "uploads", "slips", "deliveries");
             if (!Directory.Exists(uploadDir)) Directory.CreateDirectory(uploadDir);
@@ -146,10 +146,10 @@ public class VcbDeliveryService(
         }
 
         if (dto.OrderIds == null || !dto.OrderIds.Any())
-            return ResultDto<bool>.Failure("เธ•เนเธญเธเน€เธฅเธทเธญเธเธญเธญเน€เธ”เธญเธฃเนเธญเธขเนเธฒเธเธเนเธญเธข 1 เธฃเธฒเธขเธเธฒเธฃ");
+            return ResultDto<bool>.Failure("ต้องเลือกออเดอร์อย่างน้อย 1 รายการ");
 
         if (dto.Items == null || !dto.Items.Any())
-            return ResultDto<bool>.Failure("เธ•เนเธญเธเธฃเธฐเธเธธเธเนเธญเธกเธนเธฅเธเธฅเนเธญเธเธชเธดเธเธเนเธฒเธญเธขเนเธฒเธเธเนเธญเธข 1 เธเธฅเนเธญเธ");
+            return ResultDto<bool>.Failure("ต้องระบุข้อมูลกล่องสินค้าอย่างน้อย 1 กล่อง");
 
         using var conn = connectionFactory.CreateConnection() as System.Data.Common.DbConnection;
         if (conn == null) throw new InvalidOperationException("Could not create DbConnection.");
@@ -162,7 +162,7 @@ public class VcbDeliveryService(
             if (!updated)
             {
                 await tx.RollbackAsync(cancellationToken);
-                return ResultDto<bool>.Failure("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเนเธเธชเนเธเธกเธญเธ VCANBUY");
+                return ResultDto<bool>.Failure("ไม่พบข้อมูลใบส่งมอบ VCANBUY");
             }
 
             // Sync Expense (AccountTransaction)
@@ -171,7 +171,7 @@ public class VcbDeliveryService(
             {
                 if (existingExpenseId.HasValue)
                 {
-                    await accountTransactionRepo.UpdateAsync(existingExpenseId.Value, dto.TransferredAmount, $"เธเนเธฒเธเธเธชเนเธ VCANBUY เธเธดเธฅ: {dto.DeliveryNo}", tx, cancellationToken);
+                    await accountTransactionRepo.UpdateAsync(existingExpenseId.Value, dto.TransferredAmount, $"ค่าขนส่ง VCANBUY บิล: {dto.DeliveryNo}", tx, cancellationToken);
                 }
                 else
                 {
@@ -182,7 +182,7 @@ public class VcbDeliveryService(
                         Amount = dto.TransferredAmount,
                         ReferenceType = "VcbDeliveryCost",
                         ReferenceId = id,
-                        Notes = $"เธเนเธฒเธเธเธชเนเธ VCANBUY เธเธดเธฅ: {dto.DeliveryNo}",
+                        Notes = $"ค่าขนส่ง VCANBUY บิล: {dto.DeliveryNo}",
                         CreatedBy = currentUserId
                     }, tx, cancellationToken);
                 }
@@ -202,7 +202,7 @@ public class VcbDeliveryService(
                     TransactionType = "FREIGHT_VCB",
                     ReferenceType = "VcbDelivery",
                     ReferenceId = id,
-                    Description = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}",
+                    Description = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}",
                     TotalAmount = dto.TransferredAmount,
                     PaymentMethod = "TRANSFER",
                     AttachmentUrl = transferSlipUrl,
@@ -216,8 +216,8 @@ public class VcbDeliveryService(
                     CreatedBy = currentUserId,
                     LedgerEntries = new List<LedgerEntryCreateDto>
                     {
-                        new() { AccountId = 14, DebitAmount = dto.TransferredAmount, CreditAmount = 0, Memo = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}" },
-                        new() { AccountId = 2, DebitAmount = 0, CreditAmount = dto.TransferredAmount, Memo = $"เธเธณเธฃเธฐเธเนเธฒเธเธเธชเนเธ VCANBUY เน€เธฅเธเธ—เธตเน {dto.DeliveryNo}" }
+                        new() { AccountId = 14, DebitAmount = dto.TransferredAmount, CreditAmount = 0, Memo = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}" },
+                        new() { AccountId = 2, DebitAmount = 0, CreditAmount = dto.TransferredAmount, Memo = $"ชำระค่าขนส่ง VCANBUY เลขที่ {dto.DeliveryNo}" }
                     }
                 };
 
@@ -248,7 +248,7 @@ public class VcbDeliveryService(
     public async Task<ResultDto<bool>> UpdateStatusAsync(int id, string status, int currentUserId, CancellationToken cancellationToken = default)
     {
         var result = await repository.UpdateStatusAsync(id, status, currentUserId, null, cancellationToken);
-        if (!result) return ResultDto<bool>.Failure("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเนเธเธเธฑเธ”เธชเนเธ VCANBUY");
+        if (!result) return ResultDto<bool>.Failure("ไม่พบข้อมูลใบจัดส่ง VCANBUY");
         return ResultDto<bool>.Success(true);
     }
 }

@@ -1,4 +1,4 @@
-namespace PCS_API.Models;
+﻿namespace PCS_API.Models;
 
 public class InvestmentModel
 {

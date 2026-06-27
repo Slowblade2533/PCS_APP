@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace PCS_API.DTOs;
 
@@ -45,6 +45,7 @@ public class VcbShipmentCreateDto
 {
     [Required]
     public int DeliveryId { get; set; }
+    public DateTime? ReceiptDate { get; set; }
     public string? Notes { get; set; }
     public bool IsForceCloseOrder { get; set; }
 

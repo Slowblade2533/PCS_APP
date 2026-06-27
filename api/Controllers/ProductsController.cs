@@ -26,7 +26,7 @@ public class ProductsController(IProductService productService) : ControllerBase
             new { id = result.Value },
             new
             {
-                message = "เธชเธฃเนเธฒเธเธชเธดเธเธเนเธฒเธชเธณเน€เธฃเนเธ",
+                message = "สร้างสินค้าสำเร็จ",
                 productId = result.Value
             });
     }
@@ -48,7 +48,7 @@ public class ProductsController(IProductService productService) : ControllerBase
     {
         var product = await productService.GetProductDetailAsync(id, cancellationToken);
         if (product == null)
-            return NotFound(new { message = "เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธ—เธตเนเธฃเธฐเธเธธ" });
+            return NotFound(new { message = "ไม่พบข้อมูลสินค้าที่ระบุ" });
 
 
         return Ok(product);
@@ -66,7 +66,7 @@ public class ProductsController(IProductService productService) : ControllerBase
         if (!result.IsSuccess)
             return BadRequest(new { message = result.ErrorMessage });
 
-        return Ok(new { message = "เนเธเนเนเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธชเธณเน€เธฃเนเธ" });
+        return Ok(new { message = "แก้ไขข้อมูลสินค้าสำเร็จ" });
     }
 }
 

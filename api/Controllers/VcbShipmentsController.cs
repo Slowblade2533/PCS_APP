@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -19,6 +19,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] VcbShipmentSearchDto search, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-shipment:view")) return Forbid();
         var result = await shipmentService.GetPagedAsync(search, cancellationToken);
 
         return Ok(result);
@@ -27,6 +28,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-shipment:view")) return Forbid();
         var result = await shipmentService.GetByIdAsync(id, cancellationToken);
         if (!result.IsSuccess) 
             return NotFound(result);
@@ -37,6 +39,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] VcbShipmentCreateDto dto, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-shipment:create")) return Forbid();
         if (!ModelState.IsValid) 
             return BadRequest(ModelState);
 
@@ -51,6 +54,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-shipment:edit")) return Forbid();
         if (string.IsNullOrEmpty(status)) 
             return BadRequest("กรุณาระบุสถานะ");
 
@@ -65,6 +69,7 @@ public class VcbShipmentsController(IVcbShipmentService shipmentService) : Contr
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] VcbShipmentCreateDto dto, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-shipment:edit")) return Forbid();
         if (!ModelState.IsValid) 
             return BadRequest(ModelState);
 

@@ -1,4 +1,4 @@
-using PCS_API.DTOs;
+﻿using PCS_API.DTOs;
 using Dapper;
 using PCS_API.Models;
 using System.Data;
@@ -162,7 +162,7 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
 
             if (stock == null)
             {
-                throw new KeyNotFoundException("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธชเธ•เนเธญเธเธชเธณเธซเธฃเธฑเธเธชเธดเธเธเนเธฒเธเธตเน");
+                throw new KeyNotFoundException("ไม่พบข้อมูลสต็อกสำหรับสินค้านี้");
             }
 
             int beforeQuantity;
@@ -176,10 +176,10 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
                 newQuantity = stock.ReservedQuantity + qtyChange;
                 
                 if (newQuantity < 0)
-                    throw new InvalidOperationException("เธขเธญเธ”เธเธญเธเธ•เธดเธ”เธฅเธเนเธกเนเนเธ”เน");
+                    throw new InvalidOperationException("ยอดจองติดลบไม่ได้");
                     
                 if (stock.CurrentQuantity - newQuantity < 0)
-                    throw new InvalidOperationException($"เธเธญเธเธชเธ•เนเธญเธเน€เธเธดเธเธเธณเธเธงเธ Available (Current={stock.CurrentQuantity}, NewReserved={newQuantity})");
+                    throw new InvalidOperationException($"จองสต็อกเกินจำนวน Available (Current={stock.CurrentQuantity}, NewReserved={newQuantity})");
 
                 updateQuery = @"
                     UPDATE dbo.Stocks
@@ -197,13 +197,13 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
 
                 if (newQuantity < 0)
                 {
-                    throw new InvalidOperationException("เธชเธ•เนเธญเธเนเธกเนเน€เธเธตเธขเธเธเธญ (CurrentQuantity เธเธฐเธ•เธดเธ”เธฅเธ)");
+                    throw new InvalidOperationException("สต็อกไม่เพียงพอ (CurrentQuantity จะติดลบ)");
                 }
 
                 if (newQuantity < stock.ReservedQuantity)
                 {
                     throw new InvalidOperationException(
-                        $"เธชเธ•เนเธญเธเนเธกเนเน€เธเธตเธขเธเธเธญ AvailableQuantity เธเธฐเธ•เธดเธ”เธฅเธ " +
+                        $"สต็อกไม่เพียงพอ AvailableQuantity จะติดลบ " +
                         $"(CurrentQuantity={newQuantity}, ReservedQuantity={stock.ReservedQuantity})");
                 }
 
@@ -223,7 +223,7 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
             }
         }
 
-        throw new InvalidOperationException("เธเนเธญเธกเธนเธฅเธชเธ•เนเธญเธเธ–เธนเธเนเธเนเนเธเนเธ”เธขเธเธนเนเนเธเนเธญเธทเนเธ เธเธฃเธธเธ“เธฒเธฅเธญเธเนเธซเธกเนเธญเธตเธเธเธฃเธฑเนเธ");
+        throw new InvalidOperationException("ข้อมูลสต็อกถูกแก้ไขโดยผู้ใช้อื่น กรุณาลองใหม่อีกครั้ง");
     }
 
     public async Task<bool> VariantExistsAsync(int variantId, IDbTransaction transaction)

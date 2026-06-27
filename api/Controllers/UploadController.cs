@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 
@@ -50,20 +50,20 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     private async Task<(bool IsSuccess, string Result)> SaveImageAsync(IFormFile file, string subFolder)
     {
         if (file == null || file.Length == 0)
-            return (false, "ไม่พบรูปภาพ");
+            return (false, "???????");
 
         if (file.Length > MaxFileSizeBytes)
-            return (false, "ขนาดไฟล์ต้องไม่เกิน 5MB");
+            return (false, "????????????? 5MB");
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(ext))
-            return (false, "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, WEBP เท่านั้น");
+            return (false, "?????????????? JPG, PNG, WEBP ?????");
 
         // Open once and reuse the stream for both magic-byte check and hashing
         await using var stream = file.OpenReadStream();
 
         if (!IsValidImageFile(stream))
-            return (false, "ไฟล์รูปภาพไม่ถูกต้องหรือข้อมูลของรูปภาพมีความเสียหาย");
+            return (false, "????????????????????????????????????????");
 
         // Hash the content for content-addressable storage (automatic deduplication)
         var hashBytes = await SHA256.HashDataAsync(stream);
@@ -151,19 +151,19 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
     private async Task<(bool IsSuccess, string Result)> SaveAttachmentAsync(IFormFile file, string subFolder)
     {
         if (file == null || file.Length == 0)
-            return (false, "ไม่พบไฟล์แนบ");
+            return (false, "???????");
 
         if (file.Length > MaxFileSizeBytes)
-            return (false, "ขนาดไฟล์ต้องไม่เกิน 5MB");
+            return (false, "????????????? 5MB");
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedAttachmentExtensions.Contains(ext))
-            return (false, "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP) หรือไฟล์ PDF เท่านั้น");
+            return (false, "?????????????? (JPG, PNG, WEBP) ??????? PDF ?????");
 
         await using var stream = file.OpenReadStream();
 
         if (!IsValidAttachmentFile(stream, ext))
-            return (false, "รูปแบบไฟล์ไม่ถูกต้องหรือข้อมูลไฟล์มีความเสียหาย");
+            return (false, "?????????????????????????????????????");
 
         var hashBytes = await SHA256.HashDataAsync(stream);
         var hashString = Convert.ToHexString(hashBytes).ToLowerInvariant();

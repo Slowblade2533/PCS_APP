@@ -140,7 +140,7 @@ builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
 
-// โ”€โ”€ Financial, Sales & Procurement modules โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Financial, Sales & Procurement modules ───────────────────────────────────
 builder.Services.AddScoped<IChartOfAccountRepository, ChartOfAccountRepository>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
 builder.Services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
@@ -156,7 +156,7 @@ builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
-// โ”€โ”€ Investors & Investments modules โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Investors & Investments modules ──────────────────────────────────────────
 builder.Services.AddScoped<IInvestorRepository, InvestorRepository>();
 builder.Services.AddScoped<IInvestorBankAccountRepository, InvestorBankAccountRepository>();
 builder.Services.AddScoped<IInvestmentRepository, InvestmentRepository>();
@@ -186,7 +186,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// โ”€โ”€ Security Headers โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Security Headers ─────────────────────────────────────────────────────────
 // Applied early so every response carries them, including error responses.
 app.Use(async (context, next) =>
 {
@@ -205,10 +205,10 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// โ”€โ”€ Public static files (non-upload assets) โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Public static files (non-upload assets) ──────────────────────────────────
 app.UseStaticFiles();
 
-// โ”€โ”€ Protected uploaded files โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Protected uploaded files ──────────────────────────────────────────────────
 // Requires authentication. The path /api/uploads/* is served only if the
 // request carries a valid AuthCookie. Unauthenticated callers receive 401.
 var uploadsPath = Path.Combine(
@@ -259,7 +259,7 @@ app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWe
     await context.Response.SendFileAsync(requestedFile);
 });
 
-// โ”€โ”€ Custom CSRF Validation Middleware โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
+// ── Custom CSRF Validation Middleware ─────────────────────────────────────────
 // Validates the double-submit cookie pattern for all state-changing requests.
 // Exemptions: GET/HEAD/OPTIONS/TRACE (safe methods), login, and csrf-token endpoints.
 app.Use(async (context, next) =>

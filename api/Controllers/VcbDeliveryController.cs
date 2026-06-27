@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -15,6 +15,7 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] VcbDeliverySearchDto search, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-delivery:view")) return Forbid();
         var result = await service.GetPagedAsync(search, cancellationToken);
         return Ok(result);
     }
@@ -22,6 +23,7 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-delivery:view")) return Forbid();
         var delivery = await service.GetByIdAsync(id, cancellationToken);
         if (delivery == null)
             return NotFound(new { error = "ไม่พบข้อมูลใบสั่งส่งของ" });
@@ -32,6 +34,7 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpPost]
     public async Task<IActionResult> Create([FromForm] IFormCollection form, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-delivery:create")) return Forbid();
         try
         {
             var dataJson = form["data"].FirstOrDefault();
@@ -62,6 +65,7 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromForm] IFormCollection form, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-delivery:edit")) return Forbid();
         try
         {
             var dataJson = form["data"].FirstOrDefault();
@@ -94,6 +98,7 @@ public class VcbDeliveriesController(IVcbDeliveryService service) : ControllerBa
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] VcbDeliveryUpdateStatusDto req, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-delivery:edit")) return Forbid();
         if (string.IsNullOrEmpty(req.Status)) 
             return BadRequest(new { error = "สถานะไม่ถูกต้อง" });
 

@@ -264,17 +264,20 @@
         <div class="card-body">
           <div class="flex justify-between items-center mb-4">
             <h2 class="card-title text-xl">3. เลือกรายการที่ได้รับในรอบนี้</h2>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline btn-primary"
-              (click)="addAllItems()"
-            >
-              เพิ่มทั้งหมด
-            </button>
+            @if (!isEditMode() || isEditing()) {
+              <button
+                type="button"
+                class="btn btn-sm btn-outline btn-primary"
+                (click)="addAllItems()"
+              >
+                เพิ่มทั้งหมด
+              </button>
+            }
           </div>
 
-          <div class="flex flex-wrap gap-2 mb-4">
-            @for (ordItem of availableOrderItems(); track ordItem.id) {
+          @if (!isEditMode() || isEditing()) {
+            <div class="flex flex-wrap gap-2 mb-4">
+              @for (ordItem of availableOrderItems(); track ordItem.id) {
               @if ((ordItem.remainingQuantity ?? ordItem.quantity) > 0) {
                 <button
                   type="button"
@@ -314,10 +317,10 @@
                   </div>
                 </button>
               }
-            }
-          </div>
-
-          <div class="divider mt-0 mb-0"></div>
+              }
+            </div>
+            <div class="divider mt-0 mb-0"></div>
+          }
 
           <!-- แบบฟอร์มกรอกรายการที่เลือก -->
           <div formArrayName="items" class="flex flex-col gap-4 py-4">
@@ -326,13 +329,15 @@
                 [formGroupName]="i"
                 class="border border-base-300 rounded-box p-4 bg-base-50 relative"
               >
-                <button
-                  type="button"
-                  class="btn btn-sm btn-circle btn-ghost text-error absolute right-2 top-2"
-                  (click)="removeItem(i)"
-                >
-                  ✕
-                </button>
+                @if (!isEditMode() || isEditing()) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-circle btn-ghost text-error absolute right-2 top-2"
+                    (click)="removeItem(i)"
+                  >
+                    ✕
+                  </button>
+                }
 
                 <div class="flex flex-col md:flex-row gap-4 mb-4">
                   <div class="avatar group relative">
@@ -479,6 +484,19 @@
       <div class="card bg-base-100 shadow-xl border border-base-200 mt-4">
         <div class="card-body">
           <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text font-medium text-base-content"
+                >วันเวลาที่รับสินค้า <span class="text-error">*</span></span
+              >
+            </label>
+            <input
+              type="datetime-local"
+              formControlName="receiptDate"
+              class="input input-bordered focus:input-primary"
+            />
+          </div>
+
+          <div class="form-control mb-4">
             <label class="label"
               ><span class="label-text font-medium">หมายเหตุการรับสินค้า</span></label
             >
@@ -511,15 +529,26 @@
       </div>
 
       <div class="flex justify-end gap-4 mt-4">
-        <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">
-          ยกเลิก
-        </button>
-        <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting()">
-          @if (isSubmitting()) {
-            <span class="loading loading-spinner loading-sm"></span>
+        @if (isEditMode() && !isEditing()) {
+          <button type="button" class="btn btn-ghost min-w-[120px]" (click)="location.back()">
+            กลับ
+          </button>
+          @if (canEdit()) {
+            <button type="button" class="btn btn-warning min-w-[120px]" (click)="toggleEditMode()">
+              แก้ไข
+            </button>
           }
-          บันทึกใบรับสินค้า
-        </button>
+        } @else {
+          <button type="button" class="btn btn-ghost min-w-[120px]" (click)="isEditMode() ? toggleEditMode() : location.back()">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn btn-primary min-w-[120px]" [disabled]="isSubmitting() || (isEditMode() && isEditing() && !shipmentForm.dirty)">
+            @if (isSubmitting()) {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            {{ isEditMode() ? 'บันทึกการแก้ไข' : 'บันทึกใบรับสินค้า' }}
+          </button>
+        }
       </div>
     }
   </form>

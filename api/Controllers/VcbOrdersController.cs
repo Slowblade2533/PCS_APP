@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -20,6 +20,7 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] VcbOrderSearchDto search, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-order:view")) return Forbid();
         var result = await orderService.GetPagedAsync(search, cancellationToken);
         return Ok(result);
     }
@@ -27,6 +28,7 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-order:view")) return Forbid();
         var result = await orderService.GetByIdAsync(id, cancellationToken);
         if (!result.IsSuccess) 
             return NotFound(result);
@@ -37,6 +39,7 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromForm] IFormCollection form, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-order:create")) return Forbid();
         try
         {
             var dataJson = form["data"].FirstOrDefault();
@@ -72,6 +75,7 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromForm] IFormCollection form, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-order:edit")) return Forbid();
         try
         {
             var dataJson = form["data"].FirstOrDefault();
@@ -107,6 +111,7 @@ public class VcbOrdersController(IVcbOrderService orderService) : ControllerBase
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", "vcb-order:edit")) return Forbid();
         if (string.IsNullOrEmpty(status)) 
             return BadRequest("กรุณาระบุสถานะ");
 

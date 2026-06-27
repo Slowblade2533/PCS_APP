@@ -18,6 +18,7 @@ export interface VcbShipment {
 
 export interface VcbShipmentCreate {
   deliveryId: number;
+  receiptDate?: string | null;
   notes?: string;
   isForceCloseOrder?: boolean;
   items: VcbShipmentItemCreate[];

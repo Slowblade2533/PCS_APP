@@ -1,5 +1,8 @@
-import { Component, HostListener, signal } from '@angular/core';
+import { Component, HostListener, signal, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
+import flatpickr from 'flatpickr';
+import { Thai } from 'flatpickr/dist/l10n/th.js';
 
 @Component({
   selector: 'app-root',
@@ -7,8 +10,87 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {
+export class App implements OnInit, OnDestroy {
   protected readonly title = signal('webapp');
+  private observer: MutationObserver | null = null;
+
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
+
+  ngOnInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.initGlobalFlatpickr();
+    }
+  }
+
+  ngOnDestroy() {
+    this.observer?.disconnect();
+  }
+
+  private initGlobalFlatpickr() {
+    const applyToInputs = (node: Element) => {
+      const initFlatpickr = (input: HTMLInputElement) => {
+        if (!input.classList.contains('flatpickr-input') && (input.type === 'date' || input.type === 'datetime-local')) {
+          const isDatetime = input.type === 'datetime-local';
+          flatpickr(input, {
+            locale: Thai,
+            enableTime: isDatetime,
+            dateFormat: isDatetime ? 'Y-m-d\\TH:i' : 'Y-m-d',
+            altInput: true,
+            altFormat: isDatetime ? 'd/m/Y H:i' : 'd/m/Y',
+            allowInput: true,
+            onReady: (selectedDates, dateStr, instance) => {
+              if (instance.altInput && input.className) {
+                // Copy original classes to the visible alternate input so daisyUI styles still apply
+                instance.altInput.className = input.className + ' flatpickr-alt-input';
+                // Flatpickr creates its own flatpickr-input class, remove it from alt so it doesn't duplicate loops
+                instance.altInput.classList.remove('flatpickr-input');
+              }
+            },
+            onChange: () => {
+              // Trigger events for Angular ReactiveFormsModule to pick up
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+
+          // Sync 'disabled' state from original input to altInput
+          const fpInstance = (input as any)._flatpickr;
+          if (fpInstance && fpInstance.altInput) {
+            const altInput = fpInstance.altInput;
+            altInput.disabled = input.disabled; // Initial sync
+
+            const attrObserver = new MutationObserver(() => {
+              altInput.disabled = input.disabled;
+            });
+            attrObserver.observe(input, { attributes: true, attributeFilter: ['disabled'] });
+          }
+        }
+      };
+
+      if (node.tagName === 'INPUT') {
+        initFlatpickr(node as HTMLInputElement);
+      }
+      
+      const inputs = node.querySelectorAll?.('input[type="date"], input[type="datetime-local"]');
+      if (inputs) {
+        inputs.forEach(input => initFlatpickr(input as HTMLInputElement));
+      }
+    };
+
+    applyToInputs(document.body);
+
+    this.observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1) { // ELEMENT_NODE
+            applyToInputs(node as Element);
+          }
+        });
+      });
+    });
+
+    this.observer.observe(document.body, { childList: true, subtree: true });
+  }
 
   @HostListener('window:keydown.enter', ['$event'])
   handleEnterKey(event: any) {

@@ -1,4 +1,4 @@
-namespace PCS_API.DTOs;
+﻿namespace PCS_API.DTOs;
 
 public class PagedResultDto<T>
 {

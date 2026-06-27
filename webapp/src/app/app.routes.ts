@@ -105,6 +105,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-orders-list/vcb-orders-list').then(
             (m) => m.VcbOrdersListComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-order:view' },
       },
       {
         path: 'procurement/vcb-orders/create',
@@ -112,6 +114,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-orders-create/vcb-orders-create').then(
             (m) => m.VcbOrdersCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-order:create' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -120,6 +124,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-orders-create/vcb-orders-create').then(
             (m) => m.VcbOrdersCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-order:view' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -128,6 +134,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-shipments-list/vcb-shipments-list').then(
             (m) => m.VcbShipmentsListComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-shipment:view' },
       },
       {
         path: 'procurement/vcb-shipments/create',
@@ -135,6 +143,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-shipments-create/vcb-shipments-create').then(
             (m) => m.VcbShipmentsCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-shipment:create' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -143,6 +153,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-shipments-create/vcb-shipments-create').then(
             (m) => m.VcbShipmentsCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-shipment:view' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -151,6 +163,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-deliveries-list/vcb-deliveries-list').then(
             (m) => m.VcbDeliveriesList,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-delivery:view' },
       },
       {
         path: 'procurement/vcb-deliveries/create',
@@ -158,6 +172,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-deliveries-create/vcb-deliveries-create').then(
             (m) => m.VcbDeliveriesCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-delivery:create' },
         canDeactivate: [pendingChangesGuard],
       },
       {
@@ -166,6 +182,8 @@ export const routes: Routes = [
           import('./pages/procurement/vcb-deliveries-create/vcb-deliveries-create').then(
             (m) => m.VcbDeliveriesCreateComponent,
           ),
+        canActivate: [permissionGuard],
+        data: { permission: 'vcb-delivery:view' },
         canDeactivate: [pendingChangesGuard],
       },
 
