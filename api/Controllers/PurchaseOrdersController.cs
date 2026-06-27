@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -45,6 +45,25 @@ public class PurchaseOrdersController(IPurchaseOrderService poService) : Control
     public async Task<IActionResult> UpdateSlip(int id, [FromBody] UpdateSlipRequest req)
     {
         var result = await poService.UpdateSlipAsync(id, req.SlipUrl, req.UpdatedBy);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Policy = "CanEditPurchaseOrder")]
+    public async Task<IActionResult> Update(int id, [FromBody] PurchaseOrderCreateDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await poService.UpdateAsync(id, dto);
+        return result.IsSuccess ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "CanDeletePurchaseOrder")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await poService.DeleteAsync(id);
         return result.IsSuccess ? Ok(result) : BadRequest(result);
     }
 }

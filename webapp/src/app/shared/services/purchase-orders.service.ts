@@ -41,4 +41,21 @@ export class PurchaseOrdersService {
   updateSlip(id: number, slipUrl: string, updatedBy?: number): Observable<unknown> {
     return this.http.patch(`${this.apiUrl}/${id}/slip`, { slipUrl, updatedBy });
   }
+
+  update(id: number, payload: PurchaseOrderCreatePayload): Observable<unknown> {
+    return this.http.put(`${this.apiUrl}/${id}`, payload);
+  }
+
+  delete(id: number): Observable<unknown> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  uploadSlip(file: File): Observable<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ imageUrl: string }>(
+      `${environment.apiUrl}/upload/transaction-attachment`,
+      formData,
+    );
+  }
 }

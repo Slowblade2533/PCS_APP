@@ -12,6 +12,20 @@ import { InvestmentService } from '../../../shared/services/investment.service';
 import { InvestorService } from '../../../shared/services/investor.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
+function formatDateString(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    return val.split('T')[0];
+  }
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return '';
+}
+
 @Component({
   selector: 'app-investment-form',
   standalone: true,
@@ -137,7 +151,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
       principalAmount: [0, [Validators.required, Validators.min(1)]],
       currency: ['THB', Validators.required],
       interestRate: [0, [Validators.min(0)]],
-      startDate: [new Date().toISOString().substring(0, 10), Validators.required],
+      startDate: [formatDateString(new Date()), Validators.required],
       maturityDate: [''],
       contractUrl: [''],
       paymentProofUrl: [''],
@@ -197,10 +211,8 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
           principalAmount: inv.principalAmount,
           currency: inv.currency,
           interestRate: inv.interestRate || 0,
-          startDate: inv.startDate ? new Date(inv.startDate).toISOString().substring(0, 10) : '',
-          maturityDate: inv.maturityDate
-            ? new Date(inv.maturityDate).toISOString().substring(0, 10)
-            : '',
+          startDate: formatDateString(inv.startDate),
+          maturityDate: formatDateString(inv.maturityDate),
           contractUrl: inv.contractUrl,
           paymentProofUrl: inv.paymentProofUrl,
           companyBankAccountId: inv.companyBankAccountId || '',
@@ -229,7 +241,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
               this.fb.group({
                 installmentNumber: [s.installmentNumber, Validators.required],
                 dueDate: [
-                  s.dueDate ? new Date(s.dueDate).toISOString().substring(0, 10) : '',
+                  formatDateString(s.dueDate),
                   Validators.required,
                 ],
                 principalAmount: [s.principalAmount, [Validators.required, Validators.min(0)]],
@@ -452,7 +464,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
 
       this.addScheduleRow({
         installmentNumber: i,
-        dueDate: dueDate.toISOString().substring(0, 10),
+        dueDate: formatDateString(dueDate),
         principalAmount: Math.round(basePrincipal * 100) / 100,
         interestAmount: Math.round(interest * 100) / 100,
       });

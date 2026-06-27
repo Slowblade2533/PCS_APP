@@ -15,7 +15,7 @@ export class BalanceSheet implements OnInit {
   private financialService = inject(FinancialService);
   private destroyRef = inject(DestroyRef);
 
-  asOfDate = signal<string>(new Date().toISOString().split('T')[0]); // Today
+  asOfDate = signal<string>(new Date().toLocaleDateString('en-CA')); // Today
 
   report = signal<BalanceSheetReport | null>(null);
   loading = signal<boolean>(false);

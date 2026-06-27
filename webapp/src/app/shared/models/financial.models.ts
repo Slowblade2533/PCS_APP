@@ -79,7 +79,8 @@ export type TransactionType =
   | 'STOCK_LOSS'
   | 'SCRAP'
   | 'TRANSFER_IN'
-  | 'RECEIPT';
+  | 'RECEIPT'
+  | 'GOODS_RECEIPT';
 
 export interface FinancialTransaction {
   transactionId: number;

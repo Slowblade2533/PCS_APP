@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace PCS_API.DTOs;
 
@@ -186,6 +186,7 @@ public class GoodsReceiptItemDto
     public int ReceivedQuantity { get; set; }
     public int DefectiveQuantity { get; set; }
     public int DamagedQuantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }
 
 public class GoodsReceiptCreateDto

@@ -76,7 +76,7 @@
             @for (item of data().items; track item.receiptId) {
               <tr>
                 <td class="font-medium text-primary">{{ item.receiptNo }}</td>
-                <td>{{ item.pONo }}</td>
+                <td>{{ item.poNo }}</td>
                 <td>{{ item.supplierName }}</td>
                 <td>{{ item.receiptDate | date: 'dd/MM/yyyy' }}</td>
                 <td>{{ item.shippingCompany || '-' }}</td>

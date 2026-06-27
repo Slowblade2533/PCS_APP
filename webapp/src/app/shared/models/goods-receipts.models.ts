@@ -5,7 +5,7 @@ export type GoodsReceiptStatus = 'PENDING' | 'COMPLETED';
 export interface GoodsReceiptListItem {
   receiptId: number;
   receiptNo: string;
-  pONo: string;
+  poNo: string;
   supplierName: string;
   receiptDate: string;
   shippingCompany?: string;
@@ -19,7 +19,7 @@ export interface GoodsReceiptDetail {
   receiptId: number;
   receiptNo: string;
   purchaseOrderId: number;
-  pONo: string;
+  poNo: string;
   supplierName: string;
   receiptDate: string;
   shippingCompany?: string;
@@ -37,7 +37,7 @@ export interface GoodsReceiptDetail {
 
 export interface GoodsReceiptItem {
   receiptItemId: number;
-  pOItemId: number;
+  poItemId: number;
   variantId: number;
   sku: string;
   productName: string;
@@ -50,7 +50,7 @@ export interface GoodsReceiptItem {
 }
 
 export interface GoodsReceiptItemCreatePayload {
-  pOItemId: number;
+  poItemId: number;
   variantId: number;
   expectedQuantity: number;
   receivedQuantity: number;

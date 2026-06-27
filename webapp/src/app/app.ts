@@ -31,6 +31,39 @@ export class App implements OnInit, OnDestroy {
       const initFlatpickr = (input: HTMLInputElement) => {
         if (!input.classList.contains('flatpickr-input') && (input.type === 'date' || input.type === 'datetime-local')) {
           const isDatetime = input.type === 'datetime-local';
+
+          // Set default placeholder if none exists
+          const defaultPlaceholder = isDatetime ? 'วัน/เดือน/ปี เวลา' : 'วัน/เดือน/ปี';
+          if (!input.placeholder) {
+            input.placeholder = defaultPlaceholder;
+          }
+
+          let isSyncing = false;
+          const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+          const originalValueGetter = descriptor?.get;
+          const originalValueSetter = descriptor?.set;
+          if (originalValueGetter && originalValueSetter) {
+            Object.defineProperty(input, 'value', {
+              get() {
+                return originalValueGetter.call(input);
+              },
+              set(val) {
+                originalValueSetter.call(input, val);
+                if (isSyncing) return;
+                const fp = (input as any)._flatpickr;
+                if (fp) {
+                  isSyncing = true;
+                  try {
+                    fp.setDate(val, false);
+                  } finally {
+                    isSyncing = false;
+                  }
+                }
+              },
+              configurable: true
+            });
+          }
+
           flatpickr(input, {
             locale: Thai,
             enableTime: isDatetime,
@@ -53,8 +86,18 @@ export class App implements OnInit, OnDestroy {
             }
           });
 
-          // Sync 'disabled' state from original input to altInput
+          // Sync initial value if it exists
           const fpInstance = (input as any)._flatpickr;
+          if (fpInstance && input.value) {
+            isSyncing = true;
+            try {
+              fpInstance.setDate(input.value, false);
+            } finally {
+              isSyncing = false;
+            }
+          }
+
+          // Sync 'disabled' state from original input to altInput
           if (fpInstance && fpInstance.altInput) {
             const altInput = fpInstance.altInput;
             altInput.disabled = input.disabled; // Initial sync

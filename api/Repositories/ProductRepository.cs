@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using PCS_API.DTOs;
 using System.Data;
 
@@ -97,7 +97,7 @@ public class ProductRepository(ISqlConnectionFactory connectionFactory) : IProdu
 
                 SELECT pv.VariantId, pv.ProductId, pv.Sku, pv.Barcode, pv.VariantNameTh, pv.VariantNameEn, pv.Color, pv.SizeLabel, pv.StylePattern, pv.ImageUrl, pv.UnitOfMeasure, 
                        pv.Width, pv.Length, pv.Height, pv.Weight,
-                       pr.BasePrice, pr.DiscountPrice, st.CurrentQuantity, st.ReorderPoint 
+                       pr.BasePrice, pr.DiscountPrice, st.CurrentQuantity, st.ReorderPoint, COALESCE(st.Condition, 'Normal') AS Condition 
                 FROM dbo.ProductVariants pv
                 LEFT JOIN dbo.ProductPrices pr ON pv.VariantId = pr.VariantId
                 LEFT JOIN dbo.Stocks st ON pv.VariantId = st.VariantId
@@ -171,7 +171,7 @@ public class ProductRepository(ISqlConnectionFactory connectionFactory) : IProdu
 
             UPDATE dbo.Stocks 
             SET CurrentQuantity = @CurrentQuantity, ReorderPoint = @ReorderPoint, UpdatedAt = GETDATE()
-            WHERE VariantId = @UVariantId AND RowVersion = @URowVersion;";
+            WHERE VariantId = @UVariantId AND Condition = @UCondition AND RowVersion = @URowVersion;";
 
         await conn.ExecuteAsync(new CommandDefinition(sql, updateDataList, transaction: transaction, cancellationToken: cancellationToken));
     }
@@ -256,11 +256,11 @@ public class ProductRepository(ISqlConnectionFactory connectionFactory) : IProdu
         return results.ToList();
     }
 
-    public async Task<List<(int VariantId, byte[] RowVersion)>> GetStockRowVersionsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    public async Task<List<(int VariantId, string Condition, byte[] RowVersion)>> GetStockRowVersionsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default)
     {
         var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
-        string sql = "SELECT VariantId, RowVersion FROM dbo.Stocks WHERE VariantId IN @Ids;";
-        var results = await conn.QueryAsync<(int VariantId, byte[] RowVersion)>(new CommandDefinition(sql, new { Ids = variantIds }, transaction: transaction, cancellationToken: cancellationToken));
+        string sql = "SELECT VariantId, Condition, RowVersion FROM dbo.Stocks WHERE VariantId IN @Ids;";
+        var results = await conn.QueryAsync<(int VariantId, string Condition, byte[] RowVersion)>(new CommandDefinition(sql, new { Ids = variantIds }, transaction: transaction, cancellationToken: cancellationToken));
         return results.ToList();
     }
 }

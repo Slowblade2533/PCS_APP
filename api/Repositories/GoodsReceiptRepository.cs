@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using PCS_API.DTOs;
 using System.Data;
 using System.Text;
@@ -123,7 +123,7 @@ public class GoodsReceiptRepository(ISqlConnectionFactory connectionFactory) : I
         try
         {
             return await conn.QueryFirstOrDefaultAsync<GoodsReceiptDetailDto>(
-                "SELECT ReceiptId, Status, PurchaseOrderId FROM dbo.GoodsReceipts WHERE ReceiptId = @receiptId;",
+                "SELECT ReceiptId, Status, PurchaseOrderId, ReceiptDate, ShippingCost FROM dbo.GoodsReceipts WHERE ReceiptId = @receiptId;",
                 new { receiptId }, tx);
         }
         finally
@@ -138,7 +138,10 @@ public class GoodsReceiptRepository(ISqlConnectionFactory connectionFactory) : I
         try
         {
             var items = await conn.QueryAsync<GoodsReceiptItemDto>(
-                "SELECT VariantId, ReceivedQuantity, DefectiveQuantity, DamagedQuantity, POItemId FROM dbo.GoodsReceiptItems WHERE ReceiptId = @receiptId;",
+                @"SELECT gri.VariantId, gri.ReceivedQuantity, gri.DefectiveQuantity, gri.DamagedQuantity, gri.POItemId, poi.UnitPrice 
+                  FROM dbo.GoodsReceiptItems gri
+                  INNER JOIN dbo.PurchaseOrderItems poi ON gri.POItemId = poi.POItemId
+                  WHERE gri.ReceiptId = @receiptId;",
                 new { receiptId }, tx);
             return items.ToList();
         }

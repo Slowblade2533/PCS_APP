@@ -1,4 +1,4 @@
-ï»¿using System.Threading.RateLimiting;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -109,6 +109,8 @@ builder.Services.AddAuthorization(options =>
     // Bank Accounts
     options.AddPolicy("CanViewBankAccounts", p => p.Requirements.Add(new PermissionRequirementHandler("bank_account:view")));
     options.AddPolicy("CanManageBankAccounts", p => p.Requirements.Add(new PermissionRequirementHandler("bank_account:manage")));
+    options.AddPolicy("CanEditPurchaseOrder", p => p.Requirements.Add(new PermissionRequirementHandler("purchase-order:edit")));
+    options.AddPolicy("CanDeletePurchaseOrder", p => p.Requirements.Add(new PermissionRequirementHandler("purchase-order:delete")));
 
     // Policy for authenticated access to protected static files (uploaded images)
     options.AddPolicy("AuthenticatedOnly", p => p.RequireAuthenticatedUser());
@@ -140,7 +142,7 @@ builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
 
-// â”€â”€ Financial, Sales & Procurement modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Financial, Sales & Procurement modules ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 builder.Services.AddScoped<IChartOfAccountRepository, ChartOfAccountRepository>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
 builder.Services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
@@ -156,7 +158,7 @@ builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
-// â”€â”€ Investors & Investments modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Investors & Investments modules ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 builder.Services.AddScoped<IInvestorRepository, InvestorRepository>();
 builder.Services.AddScoped<IInvestorBankAccountRepository, InvestorBankAccountRepository>();
 builder.Services.AddScoped<IInvestmentRepository, InvestmentRepository>();
@@ -186,7 +188,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// â”€â”€ Security Headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Security Headers ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 // Applied early so every response carries them, including error responses.
 app.Use(async (context, next) =>
 {
@@ -205,10 +207,10 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// â”€â”€ Public static files (non-upload assets) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Public static files (non-upload assets) ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 app.UseStaticFiles();
 
-// â”€â”€ Protected uploaded files â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Protected uploaded files ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 // Requires authentication. The path /api/uploads/* is served only if the
 // request carries a valid AuthCookie. Unauthenticated callers receive 401.
 var uploadsPath = Path.Combine(
@@ -259,7 +261,7 @@ app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWe
     await context.Response.SendFileAsync(requestedFile);
 });
 
-// â”€â”€ Custom CSRF Validation Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ÄÄ Custom CSRF Validation Middleware ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 // Validates the double-submit cookie pattern for all state-changing requests.
 // Exemptions: GET/HEAD/OPTIONS/TRACE (safe methods), login, and csrf-token endpoints.
 app.Use(async (context, next) =>

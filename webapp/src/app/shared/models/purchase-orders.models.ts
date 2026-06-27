@@ -4,8 +4,8 @@ export type PurchaseOrderStatus = 'DRAFT' | 'ORDERED' | 'PARTIALLY_RECEIVED' | '
 
 export interface PurchaseOrderListItem {
   purchaseOrderId: number;
-  pONo: string;
-  pODate: string;
+  poNo: string;
+  poDate: string;
   supplierName: string;
   grandTotal: number;
   status: PurchaseOrderStatus;
@@ -17,8 +17,8 @@ export interface PurchaseOrderListItem {
 
 export interface PurchaseOrderDetail {
   purchaseOrderId: number;
-  pONo: string;
-  pODate: string;
+  poNo: string;
+  poDate: string;
   supplierName: string;
   supplierPhone?: string;
   supplierTaxId?: string;
@@ -43,7 +43,7 @@ export interface PurchaseOrderDetail {
 }
 
 export interface PurchaseOrderItem {
-  pOItemId: number;
+  poItemId: number;
   variantId: number;
   sku: string;
   productName: string;
@@ -62,8 +62,8 @@ export interface PurchaseOrderItemCreatePayload {
 }
 
 export interface PurchaseOrderCreatePayload {
-  pONo: string;
-  pODate: string;
+  poNo: string;
+  poDate: string;
   supplierName: string;
   supplierPhone?: string;
   supplierTaxId?: string;

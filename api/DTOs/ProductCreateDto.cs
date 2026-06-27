@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace PCS_API.DTOs;
 
@@ -85,4 +85,7 @@ public class VariantCreateDto
     public int ReorderPoint { get; set; } = 0;
 
     public string? ImageUrl { get; set; }
+    
+    [MaxLength(50)]
+    public string? Condition { get; set; } = "Normal";
 }

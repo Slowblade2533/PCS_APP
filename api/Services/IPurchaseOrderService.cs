@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 
 namespace PCS_API.Services;
 
@@ -9,4 +9,6 @@ public interface IPurchaseOrderService
     Task<ResultDto<int>> CreateAsync(PurchaseOrderCreateDto dto, CancellationToken cancellationToken = default);
     Task<ResultDto<bool>> UpdateStatusAsync(int purchaseOrderId, PurchaseOrderStatusUpdateDto dto, CancellationToken cancellationToken = default);
     Task<ResultDto<bool>> UpdateSlipAsync(int purchaseOrderId, string slipUrl, int? updatedBy, CancellationToken cancellationToken = default);
+    Task<ResultDto<bool>> UpdateAsync(int purchaseOrderId, PurchaseOrderCreateDto dto, CancellationToken cancellationToken = default);
+    Task<ResultDto<bool>> DeleteAsync(int purchaseOrderId, CancellationToken cancellationToken = default);
 }

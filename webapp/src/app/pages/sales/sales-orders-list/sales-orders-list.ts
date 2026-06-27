@@ -25,8 +25,12 @@ export class SalesOrdersList {
 
   searchTerm = signal<string>('');
   selectedStatus = signal<string>('');
-  dateFrom = signal<string>('');
-  dateTo = signal<string>('');
+  dateFrom = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+  );
+  dateTo = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+  );
   pageNumber = signal<number>(1);
   pageSize = signal<number>(20);
 

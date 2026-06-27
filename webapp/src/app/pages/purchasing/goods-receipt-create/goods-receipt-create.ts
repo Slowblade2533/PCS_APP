@@ -15,24 +15,30 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { environment } from '../../../../environments/environment';
 import { GoodsReceiptCreatePayload, GoodsReceiptDetail, GoodsReceiptItemCreatePayload } from '../../../shared/models/goods-receipts.models';
 import { PurchaseOrderDetail } from '../../../shared/models/purchase-orders.models';
 import { PaymentMethod } from '../../../shared/models/shared.models';
 import { GoodsReceiptsService } from '../../../shared/services/goods-receipts.service';
 import { PurchaseOrdersService } from '../../../shared/services/purchase-orders.service';
+import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
+import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 
 @Component({
   selector: 'app-goods-receipt-create',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
+  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe, ImageHoverPreview],
   templateUrl: './goods-receipt-create.html',
 })
 export class GoodsReceiptCreate implements OnInit {
   private grService = inject(GoodsReceiptsService);
   private poService = inject(PurchaseOrdersService);
+  private swal = inject(SweetAlertService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
+  apiOrigin = environment.apiUrl.replace('/api', '');
+
 
   receiptId = signal<number | null>(null);
   isViewMode = signal<boolean>(false);
@@ -42,7 +48,7 @@ export class GoodsReceiptCreate implements OnInit {
 
   // Form State
   receiptNo = signal<string>('');
-  receiptDate = signal<string>(new Date().toISOString().split('T')[0]);
+  receiptDate = signal<string>(new Date().toLocaleDateString('en-CA'));
   shippingCompany = signal<string>('');
   trackingNo = signal<string>('');
   shippingCost = signal<number>(0);
@@ -86,7 +92,7 @@ export class GoodsReceiptCreate implements OnInit {
             .map((pi: any) => {
               const expectedQty = pi.quantity - pi.receivedQuantity;
               return {
-                pOItemId: pi.pOItemId,
+                poItemId: pi.poItemId,
                 variantId: pi.variantId,
                 expectedQuantity: expectedQty,
                 receivedQuantity: expectedQty > 0 ? expectedQty : 0,
@@ -131,7 +137,7 @@ export class GoodsReceiptCreate implements OnInit {
   }
 
   getPoItem(poItemId: number) {
-    return this.sourcePoDetail()?.items.find((i) => i.pOItemId === poItemId);
+    return this.sourcePoDetail()?.items.find((i) => i.poItemId === poItemId);
   }
 
   onSubmit() {
@@ -155,7 +161,7 @@ export class GoodsReceiptCreate implements OnInit {
       shippingSlipUrl: this.shippingSlipUrl() || undefined,
       notes: this.notes(),
       items: this.items().map((i) => ({
-        pOItemId: Number(i.pOItemId),
+        poItemId: Number(i.poItemId),
         variantId: Number(i.variantId),
         expectedQuantity: Number(i.expectedQuantity),
         receivedQuantity: Number(i.receivedQuantity),
@@ -172,7 +178,12 @@ export class GoodsReceiptCreate implements OnInit {
         this.router.navigate(['/purchasing/goods-receipts']);
       },
       error: (err) => {
-        this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
+        if (err.error?.errors) {
+          const errorMessages = Object.values(err.error.errors).flat().join('\n');
+          this.error.set(errorMessages);
+        } else {
+          this.error.set(err.error?.message || 'เกิดข้อผิดพลาดในการบันทึกรายการ');
+        }
         this.submitting.set(false);
       },
     });
@@ -180,23 +191,25 @@ export class GoodsReceiptCreate implements OnInit {
 
   completeReceipt() {
     if (!this.receiptId()) return;
-    if (
-      !confirm(
-        'ยืนยันว่าทำการรับสินค้าเข้าคลังเสร็จสิ้น? ระบบจะเพิ่มสต๊อกให้ทันที (ไม่สามารถแก้ไขได้อีก)',
+    this.swal
+      .confirm(
+        'ยืนยันการรับสินค้าเข้าสต๊อค',
+        'ยืนยันว่าทำการรับสินค้าเข้าคลังเสร็จสิ้น? ระบบจะเพิ่มสต๊อกให้ทันที (ไม่สามารถแก้ไขได้อีก)'
       )
-    )
-      return;
-
-    this.submitting.set(true);
-    this.grService.complete(this.receiptId()!).subscribe({
-      next: () => {
-        window.location.reload();
-      },
-      error: (err) => {
-        this.error.set(err.error?.message || 'เกิดข้อผิดพลาด');
-        this.submitting.set(false);
-      },
-    });
+      .then((res) => {
+        if (res.isConfirmed) {
+          this.submitting.set(true);
+          this.grService.complete(this.receiptId()!).subscribe({
+            next: () => {
+              window.location.reload();
+            },
+            error: (err) => {
+              this.error.set(err.error?.message || 'เกิดข้อผิดพลาด');
+              this.submitting.set(false);
+            },
+          });
+        }
+      });
   }
 
   getStatusBadgeClass(status: string | undefined): string {

@@ -1,10 +1,15 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 using System.Data.Common;
 
 namespace PCS_API.Services;
 
-public class GoodsReceiptService(IGoodsReceiptRepository grRepo, IStockRepository stockRepo, ISqlConnectionFactory connectionFactory) : IGoodsReceiptService
+public class GoodsReceiptService(
+    IGoodsReceiptRepository grRepo, 
+    IStockRepository stockRepo, 
+    ISqlConnectionFactory connectionFactory,
+    IFinancialTransactionService financialTransactionService,
+    IAccountTransactionRepository accountTransactionRepo) : IGoodsReceiptService
 {
     public async Task<PagedResultDto<GoodsReceiptListDto>> GetPagedAsync(GoodsReceiptSearchDto search, CancellationToken cancellationToken = default)
     {
@@ -88,6 +93,50 @@ public class GoodsReceiptService(IGoodsReceiptRepository grRepo, IStockRepositor
             string newPoStatus = fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED";
             
             await grRepo.UpdatePurchaseOrderStatusAsync(receipt.PurchaseOrderId, newPoStatus, tx);
+
+            // ─── Finance Integration ───
+            decimal goodsCost = items.Sum(i => (i.ReceivedQuantity + i.DefectiveQuantity + i.DamagedQuantity) * i.UnitPrice);
+            decimal totalCost = goodsCost + receipt.ShippingCost;
+
+            if (totalCost > 0)
+            {
+                // 1. Log Expense (AccountTransactions)
+                int expenseId = await accountTransactionRepo.CreateAsync(new Models.AccountTransactionModel
+                {
+                    TransactionDate = DateTime.Now,
+                    Type = "Expense",
+                    Amount = totalCost,
+                    ReferenceType = "GoodsReceipt",
+                    ReferenceId = receiptId,
+                    Notes = $"รับสินค้าเข้าระบบ ใบรับสินค้าเลขที่ {receipt?.ReceiptId}",
+                    CreatedBy = updatedBy
+                }, dbTx, cancellationToken);
+
+                // 2. Log Journal (FinancialTransactions)
+                var journalDto = new FinancialTransactionCreateDto
+                {
+                    TransactionDate = DateOnly.FromDateTime(receipt.ReceiptDate == default ? DateTime.Now : receipt.ReceiptDate),
+                    TransactionType = "GOODS_RECEIPT",
+                    ReferenceType = "GoodsReceipt",
+                    ReferenceId = receiptId,
+                    Description = $"บันทึกบัญชีรับสินค้า ใบรับสินค้า {receipt?.ReceiptId}",
+                    TotalAmount = totalCost,
+                    CreatedBy = updatedBy,
+                    LedgerEntries = new List<LedgerEntryCreateDto>
+                    {
+                        new() { AccountId = 4, DebitAmount = goodsCost, CreditAmount = 0, Memo = "ต้นทุนสินค้าเข้าสต๊อก" },
+                    }
+                };
+
+                if (receipt.ShippingCost > 0)
+                {
+                    journalDto.LedgerEntries.Add(new() { AccountId = 14, DebitAmount = receipt.ShippingCost, CreditAmount = 0, Memo = "ค่าขนส่งสินค้าเข้า" });
+                }
+
+                journalDto.LedgerEntries.Add(new() { AccountId = 2, DebitAmount = 0, CreditAmount = totalCost, Memo = "ลดยอดเงินสด/ธนาคารสำหรับค่าสินค้า" });
+
+                await financialTransactionService.CreateTransactionWithLedgerAsync(journalDto, dbTx, cancellationToken);
+            }
 
             await tx.CommitAsync(cancellationToken);
             return ResultDto<bool>.Success(true);

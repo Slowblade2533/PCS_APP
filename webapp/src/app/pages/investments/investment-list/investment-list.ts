@@ -35,14 +35,32 @@ export class InvestmentList {
   get filteredInvestments(): Investment[] {
     const term = this.searchTerm().toLowerCase().trim();
     const investments = this.investmentsResource.value() || [];
-    if (!term) return investments;
+    let filtered = investments;
 
-    return investments.filter(
-      (inv) =>
-        inv.investorName?.toLowerCase().includes(term) ||
-        (inv.investmentType === 0 ? 'equity' : 'loan').includes(term) ||
-        (inv.investmentType === 0 ? 'หุ้นส่วน' : 'เงินกู้ยืม').includes(term),
-    );
+    if (term) {
+      filtered = investments.filter(
+        (inv) =>
+          inv.investorName?.toLowerCase().includes(term) ||
+          (inv.investmentType === 0 ? 'equity' : 'loan').includes(term) ||
+          (inv.investmentType === 0 ? 'หุ้นส่วน' : 'เงินกู้ยืม').includes(term),
+      );
+    }
+
+    // Sort by newest to oldest
+    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  get totalInvestment(): number {
+    return (this.investmentsResource.value() || []).reduce((sum, inv) => sum + inv.principalAmount, 0);
+  }
+
+  // To be properly implemented when expense tracking per investment is available
+  get totalSpent(): number {
+    return 0; 
+  }
+
+  get remainingBalance(): number {
+    return this.totalInvestment - this.totalSpent;
   }
 
   onSearch(event: Event): void {

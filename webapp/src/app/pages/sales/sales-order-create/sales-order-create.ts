@@ -37,7 +37,7 @@ export class SalesOrderCreate implements OnInit {
   loading = computed(() => this.orderResource.isLoading());
 
   // Form State
-  orderDate = signal<string>(new Date().toISOString().split('T')[0]);
+  orderDate = signal<string>(new Date().toLocaleDateString('en-CA'));
   customerName = signal<string>('');
   customerPhone = signal<string>('');
   customerTaxId = signal<string>('');

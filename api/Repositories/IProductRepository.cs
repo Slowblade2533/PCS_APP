@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using System.Data;
 
 namespace PCS_API.Repositories;
@@ -22,6 +22,6 @@ public interface IProductRepository
 
     Task<List<int>> GetExistingVariantIdsAsync(int productId, IDbTransaction transaction, CancellationToken cancellationToken = default);
     Task<List<(int VariantId, string? ImageUrl)>> GetVariantImagesAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default);
-    Task<List<(int VariantId, byte[] RowVersion)>> GetStockRowVersionsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default);
+    Task<List<(int VariantId, string Condition, byte[] RowVersion)>> GetStockRowVersionsAsync(IEnumerable<int> variantIds, IDbTransaction transaction, CancellationToken cancellationToken = default);
 }
 

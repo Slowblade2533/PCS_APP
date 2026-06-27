@@ -15,8 +15,8 @@ export class ProfitLoss implements OnInit {
   private financialService = inject(FinancialService);
   private destroyRef = inject(DestroyRef);
 
-  dateFrom = signal<string>(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]); // Start of year
-  dateTo = signal<string>(new Date().toISOString().split('T')[0]); // Today
+  dateFrom = signal<string>(new Date(new Date().getFullYear(), 0, 1).toLocaleDateString('en-CA')); // Start of year
+  dateTo = signal<string>(new Date().toLocaleDateString('en-CA')); // Today
 
   report = signal<ProfitAndLossReport | null>(null);
   loading = signal<boolean>(false);

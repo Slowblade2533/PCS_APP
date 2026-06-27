@@ -16,10 +16,10 @@ export class GeneralJournal implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   dateFrom = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA'),
   );
   dateTo = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA'),
   );
 
   rows = signal<(GeneralJournalRow & { isAlternate?: boolean })[]>([]);
@@ -58,9 +58,14 @@ export class GeneralJournal implements OnInit {
 
     // Outgoing list (จ่ายออก - red)
     if (
-      ['PURCHASE_GENERAL', 'PURCHASE_VCB', 'FREIGHT_VCB', 'FREIGHT_GENERAL', 'EXPENSE'].includes(
-        upperType,
-      )
+      [
+        'PURCHASE_GENERAL',
+        'PURCHASE_VCB',
+        'FREIGHT_VCB',
+        'FREIGHT_GENERAL',
+        'EXPENSE',
+        'GOODS_RECEIPT',
+      ].includes(upperType)
     ) {
       return 'bg-error/5';
     }

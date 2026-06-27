@@ -52,7 +52,7 @@ export class TransactionCreate implements OnInit {
   branches = computed(() => this.branchesResource.value()?.filter((b) => b.isActive) || []);
 
   // Form State
-  transactionDate = signal<string>(new Date().toISOString().split('T')[0]);
+  transactionDate = signal<string>(new Date().toLocaleDateString('en-CA'));
   transactionType = signal<TransactionType>('EXPENSE');
   description = signal<string>('');
   paymentMethod = signal<string>('CASH');
@@ -134,6 +134,7 @@ export class TransactionCreate implements OnInit {
     { value: 'SCRAP', label: 'ตัดจำหน่ายทิ้ง' },
     { value: 'TRANSFER_IN', label: 'รับโอนเงิน' },
     { value: 'RECEIPT', label: 'รับเงินเข้า' },
+    { value: 'GOODS_RECEIPT', label: 'ใบรับสินค้า' },
   ];
 
   constructor() {
@@ -157,6 +158,8 @@ export class TransactionCreate implements OnInit {
     if (id) {
       this.transactionId.set(Number(id));
       this.isViewMode.set(true);
+    } else {
+      this.slipDateTime.set(this.getCurrentLocalDateTimeString());
     }
   }
 
@@ -177,6 +180,8 @@ export class TransactionCreate implements OnInit {
     this.status.set(d.status || 'POSTED');
     if (d.slipDateTime) {
       this.slipDateTime.set(d.slipDateTime.substring(0, 16));
+    } else {
+      this.slipDateTime.set(this.getCurrentLocalDateTimeString());
     }
     this.originBank.set(d.originBank || '');
     this.destinationBank.set(d.destinationBank || '');
@@ -280,6 +285,7 @@ export class TransactionCreate implements OnInit {
         break;
       case 'PURCHASE_GENERAL':
       case 'PURCHASE_VCB':
+      case 'GOODS_RECEIPT':
         debitCodeOverride = '1100'; // Inventory
         creditCodeOverride = method === 'TRANSFER' ? '1001' : '1000';
         break;
@@ -625,6 +631,12 @@ export class TransactionCreate implements OnInit {
         },
       });
     });
+  }
+
+  getCurrentLocalDateTimeString(): string {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offset).toISOString().substring(0, 16);
   }
 
   protected readonly Math = Math;

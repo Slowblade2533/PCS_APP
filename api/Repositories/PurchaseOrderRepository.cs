@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using PCS_API.DTOs;
 using System.Data;
 using System.Text;
@@ -127,16 +127,74 @@ public class PurchaseOrderRepository(ISqlConnectionFactory connectionFactory) : 
 
     public async Task<int> UpdateSlipAsync(int purchaseOrderId, string slipUrl, int? updatedBy, IDbTransaction? tx = null)
     {
-        var conn = tx?.Connection ?? connectionFactory.CreateConnection();
-        try
+        using var defaultConn = tx == null ? connectionFactory.CreateConnection() : null;
+        var conn = tx?.Connection ?? defaultConn!;
+
+        const string sql = @"
+            UPDATE dbo.PurchaseOrders
+            SET SlipAttachmentUrl = @slipUrl,
+                UpdatedBy = @updatedBy,
+                UpdatedAt = GETDATE()
+            WHERE PurchaseOrderId = @purchaseOrderId;";
+
+        return await conn.ExecuteAsync(sql, new { purchaseOrderId, slipUrl, updatedBy }, tx);
+    }
+
+    public async Task<int> UpdateOrderAndItemsAsync(int purchaseOrderId, PurchaseOrderCreateDto dto, decimal subTotal, decimal vatAmount, decimal grandTotal, IDbTransaction tx)
+    {
+        const string poSql = @"
+            UPDATE dbo.PurchaseOrders
+            SET SupplierName = @SupplierName, SupplierPhone = @SupplierPhone, SupplierTaxId = @SupplierTaxId, 
+                SupplierAddress = @SupplierAddress, SubTotal = @SubTotal, DiscountTotal = @DiscountTotal, 
+                ShippingCost = @ShippingCost, VatRate = @VatRate, VatAmount = @VatAmount, GrandTotal = @GrandTotal,
+                ExpectedDeliveryDate = @ExpectedDeliveryDate, PaymentMethod = @PaymentMethod, 
+                PaymentRefNo = @PaymentRefNo, SourceAccountInfo = @SourceAccountInfo, 
+                ReceiverAccountId = @ReceiverAccountId, SlipAttachmentUrl = @SlipAttachmentUrl, 
+                Notes = @Notes, UpdatedBy = @CreatedBy, UpdatedAt = GETDATE()
+            WHERE PurchaseOrderId = @PurchaseOrderId AND Status IN ('DRAFT', 'ORDERED');";
+
+        var poParams = new DynamicParameters(dto);
+        poParams.Add("PurchaseOrderId", purchaseOrderId);
+        poParams.Add("SubTotal", subTotal);
+        poParams.Add("VatAmount", vatAmount);
+        poParams.Add("GrandTotal", grandTotal);
+
+        int rows = await tx.Connection.ExecuteAsync(poSql, poParams, tx);
+        if (rows == 0) return 0;
+
+        // Delete existing items
+        await tx.Connection.ExecuteAsync("DELETE FROM dbo.PurchaseOrderItems WHERE PurchaseOrderId = @PurchaseOrderId", new { PurchaseOrderId = purchaseOrderId }, tx);
+
+        // Insert new items
+        var itemBatch = new StringBuilder();
+        var itemParams = new DynamicParameters();
+        itemParams.Add("POId", purchaseOrderId);
+        for (int i = 0; i < dto.Items.Count; i++)
         {
-            return await conn.ExecuteAsync(
-                "UPDATE dbo.PurchaseOrders SET SlipAttachmentUrl = @slipUrl, UpdatedBy = @updatedBy, UpdatedAt = GETDATE() WHERE PurchaseOrderId = @purchaseOrderId;",
-                new { purchaseOrderId, slipUrl, updatedBy }, tx);
+            var item = dto.Items[i];
+            itemBatch.AppendLine($@"
+                INSERT INTO dbo.PurchaseOrderItems (PurchaseOrderId, VariantId, Quantity, UnitPrice, LineTotal)
+                VALUES (@POId, @VId_{i}, @Qty_{i}, @Price_{i}, @LineTotal_{i});");
+            itemParams.Add($"VId_{i}", item.VariantId);
+            itemParams.Add($"Qty_{i}", item.Quantity);
+            itemParams.Add($"Price_{i}", item.UnitPrice);
+            itemParams.Add($"LineTotal_{i}", item.Quantity * item.UnitPrice);
         }
-        finally
+
+        if (itemBatch.Length > 0)
         {
-            if (tx == null) conn.Dispose();
+            await tx.Connection.ExecuteAsync(itemBatch.ToString(), itemParams, tx);
         }
+
+        return rows;
+    }
+
+    public async Task<int> DeleteAsync(int purchaseOrderId, IDbTransaction tx)
+    {
+        // First delete items
+        await tx.Connection.ExecuteAsync("DELETE FROM dbo.PurchaseOrderItems WHERE PurchaseOrderId = @PurchaseOrderId", new { PurchaseOrderId = purchaseOrderId }, tx);
+        
+        // Then delete the order itself (only if DRAFT or ORDERED without GR)
+        return await tx.Connection.ExecuteAsync("DELETE FROM dbo.PurchaseOrders WHERE PurchaseOrderId = @PurchaseOrderId AND Status IN ('DRAFT', 'ORDERED')", new { PurchaseOrderId = purchaseOrderId }, tx);
     }
 }

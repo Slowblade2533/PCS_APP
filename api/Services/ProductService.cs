@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 using PCS_API.Models;
 using System.Data;
@@ -84,7 +84,7 @@ public class ProductService(
             {
                 int variantId = await productRepository.InsertProductVariantAsync(productId, v, transaction, cancellationToken);
                 await productRepository.InsertProductPriceAsync(variantId, v.BasePrice, v.DiscountPrice, transaction, cancellationToken);
-                await stockRepository.InsertStockAsync(variantId, v.CurrentQuantity, v.ReorderPoint, transaction, cancellationToken);
+                await stockRepository.InsertStockAsync(variantId, v.CurrentQuantity, v.ReorderPoint, v.Condition ?? "Normal", transaction, cancellationToken);
 
                 if (dto.IsStockTracked && v.CurrentQuantity > 0)
                 {
@@ -92,6 +92,7 @@ public class ProductService(
                     {
                         VariantId = variantId,
                         TransactionType = "IN",
+                        Condition = v.Condition ?? "Normal",
                         Quantity = v.CurrentQuantity,
                         UnitCost = 0.00m,
                         Notes = "บันทึกยอดตั้งต้นจากการเพิ่มสินค้าใหม่",
@@ -204,7 +205,7 @@ public class ProductService(
                 .ToList();
 
             Dictionary<int, string?> oldImageMap = new();
-            Dictionary<int, byte[]> rowVersionMap = new();
+            Dictionary<(int VariantId, string Condition), byte[]> rowVersionMap = new();
             
             if (existingVarIdsForUpdate.Any())
             {
@@ -212,7 +213,7 @@ public class ProductService(
                 var stockSnapshots = await productRepository.GetStockRowVersionsAsync(existingVarIdsForUpdate, transaction, cancellationToken);
 
                 oldImageMap = oldImages.ToDictionary(x => x.VariantId, x => x.ImageUrl);
-                rowVersionMap = stockSnapshots.ToDictionary(x => x.VariantId, x => x.RowVersion);
+                rowVersionMap = stockSnapshots.ToDictionary(x => (x.VariantId, x.Condition), x => x.RowVersion);
             }
 
             var newVariants = dto.Variants.Where(v => v.VariantId == null || v.VariantId == 0).ToList();
@@ -222,7 +223,7 @@ public class ProductService(
                 {
                     int vId = await productRepository.InsertProductVariantAsync(productId, v, transaction, cancellationToken);
                     await productRepository.InsertProductPriceAsync(vId, v.BasePrice, v.DiscountPrice, transaction, cancellationToken);
-                    await stockRepository.InsertStockAsync(vId, v.CurrentQuantity, v.ReorderPoint, transaction, cancellationToken);
+                    await stockRepository.InsertStockAsync(vId, v.CurrentQuantity, v.ReorderPoint, v.Condition ?? "Normal", transaction, cancellationToken);
 
                     if (dto.IsStockTracked && v.CurrentQuantity > 0)
                     {
@@ -230,6 +231,7 @@ public class ProductService(
                         {
                             VariantId = vId,
                             TransactionType = "IN",
+                            Condition = v.Condition ?? "Normal",
                             Quantity = v.CurrentQuantity,
                             UnitCost = 0.00m,
                             Notes = "บันทึกยอดตั้งต้นจากการเพิ่ม SKU ใหม่ในโหมดแก้ไข",
@@ -254,7 +256,8 @@ public class ProductService(
                     }
                     return new {
                         UVariantId = variantId,
-                        URowVersion = rowVersionMap.GetValueOrDefault(variantId, Array.Empty<byte>()),
+                        UCondition = v.Condition ?? "Normal",
+                        URowVersion = rowVersionMap.GetValueOrDefault((variantId, v.Condition ?? "Normal"), Array.Empty<byte>()),
                         v.Sku, v.Barcode, v.VariantNameTh, v.VariantNameEn, v.Color, v.SizeLabel, v.StylePattern, v.UnitOfMeasure,
                         v.Width, v.Length, v.Height, v.Weight, v.ImageUrl,
                         v.BasePrice, v.DiscountPrice, v.CurrentQuantity, v.ReorderPoint

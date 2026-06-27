@@ -19,10 +19,10 @@ export class GeneralLedger implements OnInit {
   selectedAccountId = signal<number | null>(null);
 
   dateFrom = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA'),
   );
   dateTo = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA'),
   );
 
   rows = signal<GeneralLedgerRow[]>([]);

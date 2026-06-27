@@ -299,6 +299,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
             { field: 'ราคาขาย (บาท)', old: '-', new: v.basePrice ?? 0, isChanged: true },
             { field: 'สต็อกเริ่มต้น', old: '-', new: v.currentQuantity ?? 0, isChanged: true },
             { field: 'จุดเตือนสต็อกต่ำ', old: '-', new: v.reorderPoint ?? 0, isChanged: true },
+            { field: 'สภาพสินค้า', old: '-', new: v.condition === 'Normal' ? 'ปกติ' : v.condition === 'Defect' ? 'ตำหนิ' : v.condition === 'Damage' ? 'ชำรุด' : v.condition || 'ปกติ', isChanged: true },
           ],
         };
       }
@@ -394,6 +395,12 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
           new: v.reorderPoint ?? 0,
           isChanged: Number(oldV.reorderPoint) !== Number(v.reorderPoint),
         },
+        {
+          field: 'สภาพสินค้า',
+          old: oldV.condition === 'Normal' ? 'ปกติ' : oldV.condition === 'Defect' ? 'ตำหนิ' : oldV.condition === 'Damage' ? 'ชำรุด' : oldV.condition || 'ปกติ',
+          new: v.condition === 'Normal' ? 'ปกติ' : v.condition === 'Defect' ? 'ตำหนิ' : v.condition === 'Damage' ? 'ชำรุด' : v.condition || 'ปกติ',
+          isChanged: oldV.condition !== v.condition,
+        },
       ];
 
       const hasAnyChange = detailsReport.some((d) => d.isChanged);
@@ -447,6 +454,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       ],
       currentQuantity: [v.currentQuantity ?? 0, [Validators.required, Validators.min(0)]],
       reorderPoint: [v.reorderPoint ?? 0, [Validators.required, Validators.min(0)]],
+      condition: [v.condition ?? 'Normal', [Validators.required]],
     });
 
     if (this.currentMode() === 'view') {
@@ -477,6 +485,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       discountPrice: ['0.00', [Validators.min(0)]],
       currentQuantity: [0, [Validators.required, Validators.min(0)]],
       reorderPoint: [0, [Validators.required, Validators.min(0)]],
+      condition: ['Normal', [Validators.required]],
     });
     this.variants.push(variantForm);
   }

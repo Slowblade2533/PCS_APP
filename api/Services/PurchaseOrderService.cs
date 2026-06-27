@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 using System.Data.Common;
 
@@ -51,5 +51,62 @@ public class PurchaseOrderService(IPurchaseOrderRepository poRepo, ISqlConnectio
     {
         int rows = await poRepo.UpdateSlipAsync(purchaseOrderId, slipUrl, updatedBy);
         return rows > 0 ? ResultDto<bool>.Success(true) : ResultDto<bool>.Failure("ไม่พบใบสั่งซื้อ");
+    }
+
+    public async Task<ResultDto<bool>> UpdateAsync(int purchaseOrderId, PurchaseOrderCreateDto dto, CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.CreateConnection() as DbConnection;
+        if (connection == null) throw new InvalidOperationException("Cannot create DbConnection.");
+        await connection.OpenAsync(cancellationToken);
+        using var tx = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            decimal subTotal = dto.Items.Sum(i => i.UnitPrice * i.Quantity);
+            decimal vatAmount = Math.Round((subTotal - dto.DiscountTotal) * dto.VatRate / 100m, 2);
+            decimal grandTotal = subTotal - dto.DiscountTotal + dto.ShippingCost + vatAmount;
+
+            int rows = await poRepo.UpdateOrderAndItemsAsync(purchaseOrderId, dto, subTotal, vatAmount, grandTotal, tx);
+            
+            if (rows == 0)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return ResultDto<bool>.Failure("ไม่สามารถแก้ไขใบสั่งซื้อได้ (อาจลบไปแล้ว หรือสถานะไม่อนุญาตให้แก้ไข)");
+            }
+
+            await tx.CommitAsync(cancellationToken);
+            return ResultDto<bool>.Success(true);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<ResultDto<bool>> DeleteAsync(int purchaseOrderId, CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.CreateConnection() as DbConnection;
+        if (connection == null) throw new InvalidOperationException("Cannot create DbConnection.");
+        await connection.OpenAsync(cancellationToken);
+        using var tx = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            int rows = await poRepo.DeleteAsync(purchaseOrderId, tx);
+            if (rows == 0)
+            {
+                await tx.RollbackAsync(cancellationToken);
+                return ResultDto<bool>.Failure("ไม่สามารถลบใบสั่งซื้อได้ (อาจจะเปลี่ยนสถานะไปแล้ว)");
+            }
+
+            await tx.CommitAsync(cancellationToken);
+            return ResultDto<bool>.Success(true);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 }

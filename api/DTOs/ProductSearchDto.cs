@@ -1,4 +1,4 @@
-﻿namespace PCS_API.DTOs;
+namespace PCS_API.DTOs;
 
 public class ProductSearchParamsDto : PaginationParamsDto
 {
@@ -63,6 +63,7 @@ public class ProductVariantDetailDto
     public decimal DiscountPrice { get; set; }
     public int CurrentQuantity { get; set; }
     public int ReorderPoint { get; set; }
+    public string Condition { get; set; } = "Normal";
 }
 
 public class ResultDto<T>

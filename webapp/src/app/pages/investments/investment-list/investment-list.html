@@ -27,6 +27,33 @@
     </a>
   </div>
 
+  <!-- Summary Dashboard -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- งบลงทุนทั้งหมด -->
+    <div class="card bg-primary text-primary-content shadow-xl hover:-translate-y-1 transition-transform">
+      <div class="card-body p-6">
+        <h2 class="card-title text-sm opacity-80">งบลงทุนทั้งหมด</h2>
+        <p class="text-3xl font-bold tracking-tight">฿{{ totalInvestment | number: '1.2-2' }}</p>
+      </div>
+    </div>
+    
+    <!-- ใช้จ่ายทั้งหมด -->
+    <div class="card bg-secondary text-secondary-content shadow-xl hover:-translate-y-1 transition-transform">
+      <div class="card-body p-6">
+        <h2 class="card-title text-sm opacity-80">ใช้จ่ายทั้งหมด</h2>
+        <p class="text-3xl font-bold tracking-tight">฿{{ totalSpent | number: '1.2-2' }}</p>
+      </div>
+    </div>
+    
+    <!-- คงเหลือ -->
+    <div class="card bg-accent text-accent-content shadow-xl hover:-translate-y-1 transition-transform">
+      <div class="card-body p-6">
+        <h2 class="card-title text-sm opacity-80">คงเหลือ</h2>
+        <p class="text-3xl font-bold tracking-tight">฿{{ remainingBalance | number: '1.2-2' }}</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Search & Filter Card -->
   <div class="card bg-base-100/50 backdrop-blur-md border border-base-200 shadow-xl">
     <div class="card-body p-4 flex flex-col md:flex-row gap-4 items-center justify-between">

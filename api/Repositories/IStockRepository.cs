@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using System.Data;
 
 namespace PCS_API.Repositories;
@@ -11,5 +11,5 @@ public interface IStockRepository
     Task<bool> VariantExistsAsync(int variantId, IDbTransaction transaction);
     Task<bool> TransactionExistsByRequestIdAsync(Guid requestId, IDbTransaction transaction);
     Task<int> CreateTransactionAsync(PCS_API.Models.StockTransactionModel tx, IDbTransaction transaction);
-    Task InsertStockAsync(int variantId, int currentQuantity, int reorderPoint, IDbTransaction transaction, CancellationToken cancellationToken = default);
+    Task InsertStockAsync(int variantId, int currentQuantity, int reorderPoint, string condition, IDbTransaction transaction, CancellationToken cancellationToken = default);
 }

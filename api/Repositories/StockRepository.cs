@@ -239,12 +239,12 @@ public class StockRepository(ISqlConnectionFactory connectionFactory) : IStockRe
         const string sql = @"SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.StockTransactions WHERE RequestId = @requestId) THEN 1 ELSE 0 END";
         return await conn.ExecuteScalarAsync<bool>(sql, new { requestId }, transaction);
     }
-    public async Task InsertStockAsync(int variantId, int currentQuantity, int reorderPoint, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    public async Task InsertStockAsync(int variantId, int currentQuantity, int reorderPoint, string condition, IDbTransaction transaction, CancellationToken cancellationToken = default)
     {
         var conn = transaction.Connection ?? throw new InvalidOperationException("Transaction connection cannot be null.");
         string stockSql = @"
-            INSERT INTO dbo.Stocks (VariantId, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
-            VALUES (@VariantId, @CurrentQuantity, 0, @ReorderPoint, GETDATE());";
-        await Dapper.SqlMapper.ExecuteAsync(conn, new Dapper.CommandDefinition(stockSql, new { VariantId = variantId, CurrentQuantity = currentQuantity, ReorderPoint = reorderPoint }, transaction: transaction, cancellationToken: cancellationToken));
+            INSERT INTO dbo.Stocks (VariantId, Condition, CurrentQuantity, ReservedQuantity, ReorderPoint, UpdatedAt)
+            VALUES (@VariantId, @Condition, @CurrentQuantity, 0, @ReorderPoint, GETDATE());";
+        await Dapper.SqlMapper.ExecuteAsync(conn, new Dapper.CommandDefinition(stockSql, new { VariantId = variantId, Condition = condition, CurrentQuantity = currentQuantity, ReorderPoint = reorderPoint }, transaction: transaction, cancellationToken: cancellationToken));
     }
 }

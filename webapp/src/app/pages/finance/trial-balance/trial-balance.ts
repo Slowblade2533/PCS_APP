@@ -21,8 +21,12 @@ export class TrialBalance implements OnInit {
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
 
-  dateFrom = signal<string>('');
-  dateTo = signal<string>('');
+  dateFrom = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+  );
+  dateTo = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+  );
 
   private refresh$ = new BehaviorSubject<void>(undefined);
 

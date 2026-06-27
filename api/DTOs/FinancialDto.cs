@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace PCS_API.DTOs;
 
@@ -105,7 +105,27 @@ public class FinancialTransactionDto
     public int TransactionId { get; set; }
     public DateOnly TransactionDate { get; set; }
     public string TransactionType { get; set; } = string.Empty;
-    public string? TransactionTypeLabel { get; set; }
+    private string? _transactionTypeLabel;
+    public string? TransactionTypeLabel
+    {
+        get => string.IsNullOrEmpty(_transactionTypeLabel) ? (TransactionType switch
+        {
+            "INVESTMENT" => "รับเงินลงทุน",
+            "SALES" => "รายได้จากการขาย",
+            "PURCHASE_GENERAL" => "ซื้อสินค้าทั่วไป",
+            "PURCHASE_VCB" => "สั่งซื้อ VCANBUY",
+            "FREIGHT_VCB" => "ค่าขนส่ง VCANBUY",
+            "FREIGHT_GENERAL" => "ค่าขนส่งทั่วไป",
+            "EXPENSE" => "ค่าใช้จ่าย",
+            "STOCK_LOSS" => "สินค้าสูญหาย",
+            "SCRAP" => "ตัดจำหน่ายทิ้ง",
+            "TRANSFER_IN" => "รับโอนเงิน",
+            "RECEIPT" => "รับเงินเข้า",
+            "GOODS_RECEIPT" => "ใบรับสินค้า",
+            _ => TransactionType
+        }) : _transactionTypeLabel;
+        set => _transactionTypeLabel = value;
+    }
     public string? ReferenceType { get; set; }
     public int? ReferenceId { get; set; }
     public string? Description { get; set; }
@@ -273,7 +293,27 @@ public class GeneralJournalRowDto
     public DateOnly TransactionDate { get; set; }
     public string? DocumentNo { get; set; }
     public string TransactionType { get; set; } = string.Empty;
-    public string? TransactionTypeLabel { get; set; }
+    private string? _transactionTypeLabel;
+    public string? TransactionTypeLabel
+    {
+        get => string.IsNullOrEmpty(_transactionTypeLabel) ? (TransactionType switch
+        {
+            "INVESTMENT" => "รับเงินลงทุน",
+            "SALES" => "รายได้จากการขาย",
+            "PURCHASE_GENERAL" => "ซื้อสินค้าทั่วไป",
+            "PURCHASE_VCB" => "สั่งซื้อ VCANBUY",
+            "FREIGHT_VCB" => "ค่าขนส่ง VCANBUY",
+            "FREIGHT_GENERAL" => "ค่าขนส่งทั่วไป",
+            "EXPENSE" => "ค่าใช้จ่าย",
+            "STOCK_LOSS" => "สินค้าสูญหาย",
+            "SCRAP" => "ตัดจำหน่ายทิ้ง",
+            "TRANSFER_IN" => "รับโอนเงิน",
+            "RECEIPT" => "รับเงินเข้า",
+            "GOODS_RECEIPT" => "ใบรับสินค้า",
+            _ => TransactionType
+        }) : _transactionTypeLabel;
+        set => _transactionTypeLabel = value;
+    }
     public string? Memo { get; set; }
     public int AccountId { get; set; }
     public string AccountCode { get; set; } = string.Empty;

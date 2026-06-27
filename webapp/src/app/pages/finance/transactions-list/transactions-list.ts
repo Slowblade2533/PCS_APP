@@ -32,8 +32,12 @@ export class TransactionsList implements OnInit {
 
   searchTerm = signal<string>('');
   selectedType = signal<string>('');
-  dateFrom = signal<string>('');
-  dateTo = signal<string>('');
+  dateFrom = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`
+  );
+  dateTo = signal<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+  );
 
   private searchSubject = new Subject<string>();
 
@@ -50,6 +54,7 @@ export class TransactionsList implements OnInit {
     { value: 'SCRAP', label: 'ตัดจำหน่ายทิ้ง' },
     { value: 'TRANSFER_IN', label: 'รับโอนเงิน' },
     { value: 'RECEIPT', label: 'รับเงินเข้า' },
+    { value: 'GOODS_RECEIPT', label: 'ใบรับสินค้า' },
   ];
 
   transactionsResource = rxResource<
@@ -120,6 +125,7 @@ export class TransactionsList implements OnInit {
         return 'badge-secondary text-white';
       case 'PURCHASE_GENERAL':
       case 'PURCHASE_VCB':
+      case 'GOODS_RECEIPT':
         return 'badge-warning';
       case 'FREIGHT_VCB':
       case 'FREIGHT_GENERAL':

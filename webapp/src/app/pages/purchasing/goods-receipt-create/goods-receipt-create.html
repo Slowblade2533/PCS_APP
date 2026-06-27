@@ -86,7 +86,7 @@
               [routerLink]="['/purchasing/purchase-orders', detail()?.purchaseOrderId]"
               class="font-medium text-info hover:underline"
             >
-              {{ detail()?.pONo }}
+              {{ detail()?.poNo }}
             </a>
           </div>
 
@@ -145,6 +145,7 @@
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
+              <th>รูปภาพ</th>
               <th>รหัส/SKU</th>
               <th>สินค้า</th>
               <th class="text-right">จำนวนที่ต้องรับ (ค้างรับ)</th>
@@ -156,6 +157,17 @@
           <tbody>
             @for (item of detail()?.items; track item.receiptItemId) {
               <tr>
+                <td>
+                  <div class="w-12 h-12 rounded border overflow-hidden">
+                    @if (item.imageUrl) {
+                      <app-image-hover-preview [imageUrl]="apiOrigin + item.imageUrl" imageClass="w-full h-full object-cover"></app-image-hover-preview>
+                    } @else {
+                      <div class="w-full h-full bg-base-200 flex items-center justify-center text-xs text-base-content/40">
+                        ไม่มีรูป
+                      </div>
+                    }
+                  </div>
+                </td>
                 <td class="font-medium text-xs">{{ item.sku }}</td>
                 <td>
                   <div class="font-medium">{{ item.productName }}</div>
@@ -186,7 +198,7 @@
         <div class="alert alert-info shadow-sm mb-4">
           <span
             >อ้างอิงจากใบสั่งซื้อ:
-            <span class="font-bold">{{ sourcePoDetail()?.pONo }}</span> (ผู้จำหน่าย:
+            <span class="font-bold">{{ sourcePoDetail()?.poNo }}</span> (ผู้จำหน่าย:
             {{ sourcePoDetail()?.supplierName }})</span
           >
         </div>
@@ -211,7 +223,10 @@
               />
             </label>
             <label class="form-control w-full">
-              <div class="label">
+              <div class="label flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/70">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
                 <span class="label-text font-medium"
                   >วันที่รับสินค้า <span class="text-error">*</span></span
                 >
@@ -344,10 +359,19 @@
             }
 
             @for (item of items(); track $index) {
-              @if (getPoItem(item.pOItemId); as poItem) {
+              @if (getPoItem(item.poItemId); as poItem) {
                 <div
                   class="flex flex-col md:flex-row gap-4 items-start p-4 bg-base-200/50 rounded-lg"
                 >
+                  <div class="w-16 h-16 rounded border overflow-hidden shrink-0">
+                    @if (poItem.imageUrl) {
+                      <app-image-hover-preview [imageUrl]="apiOrigin + poItem.imageUrl" imageClass="w-full h-full object-cover"></app-image-hover-preview>
+                    } @else {
+                      <div class="w-full h-full bg-base-200 flex items-center justify-center text-xs text-base-content/40">
+                        ไม่มีรูป
+                      </div>
+                    }
+                  </div>
                   <div class="flex-1">
                     <div class="font-medium">{{ poItem.productName }}</div>
                     @if (poItem.variantName) {

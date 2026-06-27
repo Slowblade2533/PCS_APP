@@ -161,21 +161,30 @@
                   </button>
                 }
 
-                <div class="badge badge-neutral mb-3 flex gap-1">
-                  SKU #{{ $index + 1 }}
-                  @if (variant.get('variantNameTh')?.value) {
-                    <span class="opacity-90 font-medium">
-                      ({{ variant.get('variantNameTh')?.value }})
-                    </span>
-                  } @else if (
-                    variant.get('color')?.value ||
-                    variant.get('sizeLabel')?.value ||
-                    variant.get('stylePattern')?.value
-                  ) {
-                    <span class="opacity-70 font-normal">
-                      ({{ variant.get('color')?.value }} {{ variant.get('sizeLabel')?.value }}
-                      {{ variant.get('stylePattern')?.value }})
-                    </span>
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="badge badge-neutral flex gap-1">
+                    SKU #{{ $index + 1 }}
+                    @if (variant.get('variantNameTh')?.value) {
+                      <span class="opacity-90 font-medium">
+                        ({{ variant.get('variantNameTh')?.value }})
+                      </span>
+                    } @else if (
+                      variant.get('color')?.value ||
+                      variant.get('sizeLabel')?.value ||
+                      variant.get('stylePattern')?.value
+                    ) {
+                      <span class="opacity-70 font-normal">
+                        ({{ variant.get('color')?.value }} {{ variant.get('sizeLabel')?.value }}
+                        {{ variant.get('stylePattern')?.value }})
+                      </span>
+                    }
+                  </div>
+                  @if (variant.get('condition')?.value === 'Normal') {
+                    <span class="badge badge-success badge-sm font-semibold text-white">ปกติ</span>
+                  } @else if (variant.get('condition')?.value === 'Defect') {
+                    <span class="badge badge-warning badge-sm font-semibold text-white">ตำหนิ</span>
+                  } @else if (variant.get('condition')?.value === 'Damage') {
+                    <span class="badge badge-error badge-sm font-semibold text-white">ชำรุด</span>
                   }
                 </div>
 
@@ -275,6 +284,20 @@
                       formControlName="reorderPoint"
                       class="input input-bordered w-full"
                     />
+                  </div>
+
+                  <div class="form-control">
+                    <label class="label-text text-sm font-semibold mb-1.5"
+                      >สภาพสินค้า <span class="text-error">*</span></label
+                    >
+                    <select
+                      formControlName="condition"
+                      class="select select-bordered w-full"
+                    >
+                      <option value="Normal">ปกติ</option>
+                      <option value="Defect">ตำหนิ</option>
+                      <option value="Damage">ชำรุด</option>
+                    </select>
                   </div>
 
                   <!-- Row 2 -->
