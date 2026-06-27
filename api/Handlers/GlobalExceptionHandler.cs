@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics;
 using System.Net;
 
 namespace PCS_API.Handlers;
@@ -7,6 +7,13 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException)
+        {
+            logger.LogInformation("การขอดึงข้อมูลถูกยกเลิกโดยผู้ใช้ (Request was cancelled by the client)");
+            httpContext.Response.StatusCode = 499;
+            return true;
+        }
+
         logger.LogError(exception, "เกิดข้อผิดพลาดที่ไม่ได้จัดการ {Message}", exception.Message);
 
         var statusCode = HttpStatusCode.InternalServerError;

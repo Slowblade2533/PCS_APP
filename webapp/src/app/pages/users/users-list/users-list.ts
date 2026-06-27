@@ -44,7 +44,7 @@ export class UsersList implements OnInit {
     this.filterForm
       .get('searchText')
       ?.valueChanges.pipe(
-        debounceTime(350),
+        debounceTime(300),
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef),
       )

@@ -83,7 +83,7 @@ export class ProductsList implements OnInit {
 
   ngOnInit() {
     this.searchTrigger$
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => {
         this.searchTerm.set(search);
         this.pageNumber.set(1);

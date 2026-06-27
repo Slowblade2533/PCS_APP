@@ -3,7 +3,7 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
+import { catchError, debounceTime, switchMap, tap } from 'rxjs/operators';
 import { TrialBalanceRow } from '../../../shared/models/financial.models';
 import { FinancialService } from '../../../shared/services/financial.service';
 
@@ -33,6 +33,7 @@ export class TrialBalance implements OnInit {
   ngOnInit() {
     this.refresh$
       .pipe(
+        debounceTime(300),
         tap(() => {
           this.loading.set(true);
           this.error.set(null);

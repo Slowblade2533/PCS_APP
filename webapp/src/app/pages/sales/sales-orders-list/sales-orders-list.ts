@@ -70,7 +70,7 @@ export class SalesOrdersList {
 
   constructor() {
     this.searchSubject
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.searchTerm.set(term);
         this.pageNumber.set(1);

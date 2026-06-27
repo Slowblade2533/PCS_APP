@@ -43,7 +43,7 @@ export class StockList implements OnInit {
 
   ngOnInit(): void {
     this.search$
-      .pipe(debounceTime(350), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((search) => {
         this.query.update((q) => ({ ...q, search: search || undefined, page: 1 }));
         this.refresh$.next();

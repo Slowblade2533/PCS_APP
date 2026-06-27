@@ -63,7 +63,7 @@ export class TaxInvoicesList implements OnInit {
   ngOnInit() {
     this.searchSubject
       .pipe(
-        debounceTime(350),
+        debounceTime(300),
         distinctUntilChanged(),
         tap((term) => {
           this.searchTerm.set(term);

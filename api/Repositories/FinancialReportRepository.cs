@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using PCS_API.DTOs;
 using System.Text;
 
@@ -11,7 +11,6 @@ public class FinancialReportRepository(ISqlConnectionFactory connectionFactory) 
         using var conn = connectionFactory.CreateConnection();
         var p = new DynamicParameters();
         var txWhere = new StringBuilder("WHERE 1=1");
-        if (dateFrom.HasValue) { txWhere.Append(" AND ft.TransactionDate >= @DateFrom"); p.Add("DateFrom", dateFrom.Value); }
         if (dateTo.HasValue) { txWhere.Append(" AND ft.TransactionDate <= @DateTo"); p.Add("DateTo", dateTo.Value); }
 
         string sql = $@"
