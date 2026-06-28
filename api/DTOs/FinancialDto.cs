@@ -273,6 +273,13 @@ public class FinancialTransactionSearchDto : PaginationParamsDto
     public DateOnly? DateTo { get; set; }
 }
 
+public class FinancialTransactionPagedResultDto : PagedResultDto<FinancialTransactionDto>
+{
+    public decimal TotalIncome { get; set; }
+    public decimal TotalExpense { get; set; }
+    public decimal NetBalance => TotalIncome - TotalExpense;
+}
+
 // ─── Trial Balance (งบทดลอง) ─────────────────────────────────────────────────
 public class TrialBalanceRowDto
 {

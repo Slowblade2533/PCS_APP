@@ -61,6 +61,12 @@
     </div>
   </div>
 
+  <app-financial-summary-cards
+    [income]="data().totalIncome"
+    [expense]="data().totalExpense"
+    [balance]="data().netBalance"
+  ></app-financial-summary-cards>
+
   @if (error()) {
     <div class="alert alert-error mb-4">
       <span>{{ error() }}</span>

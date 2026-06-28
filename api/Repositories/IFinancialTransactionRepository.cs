@@ -1,11 +1,11 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using System.Data;
 
 namespace PCS_API.Repositories;
 
 public interface IFinancialTransactionRepository
 {
-    Task<PagedResultDto<FinancialTransactionDto>> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default);
+    Task<FinancialTransactionPagedResultDto> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default);
     Task<FinancialTransactionDto?> GetTransactionByIdAsync(int transactionId, CancellationToken cancellationToken = default);
     
     Task<int> GetDailyTransactionCountAsync(DateOnly date, IDbTransaction tx, CancellationToken cancellationToken = default);

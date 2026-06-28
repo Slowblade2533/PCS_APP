@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 using System.Data;
 
@@ -6,7 +6,7 @@ namespace PCS_API.Services;
 
 public class FinancialTransactionService(IFinancialTransactionRepository transactionRepo, ISqlConnectionFactory connectionFactory) : IFinancialTransactionService
 {
-    public async Task<PagedResultDto<FinancialTransactionDto>> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default)
+    public async Task<FinancialTransactionPagedResultDto> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default)
     {
         return await transactionRepo.GetTransactionsPagedAsync(search, cancellationToken);
     }

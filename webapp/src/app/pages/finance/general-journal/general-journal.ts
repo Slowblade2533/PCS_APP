@@ -4,11 +4,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { FinancialService } from '../../../shared/services/financial.service';
 import { GeneralJournalRow } from '../../../shared/models/financial.models';
+import { FinancialSummaryCardsComponent } from '../../../shared/components/financial-summary-cards/financial-summary-cards';
 
 @Component({
   selector: 'app-general-journal',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, NgClass],
+  imports: [DatePipe, DecimalPipe, FormsModule, NgClass, FinancialSummaryCardsComponent],
   templateUrl: './general-journal.html',
 })
 export class GeneralJournal implements OnInit {

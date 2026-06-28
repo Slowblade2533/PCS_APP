@@ -5,11 +5,12 @@ import { RouterLink } from '@angular/router';
 import { Investment } from '../../../shared/models/investment.models';
 import { InvestmentService } from '../../../shared/services/investment.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
+import { FinancialSummaryCardsComponent } from '../../../shared/components/financial-summary-cards/financial-summary-cards';
 
 @Component({
   selector: 'app-investment-list',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FinancialSummaryCardsComponent],
   templateUrl: './investment-list.html',
 })
 export class InvestmentList {

@@ -7,6 +7,7 @@ import {
   ChartOfAccount,
   ChartOfAccountCreatePayload,
   FinancialTransaction,
+  FinancialTransactionPagedResult,
   FinancialTransactionCreatePayload,
   FinancialTransactionSearchParams,
   TaxInvoice,
@@ -69,7 +70,7 @@ export class FinancialService {
   // ─── Financial Transactions ──────────────────────────────────────────────────
   getTransactions(
     params: FinancialTransactionSearchParams,
-  ): Observable<PagedResult<FinancialTransaction>> {
+  ): Observable<FinancialTransactionPagedResult> {
     let p = new HttpParams()
       .set('pageNumber', params.pageNumber.toString())
       .set('pageSize', params.pageSize.toString());
@@ -77,7 +78,7 @@ export class FinancialService {
     if (params.transactionType) p = p.set('transactionType', params.transactionType);
     if (params.dateFrom) p = p.set('dateFrom', params.dateFrom);
     if (params.dateTo) p = p.set('dateTo', params.dateTo);
-    return this.http.get<PagedResult<FinancialTransaction>>(`${this.apiUrl}/transactions`, {
+    return this.http.get<FinancialTransactionPagedResult>(`${this.apiUrl}/transactions`, {
       params: p,
     });
   }

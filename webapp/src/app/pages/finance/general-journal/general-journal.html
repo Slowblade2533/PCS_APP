@@ -45,105 +45,14 @@
 
   <!-- Summary Statistics Cards -->
   @if (!loading() && rows().length > 0) {
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <!-- Total Money In Card -->
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body p-5">
-          <div class="flex items-center justify-between">
-            <div>
-              <span class="text-xs font-semibold text-base-content/60 uppercase"
-                >เงินเข้าทั้งหมด</span
-              >
-              <h3 class="text-2xl font-bold text-success mt-1">
-                {{ totalMoneyIn() | number: '1.2-2' }} บาท
-              </h3>
-            </div>
-            <div class="p-3 bg-success/10 text-success rounded-xl">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Total Money Out Card -->
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body p-5">
-          <div class="flex items-center justify-between">
-            <div>
-              <span class="text-xs font-semibold text-base-content/60 uppercase"
-                >เงินออกทั้งหมด</span
-              >
-              <h3 class="text-2xl font-bold text-error mt-1">
-                {{ totalMoneyOut() | number: '1.2-2' }} บาท
-              </h3>
-            </div>
-            <div class="p-3 bg-error/10 text-error rounded-xl">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Net Balance Card -->
-      <div class="card bg-base-100 shadow-sm border border-base-200">
-        <div class="card-body p-5">
-          <div class="flex items-center justify-between">
-            <div>
-              <span class="text-xs font-semibold text-base-content/60 uppercase"
-                >เงินคงเหลือทั้งหมด</span
-              >
-              <h3
-                class="text-2xl font-bold mt-1"
-                [class.text-success]="netBalance() >= 0"
-                [class.text-error]="netBalance() < 0"
-              >
-                {{ netBalance() | number: '1.2-2' }} บาท
-              </h3>
-            </div>
-            <div
-              class="p-3 rounded-xl"
-              [class.bg-success/10]="netBalance() >= 0"
-              [class.text-success]="netBalance() >= 0"
-              [class.bg-error/10]="netBalance() < 0"
-              [class.text-error]="netBalance() < 0"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor"
-                class="size-6"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75H21m0 0v-3.375c0-.621-.504-1.125-1.125-1.125H3.75m17.25 4.5v12.75c0 .621-.504 1.125-1.125 1.125H18M9 15h1.5M9 18h1.5"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <app-financial-summary-cards
+      incomeLabel="เงินเข้าทั้งหมด"
+      expenseLabel="เงินออกทั้งหมด"
+      balanceLabel="เงินคงเหลือทั้งหมด"
+      [income]="totalMoneyIn()"
+      [expense]="totalMoneyOut()"
+      [balance]="netBalance()"
+    ></app-financial-summary-cards>
   }
 
   <div class="card bg-base-100 shadow-sm border border-base-200">

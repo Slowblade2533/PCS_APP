@@ -8,17 +8,19 @@ import { environment } from '../../../../environments/environment';
 import { debounceTime, distinctUntilChanged, tap } from 'rxjs/operators';
 import {
   FinancialTransaction,
+  FinancialTransactionPagedResult,
   FinancialTransactionSearchParams,
   TransactionType,
 } from '../../../shared/models/financial.models';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { FinancialService } from '../../../shared/services/financial.service';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { FinancialSummaryCardsComponent } from '../../../shared/components/financial-summary-cards/financial-summary-cards';
 
 @Component({
   selector: 'app-transactions-list',
   standalone: true,
-  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe],
+  imports: [RouterLink, FormsModule, DecimalPipe, DatePipe, FinancialSummaryCardsComponent],
   templateUrl: './transactions-list.html',
 })
 export class TransactionsList implements OnInit {
@@ -58,7 +60,7 @@ export class TransactionsList implements OnInit {
   ];
 
   transactionsResource = rxResource<
-    PagedResult<FinancialTransaction>,
+    FinancialTransactionPagedResult,
     FinancialTransactionSearchParams
   >({
     params: () => ({
@@ -80,6 +82,9 @@ export class TransactionsList implements OnInit {
         pageNumber: 1,
         pageSize: 20,
         totalPages: 0,
+        totalIncome: 0,
+        totalExpense: 0,
+        netBalance: 0,
       },
   );
   loading = computed(() => this.transactionsResource.isLoading());

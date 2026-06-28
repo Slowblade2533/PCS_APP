@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using PCS_API.DTOs;
 using System.Data;
 using System.Text;
@@ -7,7 +7,7 @@ namespace PCS_API.Repositories;
 
 public class FinancialTransactionRepository(ISqlConnectionFactory connectionFactory) : IFinancialTransactionRepository
 {
-    public async Task<PagedResultDto<FinancialTransactionDto>> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default)
+    public async Task<FinancialTransactionPagedResultDto> GetTransactionsPagedAsync(FinancialTransactionSearchDto search, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();
         var p = new DynamicParameters();
@@ -27,6 +27,10 @@ public class FinancialTransactionRepository(ISqlConnectionFactory connectionFact
 
         string sql = $@"
             SELECT COUNT(*) FROM dbo.FinancialTransactions ft {where};
+            SELECT 
+                ISNULL(SUM(CASE WHEN ISNULL(ft.Status, '') != 'VOID' AND ft.TransactionType IN ('INVESTMENT', 'SALES', 'TRANSFER_IN', 'RECEIPT') THEN ft.TotalAmount ELSE 0 END), 0) AS TotalIncome,
+                ISNULL(SUM(CASE WHEN ISNULL(ft.Status, '') != 'VOID' AND ft.TransactionType NOT IN ('INVESTMENT', 'SALES', 'TRANSFER_IN', 'RECEIPT') THEN ft.TotalAmount ELSE 0 END), 0) AS TotalExpense
+            FROM dbo.FinancialTransactions ft {where};
             SELECT ft.TransactionId, ft.TransactionDate, ft.TransactionType, ft.ReferenceType,
                    ft.ReferenceId, ft.Description, ft.TotalAmount, ft.PaymentMethod,
                    ft.PaymentRefNo, ft.SourceAccountInfo, ft.AttachmentUrl,
@@ -49,12 +53,15 @@ public class FinancialTransactionRepository(ISqlConnectionFactory connectionFact
         var cmd = new CommandDefinition(sql, p, cancellationToken: cancellationToken);
         using var multi = await conn.QueryMultipleAsync(cmd);
         int total = await multi.ReadSingleAsync<int>();
+        var totals = await multi.ReadSingleAsync<dynamic>();
         var items = await multi.ReadAsync<FinancialTransactionDto>();
 
-        return new PagedResultDto<FinancialTransactionDto>
+        return new FinancialTransactionPagedResultDto
         {
             Items = items, TotalCount = total,
-            PageNumber = search.PageNumber, PageSize = search.PageSize
+            PageNumber = search.PageNumber, PageSize = search.PageSize,
+            TotalIncome = (decimal)totals.TotalIncome,
+            TotalExpense = (decimal)totals.TotalExpense
         };
     }
 

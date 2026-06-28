@@ -1,3 +1,5 @@
+import { PagedResult } from './pagination.models';
+
 // ─── Chart of Accounts ────────────────────────────────────────────────────────
 export type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
 
@@ -182,6 +184,12 @@ export interface FinancialTransactionSearchParams {
   dateTo?: string;
   pageNumber: number;
   pageSize: number;
+}
+
+export interface FinancialTransactionPagedResult extends PagedResult<FinancialTransaction> {
+  totalIncome: number;
+  totalExpense: number;
+  netBalance: number;
 }
 
 // ─── Trial Balance (งบทดลอง) ─────────────────────────────────────────────────
