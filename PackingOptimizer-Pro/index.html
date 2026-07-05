@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packing Optimizer Pro - ระบบจัดวางสินค้าลงกล่องอัจฉริยะสำหรับคลังสินค้าและ E-Commerce</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand-section">
+                <span class="brand-icon">📦</span>
+                <h1 class="brand-title">Packing Optimizer Pro</h1>
+            </div>
+            <div class="header-controls">
+                <button id="theme-toggle" class="theme-toggle-btn">
+                    <span id="theme-icon">☀️</span> <span id="theme-text">โหมดสว่าง</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar (Product, Box & Simulator CRUD Managers) -->
+        <aside class="sidebar">
+            <div class="sidebar-tabs">
+                <button id="tab-products" class="tab-btn active">จัดการสินค้า</button>
+                <button id="tab-boxes" class="tab-btn">ขนาดกล่อง</button>
+                <button id="tab-simulator" class="tab-btn">จำลองจำนวน</button>
+            </div>
+            
+            <div class="tab-content-container">
+                <!-- Products Tab -->
+                <div id="pane-products" class="tab-pane active">
+                    <div class="panel-header-row">
+                        <h3 style="font-size: 15px;">รายการสินค้า</h3>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="btn-clear-products" class="btn btn-secondary btn-sm">ล้างทั้งหมด</button>
+                            <button id="btn-add-product" class="btn btn-primary btn-sm">+ เพิ่มสินค้า</button>
+                        </div>
+                    </div>
+                    <div id="product-list-container">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+
+                <!-- Boxes Tab -->
+                <div id="pane-boxes" class="tab-pane">
+                    <div class="panel-header-row">
+                        <h3 style="font-size: 15px;">ฐานข้อมูลกล่อง</h3>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="btn-clear-boxes" class="btn btn-secondary btn-sm">ล้างทั้งหมด</button>
+                            <button id="btn-add-box" class="btn btn-primary btn-sm">+ เพิ่มกล่อง</button>
+                        </div>
+                    </div>
+                    <div id="box-list-container">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+
+                <!-- Simulator Tab -->
+                <div id="pane-simulator" class="tab-pane">
+                    <div class="panel-header-row">
+                        <h3 style="font-size: 15px;">เครื่องมือจำลองบรรจุสินค้า</h3>
+                    </div>
+                    <div class="form-group">
+                        <label for="sim-product-select">เลือกสินค้าที่ต้องการจำลอง</label>
+                        <select id="sim-product-select" class="form-control">
+                            <!-- Filled dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="sim-max-qty">จำนวนชิ้นสูงสุด (n)</label>
+                            <input type="number" id="sim-max-qty" class="form-control" value="10" min="1" max="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="sim-max-weight">จำกัดน้ำหนัก/พัสดุ (กก.)</label>
+                            <input type="number" id="sim-max-weight" class="form-control" value="20.0" min="1" max="100" step="0.5">
+                        </div>
+                    </div>
+                    <button id="btn-run-simulation" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                        📊 เริ่มจำลองการจัดส่ง
+                    </button>
+                    <div id="simulation-results-container">
+                        <!-- Table rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Dashboard Stats Row -->
+            <div class="dashboard-row-top">
+                <div class="stat-card">
+                    <span class="stat-label">จำนวน SKU ทั้งหมด</span>
+                    <span id="stat-total-skus" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">จำนวนสินค้ารวม</span>
+                    <span id="stat-total-items" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">ขนาดกล่องในระบบ</span>
+                    <span id="stat-total-boxes" class="stat-value">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">ปริมาตรสินค้ารวม</span>
+                    <span id="stat-total-volume" class="stat-value stat-accent">0 L</span>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <section class="config-section">
+                <div class="section-title">
+                    <span>⚙️ ตั้งค่าบรรจุภัณฑ์และการคำนวณ</span>
+                </div>
+                <div class="config-grid">
+                    <!-- Bubble Wrap Config -->
+                    <div class="form-group">
+                        <label>ความหนาแผ่นกันกระแทก Bubble (ซม.)</label>
+                        <input type="number" id="cfg-bubble-thickness" class="form-control" value="0.5" min="0" max="5" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>จำนวนชั้นห่อหุ้ม Bubble (ชั้น)</label>
+                        <input type="number" id="cfg-bubble-layers" class="form-control" value="1" min="0" max="5">
+                    </div>
+                    
+                    <!-- Foam Config -->
+                    <div class="form-group">
+                        <label>ความหนาแผ่นโฟมรองกันชน (ซม.)</label>
+                        <input type="number" id="cfg-foam-thickness" class="form-control" value="0.0" min="0" max="5" step="0.1">
+                    </div>
+
+                    <!-- Carton Wall Config -->
+                    <div class="form-group">
+                        <label>ความหนาผนังกล่องกระดาษ (ซม.)</label>
+                        <input type="number" id="cfg-carton-thickness" class="form-control" value="0.3" min="0" max="2" step="0.1">
+                    </div>
+
+                    <!-- Max Weight & Splitting -->
+                    <div class="form-group">
+                        <label>น้ำหนักพัสดุสูงสุดต่อกล่อง (กก.)</label>
+                        <input type="number" id="cfg-max-weight" class="form-control" value="20.0" min="1" max="100" step="0.5">
+                    </div>
+
+                    <!-- Algorithm Selection -->
+                    <div class="form-group">
+                        <label>อัลกอริทึมจัดเรียงสินค้า</label>
+                        <select id="cfg-algorithm" class="form-control">
+                            <option value="laff">วางพื้นที่ผิวใหญ่สุดก่อน (LAFF)</option>
+                            <option value="bestfit">จัดวางพื้นที่ว่างที่ดีที่สุด (3D Best-Fit)</option>
+                            <option value="grid">เรียงแบบตารางแถวระนาบ (Grid Packing)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 4px;">
+                    <div style="display: flex; gap: 20px;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="cfg-stretch-film" checked>
+                            <label for="cfg-stretch-film" style="margin: 0; cursor: pointer;">พันฟิล์มยืดรอบสินค้า</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="cfg-allow-split" checked>
+                            <label for="cfg-allow-split" style="margin: 0; cursor: pointer;">อนุญาตให้แยกบรรจุหลายกล่อง</label>
+                        </div>
+                    </div>
+                    
+                    <button id="btn-run-optimization" class="btn btn-primary" style="padding: 12px 24px; font-size: 15px;">
+                        🚀 เริ่มคำนวณการจัดกล่อง
+                    </button>
+                </div>
+            </section>
+
+            <!-- Results & Canvas Visualization Panel -->
+            <div class="results-split">
+                <!-- Canvas Visualization Card -->
+                <div class="canvas-card">
+                    <div class="canvas-header">
+                        <h3 style="font-size: 15px;">แบบจำลองจัดวางสินค้าแบบ 3 มิติ</h3>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="layer-select" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">เลเยอร์ / มุมมอง:</label>
+                            <select id="layer-select" class="form-control" style="padding: 4px 8px; font-size: 12px; width: 120px;">
+                                <option value="all">แสดงทุกชั้น</option>
+                                <option value="base">ชั้นฐานล่างสุด</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="canvas-container">
+                        <canvas id="packing-canvas"></canvas>
+                        
+                        <!-- Canvas Controls overlay -->
+                        <div class="canvas-toolbar">
+                            <button class="toolbar-btn" id="btn-zoom-in" title="ซูมเข้า">+</button>
+                            <button class="toolbar-btn" id="btn-zoom-out" title="ซูมออก">-</button>
+                            <button class="toolbar-btn" id="btn-reset-view" title="รีเซ็ตมุมมอง">↺</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Numerical Results Panel -->
+                <div id="results-panel-container">
+                    <!-- Filled dynamically by ResultPanel.js -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="product-modal-title" class="modal-title">เพิ่มสินค้าใหม่</h3>
+                <button class="modal-close" onclick="document.getElementById('product-modal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="product-form">
+                <div class="form-group">
+                    <label for="prod-sku">รหัสสินค้า (SKU) *</label>
+                    <input type="text" id="prod-sku" class="form-control" required placeholder="เช่น SKU-100-AB">
+                </div>
+                <div class="form-group">
+                    <label for="prod-name">ชื่อสินค้า</label>
+                    <input type="text" id="prod-name" class="form-control" placeholder="เช่น เครื่องชงกาแฟ">
+                </div>
+                
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="prod-width">ความกว้าง (ซม.) *</label>
+                        <input type="number" id="prod-width" class="form-control" required min="0.1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-length">ความยาว (ซม.) *</label>
+                        <input type="number" id="prod-length" class="form-control" required min="0.1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-height">ความสูง (ซม.) *</label>
+                        <input type="number" id="prod-height" class="form-control" required min="0.1" step="0.1">
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="prod-weight">น้ำหนัก (กก.) *</label>
+                        <input type="number" id="prod-weight" class="form-control" required min="0.01" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="prod-qty">จำนวนชิ้น *</label>
+                        <input type="number" id="prod-qty" class="form-control" required min="1" value="1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>ทิศทางที่อนุญาตให้หมุนจัดวาง</label>
+                    <div style="display: flex; gap: 16px; margin-top: 6px;">
+                        <label class="checkbox-group" style="font-weight: 500;">
+                            <input type="checkbox" id="prod-rot-roll" checked> แนวตะแคงข้าง (Roll)
+                        </label>
+                        <label class="checkbox-group" style="font-weight: 500;">
+                            <input type="checkbox" id="prod-rot-pitch" checked> แนวตะแคงตั้ง (Pitch)
+                        </label>
+                        <label class="checkbox-group" style="font-weight: 500;">
+                            <input type="checkbox" id="prod-rot-yaw" checked> แนวหมุนราบ (Yaw)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="prod-fragile">
+                    <label for="prod-fragile" style="font-weight: 600; cursor: pointer;">สินค้าแตกหักง่าย (ต้องการหุ้มกันกระแทกหนาพิเศษ) ⚠️</label>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('product-modal').classList.remove('active')">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกข้อมูลสินค้า</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Box Modal -->
+    <div id="box-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="box-modal-title" class="modal-title">เพิ่มขนาดกล่องใหม่</h3>
+                <button class="modal-close" onclick="document.getElementById('box-modal').classList.remove('active')">&times;</button>
+            </div>
+            <form id="box-form">
+                <div class="form-group">
+                    <label for="box-name">ชื่อ/รุ่นกล่องพัสดุ *</label>
+                    <input type="text" id="box-name" class="form-control" required placeholder="เช่น กล่องขนาด C">
+                </div>
+                
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="box-width">ความกว้าง (ซม.) *</label>
+                        <input type="number" id="box-width" class="form-control" required min="1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="box-length">ความยาว (ซม.) *</label>
+                        <input type="number" id="box-length" class="form-control" required min="1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="box-height">ความสูง (ซม.) *</label>
+                        <input type="number" id="box-height" class="form-control" required min="1" step="0.1">
+                    </div>
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="box-max-weight">น้ำหนักบรรทุกสูงสุด (กก.) *</label>
+                        <input type="number" id="box-max-weight" class="form-control" required min="0.1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="box-cost">ราคาต่อใบ (บาท) *</label>
+                        <input type="number" id="box-cost" class="form-control" required min="0" step="0.5" value="10.0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="box-carrier">ผู้ให้บริการขนส่ง (เริ่มต้น)</label>
+                    <input type="text" id="box-carrier" class="form-control" placeholder="เช่น ไปรษณีย์ไทย EMS, Standard Post">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('box-modal').classList.remove('active')">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกข้อมูลกล่อง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Core Scripts -->
+    <!-- Utils -->
+    <script src="utils/MathUtil.js"></script>
+    <script src="utils/Storage.js"></script>
+    <script src="utils/Export.js"></script>
+
+    <!-- Databases -->
+    <script src="database/products.js"></script>
+    <script src="database/boxes.js"></script>
+
+    <!-- Engines -->
+    <script src="engine/BubbleEngine.js"></script>
+    <script src="engine/OrientationEngine.js"></script>
+    <script src="engine/GridPackingEngine.js"></script>
+    <script src="engine/FreeSpaceEngine.js"></script>
+    <script src="engine/BestFitEngine.js"></script>
+    <script src="engine/ScoreEngine.js"></script>
+    <script src="engine/ShipmentEngine.js"></script>
+
+    <!-- Renderer -->
+    <script src="renderer/CanvasRenderer.js"></script>
+
+    <!-- UI Managers -->
+    <script src="ui/Dashboard.js"></script>
+    <script src="ui/ProductPanel.js"></script>
+    <script src="ui/BoxPanel.js"></script>
+    <script src="ui/ResultPanel.js"></script>
+    <script src="ui/SimulatorPanel.js"></script>
+
+    <!-- Bootstrapping App Coordinator -->
+    <script src="js/app.js"></script>
+</body>
+</html>
