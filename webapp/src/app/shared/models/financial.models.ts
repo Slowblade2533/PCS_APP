@@ -190,6 +190,8 @@ export interface FinancialTransactionPagedResult extends PagedResult<FinancialTr
   totalIncome: number;
   totalExpense: number;
   netBalance: number;
+  openingBalance: number;
+  currentBalance: number;
 }
 
 // ─── Trial Balance (งบทดลอง) ─────────────────────────────────────────────────

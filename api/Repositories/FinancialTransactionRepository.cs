@@ -56,12 +56,26 @@ public class FinancialTransactionRepository(ISqlConnectionFactory connectionFact
         var totals = await multi.ReadSingleAsync<dynamic>();
         var items = await multi.ReadAsync<FinancialTransactionDto>();
 
+        decimal openingBalance = 0;
+        if (search.DateFrom.HasValue)
+        {
+            string openingSql = @"
+                SELECT ISNULL(SUM(
+                    CASE WHEN ft.TransactionType IN ('INVESTMENT', 'SALES', 'TRANSFER_IN', 'RECEIPT') THEN ft.TotalAmount 
+                         ELSE -ft.TotalAmount END
+                ), 0)
+                FROM dbo.FinancialTransactions ft
+                WHERE ISNULL(ft.Status, '') != 'VOID' AND ft.TransactionDate < @DateFrom;";
+            openingBalance = await conn.ExecuteScalarAsync<decimal>(new CommandDefinition(openingSql, new { DateFrom = search.DateFrom.Value }, cancellationToken: cancellationToken));
+        }
+
         return new FinancialTransactionPagedResultDto
         {
             Items = items, TotalCount = total,
             PageNumber = search.PageNumber, PageSize = search.PageSize,
             TotalIncome = (decimal)totals.TotalIncome,
-            TotalExpense = (decimal)totals.TotalExpense
+            TotalExpense = (decimal)totals.TotalExpense,
+            OpeningBalance = openingBalance
         };
     }
 

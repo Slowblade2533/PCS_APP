@@ -63,6 +63,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     page: 1,
     pageSize: 5,
     searchTerm: '',
+    status: 'Active',
   });
 
   ordersResource = rxResource({

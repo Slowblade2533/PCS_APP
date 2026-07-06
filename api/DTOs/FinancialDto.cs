@@ -278,6 +278,8 @@ public class FinancialTransactionPagedResultDto : PagedResultDto<FinancialTransa
     public decimal TotalIncome { get; set; }
     public decimal TotalExpense { get; set; }
     public decimal NetBalance => TotalIncome - TotalExpense;
+    public decimal OpeningBalance { get; set; }
+    public decimal CurrentBalance => OpeningBalance + NetBalance;
 }
 
 // ─── Trial Balance (งบทดลอง) ─────────────────────────────────────────────────

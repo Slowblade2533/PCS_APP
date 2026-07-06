@@ -64,7 +64,9 @@
   <app-financial-summary-cards
     [income]="data().totalIncome"
     [expense]="data().totalExpense"
-    [balance]="data().netBalance"
+    [balance]="data().currentBalance"
+    balanceLabel="ยอดคงเหลือปัจจุบัน"
+    [balanceDesc]="'ยอดยกมา: ฿' + (data().openingBalance | number: '1.2-2') + ' | สุทธิรอบนี้: ฿' + (data().netBalance | number: '1.2-2')"
   ></app-financial-summary-cards>
 
   @if (error()) {

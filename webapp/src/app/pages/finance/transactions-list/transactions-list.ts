@@ -85,6 +85,8 @@ export class TransactionsList implements OnInit {
         totalIncome: 0,
         totalExpense: 0,
         netBalance: 0,
+        openingBalance: 0,
+        currentBalance: 0,
       },
   );
   loading = computed(() => this.transactionsResource.isLoading());

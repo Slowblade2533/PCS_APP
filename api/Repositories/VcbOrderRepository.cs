@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
 using System.Text;
@@ -60,8 +60,15 @@ public class VcbOrderRepository(ISqlConnectionFactory connectionFactory) : IVcbO
 
         if (!string.IsNullOrEmpty(search.Status))
         {
-            whereClause += " AND o.Status = @Status";
-            parameters.Add("Status", search.Status);
+            if (search.Status == "Active")
+            {
+                whereClause += " AND o.Status IN ('Pending', 'Processing')";
+            }
+            else
+            {
+                whereClause += " AND o.Status = @Status";
+                parameters.Add("Status", search.Status);
+            }
         }
 
         if (search.BranchId.HasValue)
