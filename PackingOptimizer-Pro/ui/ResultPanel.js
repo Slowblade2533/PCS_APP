@@ -38,7 +38,7 @@ class ResultPanel {
             return;
         }
 
-        const { parcels, overallScore, totalBoxCost = results.totalCost || 0, totalTapeCost = 0, totalBubbleCost = 0, totalLabelCost = 0, totalCost, totalVolumeUtilization, totalWeight } = results;
+        const { parcels, overallScore, totalBoxCost = results.totalCost || 0, totalTapeCost = 0, totalBubbleCost = 0, totalLabelCost = 0, totalCost, totalVolumeUtilization, totalWeight, totalTareWeight = 0, totalParcelWeight } = results;
 
         const scorePercent = Math.min(100, Math.max(0, overallScore));
         
@@ -86,7 +86,17 @@ class ResultPanel {
                     </div>
 
                     <div>การใช้พื้นที่เฉลี่ย: <strong>${totalVolumeUtilization.toFixed(1)}%</strong></div>
-                    <div>น้ำหนักสินค้ารวม: <strong>${totalWeight.toFixed(2)} กก.</strong></div>
+                    <div style="margin-top:6px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top:6px;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary);">
+                            <span>📦 น้ำหนักสินค้ารวม:</span><strong>${totalWeight.toFixed(2)} กก.</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary);">
+                            <span>🗃️ น้ำหนักกล่องรวม (tare):</span><strong>${(totalTareWeight||0).toFixed(2)} กก.</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:var(--color-warning); margin-top:4px;">
+                            <span>⚖️ น้ำหนักพัสดุรวม (ส่งขนส่ง):</span><strong>${(totalParcelWeight||totalWeight).toFixed(2)} / 20 กก.</strong>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
@@ -98,7 +108,7 @@ class ResultPanel {
                                     <div>
                                         <strong style="display: block;">พัสดุใบที่ #${idx + 1}: ${escapeHtml(p.box.name)}</strong>
                                         <span style="font-size: 11px; color: var(--text-muted);">
-                                            น้ำหนัก: ${p.weight.toFixed(2)}/${p.box.maxWeight}กก. | สินค้า: ${p.placements.length} ชิ้น
+                                            สินค้า: ${p.placements.length} ชิ้น | นน.สินค้า: ${(p.cargoWeight||p.weight||0).toFixed(2)} กก. | กล่อง: ${(p.box.tare||0).toFixed(2)} กก. | รวม: ${((p.cargoWeight||p.weight||0)+(p.box.tare||0)).toFixed(2)}/${p.box.maxWeight} กก.
                                         </span>
                                     </div>
                                     <div style="text-align: right;">

@@ -136,7 +136,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   @HostListener('window:keydown.enter', ['$event'])
-  handleEnterKey(event: any) {
+  handleEnterKey(event: Event) {
     const target = event.target as HTMLElement;
 
     if (target && target.tagName === 'INPUT') {

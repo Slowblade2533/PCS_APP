@@ -199,9 +199,9 @@ export class CompanyProfile implements OnInit {
       forkJoin(uploads)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (res: any) => {
-            const logoUrl = res.logo ? res.logo.imageUrl : null;
-            const vatUrl = res.vatDoc ? res.vatDoc.imageUrl : null;
+          next: (res: Record<string, { imageUrl: string }>) => {
+            const logoUrl = res['logo'] ? res['logo'].imageUrl : null;
+            const vatUrl = res['vatDoc'] ? res['vatDoc'].imageUrl : null;
             runSave(logoUrl, vatUrl);
           },
           error: (err) => {

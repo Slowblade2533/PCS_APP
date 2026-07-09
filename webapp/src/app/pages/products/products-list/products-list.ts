@@ -10,12 +10,12 @@ import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ProductSearchFilter } from '../../../shared/components/product-search-filter/product-search-filter';
-import { ProductListItem, ProductSearchParams } from '../../../shared/models/product.models';
+import { ProductListItem, ProductSearchParams, ProductVariantDetail } from '../../../shared/models/product.models';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { ProductService } from '../../../shared/services/product.service';
 import { SweetAlertService, escapeHtml } from '../../../shared/services/sweet-alert.service';
 
-function formatNumberWithCommas(value: any): string {
+function formatNumberWithCommas(value: number | string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '0.00';
   const num = typeof value === 'number' ? value : parseFloat(value);
   return isNaN(num)
@@ -105,14 +105,14 @@ export class ProductsList implements OnInit {
   }
 
   viewDetails(productId: number, productName: string): void {
-    this.productService.getProductById(productId).subscribe({
+    this.productService.getProductById(productId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (product) => {
         if (product && product.variants && product.variants.length > 0) {
           let itemsHtml = `<div class="overflow-x-auto text-sm text-left"><table class="table table-zebra w-full" id="swal-skus-table">
             <thead><tr class="bg-base-200">
               <th class="p-2 w-12 text-center">รูป</th><th class="p-2">SKU</th><th class="p-2">ชื่อตัวเลือก</th><th class="p-2 text-right">สต็อก</th><th class="p-2 text-right">ราคา</th>
             </tr></thead><tbody>`;
-          product.variants.forEach((v: any) => {
+          product.variants.forEach((v: ProductVariantDetail) => {
             const imgUrl = v.imageUrl ? `${this.apiOrigin}${v.imageUrl}` : 'assets/no-image.png';
             const price = v.basePrice !== undefined ? formatNumberWithCommas(v.basePrice) : '0.00';
             const stock = v.currentQuantity !== undefined ? v.currentQuantity : 0;
@@ -128,7 +128,7 @@ export class ProductsList implements OnInit {
               <td class="p-2 whitespace-nowrap">${escapeHtml(v.sku) || '-'}</td>
               <td class="p-2">
                 <div class="font-medium text-primary">${escapeHtml(name)}</div>
-                <div class="text-xs text-base-content/60">Barcode: ${escapeHtml(v.barcode) || '-'}</div>
+                <div class="text-xs text-base-content/60">Barcode: ${escapeHtml(v.barcode ?? '') || '-'}</div>
               </td>
               <td class="p-2 text-right font-medium">${stock}</td>
               <td class="p-2 text-right font-semibold text-info">${price}</td>
@@ -171,13 +171,15 @@ export class ProductsList implements OnInit {
               };
 
               imgs.forEach((img) => {
-                img.addEventListener('mouseenter', (e: any) => {
-                  const src = e.target.getAttribute('data-img-url');
+                img.addEventListener('mouseenter', (e: Event) => {
+                  const target = e.target as HTMLElement;
+                  if (!target) return;
+                  const src = target.getAttribute('data-img-url');
                   previewDiv!.innerHTML = `<img src="${src}" class="max-w-[500px] max-h-[500px] object-contain rounded-md" />`;
                   previewDiv!.style.display = 'block';
-                  updatePos(e);
+                  updatePos(e as MouseEvent);
                 });
-                img.addEventListener('mousemove', updatePos as EventListener);
+                img.addEventListener('mousemove', (e: Event) => updatePos(e as MouseEvent));
                 img.addEventListener('mouseleave', () => {
                   previewDiv!.style.display = 'none';
                 });

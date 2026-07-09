@@ -129,7 +129,7 @@ export class VcbOrdersListComponent implements OnInit {
 
   viewDetails(orderId: number, orderNo: string): void {
     const apiOrigin = environment.apiUrl.replace('/api', '');
-    this.vcbOrdersService.getVcbOrderById(orderId).subscribe((res) => {
+    this.vcbOrdersService.getVcbOrderById(orderId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((res) => {
       const order = res.value || res.data;
       if (order && order.items && order.items.length > 0) {
         let slipSectionHtml = '';

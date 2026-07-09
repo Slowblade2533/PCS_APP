@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { BankSelectComponent } from '../../../shared/components/bank-select/bank-select';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
+import { InvestorBankAccount } from '../../../shared/models/investor.models';
 import { InvestorService } from '../../../shared/services/investor.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
@@ -21,6 +22,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly investorService = inject(InvestorService);
   private readonly swal = inject(SweetAlertService);
+  private readonly destroyRef = inject(DestroyRef);
 
   form!: FormGroup;
   isEditMode = signal<boolean>(false);
@@ -66,7 +68,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
         }
 
         const accounts = res.bankAccounts || [];
-        accounts.forEach((acc: any) => {
+        accounts.forEach((acc: InvestorBankAccount) => {
           this.bankAccounts.push(this.createBankAccountFormGroup(acc));
         });
       }
@@ -98,7 +100,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
     return this.form.get('bankAccounts') as FormArray;
   }
 
-  createBankAccountFormGroup(data?: any): FormGroup {
+  createBankAccountFormGroup(data?: Partial<InvestorBankAccount>): FormGroup {
     return this.fb.group({
       bankAccountId: [data?.bankAccountId || ''],
       bankName: [data?.bankName || '', Validators.required],
@@ -119,7 +121,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
   removeBankAccount(index: number): void {
     this.bankAccounts.removeAt(index);
     // Ensure at least one default if accounts exist
-    if (this.bankAccounts.length > 0 && !this.bankAccounts.value.some((b: any) => b.isDefault)) {
+    if (this.bankAccounts.length > 0 && !this.bankAccounts.value.some((b: InvestorBankAccount) => b.isDefault)) {
       this.bankAccounts.at(0).patchValue({ isDefault: true });
     }
   }
@@ -149,7 +151,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
     const rawPayload = this.form.value;
     const payload = {
       ...rawPayload,
-      bankAccounts: (rawPayload.bankAccounts || []).map((b: any) => ({
+      bankAccounts: (rawPayload.bankAccounts || []).map((b: InvestorBankAccount) => ({
         ...b,
         bankAccountId:
           b.bankAccountId && b.bankAccountId.trim() !== ''
@@ -159,7 +161,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
     };
 
     if (this.isEditMode() && this.investorId()) {
-      this.investorService.updateInvestor(this.investorId()!, payload).subscribe({
+      this.investorService.updateInvestor(this.investorId()!, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.isSubmitted.set(true);
           this.swal.success('บันทึกข้อมูลสำเร็จ');
@@ -172,7 +174,7 @@ export class InvestorForm implements OnInit, HasUnsavedChanges {
         },
       });
     } else {
-      this.investorService.createInvestor(payload).subscribe({
+      this.investorService.createInvestor(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           this.isSubmitted.set(true);
           this.swal.success('เพิ่มข้อมูลนักลงทุนสำเร็จ');

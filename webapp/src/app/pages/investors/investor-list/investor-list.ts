@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Investor } from '../../../shared/models/investor.models';
 import { InvestorService } from '../../../shared/services/investor.service';
@@ -15,6 +15,7 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
 export class InvestorList {
   private readonly investorService = inject(InvestorService);
   private readonly swal = inject(SweetAlertService);
+  private readonly destroyRef = inject(DestroyRef);
 
   investorsResource = rxResource({
     stream: () => this.investorService.getInvestors(),
@@ -56,7 +57,7 @@ export class InvestorList {
       .confirm(`ยืนยันการลบข้อมูลนักลงทุน ${name}?`, 'การลบข้อมูลนี้จะไม่สามารถกู้คืนได้')
       .then((confirmed) => {
         if (confirmed) {
-          this.investorService.deleteInvestor(id).subscribe({
+          this.investorService.deleteInvestor(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
               this.swal.success('ลบข้อมูลสำเร็จ');
               this.investorsResource.reload();

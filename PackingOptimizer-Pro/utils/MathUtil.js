@@ -35,6 +35,41 @@ class MathUtil {
     }
 
     /**
+     * Estimates the empty box weight (tare) based on box dimensions and load category.
+     * Rule: boxes with maxWeight <= 10 kg = 3-layer corrugated (~0.07 g/cm²)
+     *       boxes with maxWeight >  10 kg = 5-layer corrugated (~0.10 g/cm²)
+     * Formula validated against known references:
+     *   AA (13×17×7, 3-layer): SA=862 cm² → 0.060 kg ≈ 0.05 kg ✓
+     *   B  (17×25×9, 3-layer): SA=1606 cm² → 0.112 kg ≈ 0.10 kg ✓
+     *   50×50×35 (5-layer):    SA=12000 cm² → 1.20 kg ≈ 1.25 kg ✓
+     * @param {number} w  box width (cm)
+     * @param {number} l  box length (cm)
+     * @param {number} h  box height (cm)
+     * @param {number} maxWeight  box maximum cargo weight (kg)
+     * @returns {number} tare weight in kg (rounded to 2 decimals)
+     */
+    static estimateBoxTare(w, l, h, maxWeight) {
+        const surfaceAreaCm2 = 2 * (w * l + l * h + h * w);
+        // 3-layer for light boxes, 5-layer for heavy-duty boxes
+        const densityGPerCm2 = (maxWeight <= 10) ? 0.070 : 0.100;
+        const tare = surfaceAreaCm2 * densityGPerCm2 / 1000;
+        return Math.round(tare * 100) / 100;
+    }
+
+    /**
+     * Calculates custom box ordering cost based on surface area.
+     * @param {number} w width (cm)
+     * @param {number} l length (cm)
+     * @param {number} h height (cm)
+     * @returns {number} cost in Baht (rounded to Satang)
+     */
+    static calculateCustomBoxCost(w, l, h) {
+        const areaM2 = 2 * (w * l + l * h + h * w) / 10000;
+        const rawCost = areaM2 * 20.0 + 2.0; // 20 Baht per m2 + 2 Baht base
+        return Math.max(5.0, MathUtil.roundToSatang(rawCost));
+    }
+
+    /**
      * Calculates the detailed packaging materials used (Tape length/cost, Bubble area/cost)
      * @param {Object} parcel 
      * @param {Object} settings 

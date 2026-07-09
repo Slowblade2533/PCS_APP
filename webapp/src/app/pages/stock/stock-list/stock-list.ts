@@ -102,7 +102,7 @@ export class StockList implements OnInit {
     this.query.update((q) => ({ ...q, condition: condition || undefined }));
   }
 
-  updateInventoryGroup(group: any): void {
+  updateInventoryGroup(group: string): void {
     this.query.update((q) => ({ ...q, inventoryGroup: group }));
   }
 

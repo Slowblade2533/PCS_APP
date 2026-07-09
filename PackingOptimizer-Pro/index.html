@@ -219,6 +219,13 @@
                 <button class="modal-close" onclick="document.getElementById('product-modal').classList.remove('active')">&times;</button>
             </div>
             <form id="product-form">
+                <div class="form-group" style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 6px;">เลือกค่าเริ่มต้นด่วน</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" id="btn-quick-std-1" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 6px 8px; flex: 1;">ขนาดกลาง (25.5x14.5x14 ซม.)</button>
+                        <button type="button" id="btn-quick-std-2" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 6px 8px; flex: 1;">ขนาดเล็ก (34x16x11 ซม.)</button>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label for="prod-sku">รหัสสินค้า (SKU) *</label>
                     <input type="text" id="prod-sku" class="form-control" required placeholder="เช่น SKU-100-AB">
@@ -227,7 +234,6 @@
                     <label for="prod-name">ชื่อสินค้า</label>
                     <input type="text" id="prod-name" class="form-control" placeholder="เช่น เครื่องชงกาแฟ">
                 </div>
-                
                 <div class="form-row-3">
                     <div class="form-group">
                         <label for="prod-width">ความกว้าง (ซม.) *</label>
@@ -316,14 +322,20 @@
                         <input type="number" id="box-max-weight" class="form-control" required min="0.1" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="box-cost">ราคาต่อใบ (บาท) *</label>
-                        <input type="number" id="box-cost" class="form-control" required min="0" step="0.5" value="10.0">
+                        <label for="box-tare">น้ำหนักกล่องเปล่า/tare (กก.) — ใส่ 0 = คำนวณอัตโนมัติ</label>
+                        <input type="number" id="box-tare" class="form-control" min="0" step="0.01" placeholder="เว้นว่าง = auto-compute">
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="box-carrier">ผู้ให้บริการขนส่ง (เริ่มต้น)</label>
-                    <input type="text" id="box-carrier" class="form-control" placeholder="เช่น ไปรษณีย์ไทย EMS, Standard Post">
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="box-cost">ราคาต่อใบ (บาท) *</label>
+                        <input type="number" id="box-cost" class="form-control" required min="0" step="0.5" value="10.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="box-carrier">ผู้ให้บริการขนส่ง</label>
+                        <input type="text" id="box-carrier" class="form-control" placeholder="เช่น ไปรษณีย์ไทย EMS, Standard Post">
+                    </div>
                 </div>
 
                 <div class="modal-footer">

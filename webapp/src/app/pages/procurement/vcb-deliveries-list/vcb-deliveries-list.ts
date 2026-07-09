@@ -8,7 +8,7 @@ import { debounceTime } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../environments/environment';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
-import { VcbDelivery, VcbDeliverySearch } from '../../../shared/models/vcb-deliveries.models';
+import { VcbDelivery, VcbDeliveryItem, VcbDeliveryOrder, VcbDeliverySearch } from '../../../shared/models/vcb-deliveries.models';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
 import { SweetAlertService, escapeHtml } from '../../../shared/services/sweet-alert.service';
@@ -157,12 +157,12 @@ export class VcbDeliveriesList implements OnInit {
   }
 
   viewDetails(deliveryId: number, deliveryNo: string): void {
-    this.vcbDeliveriesService.getVcbDeliveryById(deliveryId).subscribe((res) => {
-      const delivery: any = res.value || res.data || ((res as any).id ? res : undefined);
+    this.vcbDeliveriesService.getVcbDeliveryById(deliveryId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((res) => {
+      const delivery = res.value ?? res.data;
       if (delivery && delivery.items && delivery.items.length > 0) {
         const orderNos = (delivery.orders || [])
-          .map((o: any) => o.orderNo)
-          .filter((no: any) => !!no) as string[];
+          .map((o: VcbDeliveryOrder) => o.orderNo)
+          .filter((no): no is string => !!no);
         const shippingLogo = this.getShippingLogo(delivery.domesticShippingCompany);
         const slipUrl = delivery.transferSlipUrl
           ? `${this.apiOrigin}${delivery.transferSlipUrl}`
@@ -224,7 +224,7 @@ export class VcbDeliveriesList implements OnInit {
           <thead><tr class="bg-base-200">
             <th class="p-2">เลขที่กล่อง</th><th class="p-2">Tracking (ในไทย)</th><th class="p-2 text-right">น้ำหนักรวม (kg)</th><th class="p-2">ขนาด</th><th class="p-2 text-right">ค่าจัดส่ง</th>
           </tr></thead><tbody>`;
-        delivery.items.forEach((item: any) => {
+        delivery.items.forEach((item: VcbDeliveryItem) => {
           itemsHtml += `<tr class="bg-base-100 font-medium">
             <td class="p-2 whitespace-nowrap">${escapeHtml(item.packageBoxNo)}</td>
             <td class="p-2">${escapeHtml(item.domesticTrackingNo || '') || '-'}</td>

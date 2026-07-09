@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
@@ -8,11 +8,12 @@ import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { FinancialService } from '../../../shared/services/financial.service';
+import { InvestmentSchedule, InvestmentInterestSchedule, InvestmentCreateRequest } from '../../../shared/models/investment.models';
 import { InvestmentService } from '../../../shared/services/investment.service';
 import { InvestorService } from '../../../shared/services/investor.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 
-function formatDateString(val: any): string {
+function formatDateString(val: string | Date | null | undefined): string {
   if (!val) return '';
   if (typeof val === 'string') {
     return val.split('T')[0];
@@ -40,6 +41,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
   private readonly investorService = inject(InvestorService);
   private readonly financialService = inject(FinancialService);
   private readonly swal = inject(SweetAlertService);
+  private readonly destroyRef = inject(DestroyRef);
 
   form!: FormGroup;
   investmentId = signal<string | null>(null);
@@ -165,7 +167,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
     });
 
     // Listen to changes
-    this.form.get('investorId')?.valueChanges.subscribe((investorId) => {
+    this.form.get('investorId')?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((investorId) => {
       if (investorId) {
         this.selectedInvestorId.set(investorId);
       } else {
@@ -202,7 +204,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
         const schedules = data.schedules;
         const interestSchedules = data.interestSchedules;
 
-        const hasPaid = schedules.some((s: any) => s.status === 1);
+        const hasPaid = schedules.some((s: InvestmentSchedule) => s.status === 1);
         this.hasPaidSchedules.set(hasPaid);
 
         this.form.patchValue({
@@ -223,7 +225,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
 
         this.clearInterestSchedules();
         if (interestSchedules && interestSchedules.length > 0) {
-          interestSchedules.forEach((ins: any) => {
+          interestSchedules.forEach((ins: InvestmentInterestSchedule) => {
             this.interestSchedules.push(
               this.fb.group({
                 startMonth: [ins.startMonth, Validators.required],
@@ -236,7 +238,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
 
         this.clearSchedules();
         if (schedules && schedules.length > 0) {
-          schedules.forEach((s: any) => {
+          schedules.forEach((s: InvestmentSchedule) => {
             this.schedules.push(
               this.fb.group({
                 installmentNumber: [s.installmentNumber, Validators.required],
@@ -268,7 +270,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
       }
     });
 
-    this.form.get('isCash')?.valueChanges.subscribe((isCash) => {
+    this.form.get('isCash')?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((isCash) => {
       const bankCtrl = this.form.get('companyBankAccountId');
       if (isCash) {
         bankCtrl?.clearValidators();
@@ -280,7 +282,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
       this.updateInvestorBankValidators();
     });
 
-    this.form.get('investmentType')?.valueChanges.subscribe((type) => {
+    this.form.get('investmentType')?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((type) => {
       const rateCtrl = this.form.get('interestRate');
       const instCtrl = this.form.get('installmentCount');
       if (Number(type) === 0) {
@@ -333,7 +335,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
     this.interestSchedules.removeAt(index);
   }
 
-  addScheduleRow(data?: any): void {
+  addScheduleRow(data?: Partial<InvestmentSchedule>): void {
     this.schedules.push(
       this.fb.group({
         installmentNumber: [
@@ -373,7 +375,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
     const file = input.files[0];
     this.isUploadingContract.set(true);
 
-    this.financialService.uploadAttachment(file).subscribe({
+    this.financialService.uploadAttachment(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.form.get('contractUrl')?.setValue(res.imageUrl);
         this.isUploadingContract.set(false);
@@ -397,7 +399,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
     const file = input.files[0];
     this.isUploadingPaymentProof.set(true);
 
-    this.financialService.uploadAttachment(file).subscribe({
+    this.financialService.uploadAttachment(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.form.get('paymentProofUrl')?.setValue(res.imageUrl);
         this.isUploadingPaymentProof.set(false);
@@ -512,7 +514,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
     }
 
     if (this.isEditMode()) {
-      this.investmentService.updateInvestment(this.investmentId()!, payload).subscribe({
+      this.investmentService.updateInvestment(this.investmentId()!, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.isSubmitted.set(true);
           this.swal.success('แก้ไขรายละเอียดสัญญาสำเร็จ');
@@ -527,7 +529,7 @@ export class InvestmentForm implements OnInit, HasUnsavedChanges {
         },
       });
     } else {
-      this.investmentService.createInvestment(payload).subscribe({
+      this.investmentService.createInvestment(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           this.isSubmitted.set(true);
           this.swal.success('บันทึกรายการลงทุนสำเร็จ');

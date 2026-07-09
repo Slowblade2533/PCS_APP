@@ -56,8 +56,8 @@ export class ProductService {
     });
   }
 
-  updateProduct(id: number, payload: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, payload);
+  updateProduct(id: number, payload: ProductCreatePayload): Observable<unknown> {
+    return this.http.put(`${this.apiUrl}/${id}`, payload);
   }
 
   uploadImage(file: File): Observable<{ imageUrl: string }> {

@@ -88,7 +88,7 @@ export class CategoryCreate implements OnInit, HasUnsavedChanges {
   }
 
   @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
+  unloadNotification($event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
       $event.returnValue = true;
     }

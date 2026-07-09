@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { of } from 'rxjs';
@@ -19,6 +19,7 @@ import { SweetAlertService } from '../../../shared/services/sweet-alert.service'
   templateUrl: './investment-detail.html',
 })
 export class InvestmentDetail implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   apiOrigin = environment.apiUrl.replace('/api', '');
 
   isPdf(url: string | null | undefined): boolean {
@@ -134,7 +135,7 @@ export class InvestmentDetail implements OnInit {
     });
 
     // Listen to changes in isCash to toggle validators for bank account
-    this.repaymentForm.get('isCash')?.valueChanges.subscribe((isCash) => {
+    this.repaymentForm.get('isCash')?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((isCash) => {
       const bankCtrl = this.repaymentForm.get('companyBankAccountId');
       if (isCash) {
         bankCtrl?.clearValidators();
@@ -173,7 +174,7 @@ export class InvestmentDetail implements OnInit {
     const file = input.files[0];
     this.isUploadingSlip.set(true);
 
-    this.financialService.uploadAttachment(file).subscribe({
+    this.financialService.uploadAttachment(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.repaymentForm.get('slipUrl')?.setValue(res.imageUrl);
         this.isUploadingSlip.set(false);
@@ -199,6 +200,7 @@ export class InvestmentDetail implements OnInit {
 
     this.investmentService
       .payInstallment(this.investmentId(), schedule.scheduleId, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.swal.success('บันทึกการชำระเงินเรียบร้อย');

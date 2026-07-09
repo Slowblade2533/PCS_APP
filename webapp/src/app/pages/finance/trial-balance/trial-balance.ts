@@ -46,7 +46,7 @@ export class TrialBalance implements OnInit {
             }),
           );
         }),
-        tap((res: any) => {
+        tap((res: TrialBalanceRow[]) => {
           if (res) {
             this.data.set(res);
           }

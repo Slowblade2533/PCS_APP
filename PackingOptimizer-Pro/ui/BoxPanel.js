@@ -60,9 +60,9 @@ class BoxPanel {
                             </span>
                         </div>
                         <div class="item-card-details">
-                            <div>ขนาด: <span>${b.width}x${b.length}x${b.height}</span> ซม.</div>
-                            <div>จำกัด: <span>${b.maxWeight}</span> กก.</div>
-                            <div>ความจุ: <span>${((b.width * b.length * b.height) / 1000).toFixed(1)}</span> ลิตร</div>
+                            <div>ขนาด: <span>${b.width}×${b.length}×${b.height}</span> ซม.</div>
+                            <div>น้ำหนักกล่องเปล่า: <span>${(b.tare !== undefined ? b.tare : '?').toString()}</span> กก.</div>
+                            <div>Payload สุทธิ: <span>${Math.min(b.maxWeight, 20 - (b.tare||0)).toFixed(2)}</span> กก.</div>
                         </div>
                         <div class="item-card-actions">
                             <button class="btn btn-secondary btn-sm btn-edit-box" data-id="${b.id}">แก้ไข</button>
@@ -102,6 +102,7 @@ class BoxPanel {
         document.getElementById('box-length').value = b.length;
         document.getElementById('box-height').value = b.height;
         document.getElementById('box-max-weight').value = b.maxWeight;
+        document.getElementById('box-tare').value = b.tare !== undefined ? b.tare : '';
         document.getElementById('box-cost').value = b.cost;
         document.getElementById('box-carrier').value = b.carrier;
 
@@ -117,6 +118,7 @@ class BoxPanel {
             length: parseFloat(document.getElementById('box-length').value),
             height: parseFloat(document.getElementById('box-height').value),
             maxWeight: parseFloat(document.getElementById('box-max-weight').value),
+            tare: document.getElementById('box-tare').value !== '' ? parseFloat(document.getElementById('box-tare').value) : undefined,
             cost: parseFloat(document.getElementById('box-cost').value),
             carrier: document.getElementById('box-carrier').value
         };

@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 
 namespace PCS_API.Services;
@@ -13,6 +13,11 @@ public class FinancialReportService(IFinancialReportRepository reportRepo) : IFi
     public async Task<IEnumerable<GeneralJournalRowDto>> GetGeneralJournalAsync(DateOnly? dateFrom, DateOnly? dateTo, CancellationToken cancellationToken = default)
     {
         return await reportRepo.GetGeneralJournalAsync(dateFrom, dateTo, cancellationToken);
+    }
+
+    public async Task<decimal> GetCashBroughtForwardBalanceAsync(DateOnly? dateFrom, CancellationToken cancellationToken = default)
+    {
+        return await reportRepo.GetCashBroughtForwardBalanceAsync(dateFrom, cancellationToken);
     }
 
     public async Task<IEnumerable<GeneralLedgerRowDto>> GetGeneralLedgerAsync(int accountId, DateOnly? dateFrom, DateOnly? dateTo, CancellationToken cancellationToken = default)

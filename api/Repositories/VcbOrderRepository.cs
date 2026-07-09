@@ -1,7 +1,6 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
-using System.Text;
 
 namespace PCS_API.Repositories;
 
@@ -135,22 +134,19 @@ public class VcbOrderRepository(ISqlConnectionFactory connectionFactory) : IVcbO
 
             if (dto.Items.Any())
             {
-                var batchSql = new StringBuilder();
-                var batchParams = new DynamicParameters();
-                batchParams.Add("OrderId", orderId);
+                const string insertItemSql = @"
+                    INSERT INTO dbo.VcbOrderItems (OrderId, VariantId, Quantity, TotalPrice)
+                    VALUES (@OrderId, @VariantId, @Quantity, @TotalPrice);";
 
-                for (int i = 0; i < dto.Items.Count; i++)
+                var itemParams = dto.Items.Select(item => new
                 {
-                    var item = dto.Items[i];
-                    batchSql.AppendLine($@"
-                        INSERT INTO dbo.VcbOrderItems (OrderId, VariantId, Quantity, TotalPrice)
-                        VALUES (@OrderId, @VariantId{i}, @Quantity{i}, @TotalPrice{i});");
-                    batchParams.Add($"VariantId{i}", item.VariantId);
-                    batchParams.Add($"Quantity{i}", item.Quantity);
-                    batchParams.Add($"TotalPrice{i}", item.TotalPrice);
-                }
+                    OrderId = orderId,
+                    item.VariantId,
+                    item.Quantity,
+                    item.TotalPrice
+                });
 
-                await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: tx, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertItemSql, itemParams, transaction: tx, cancellationToken: cancellationToken));
             }
 
             // Sync Financial Transaction
@@ -261,22 +257,19 @@ public class VcbOrderRepository(ISqlConnectionFactory connectionFactory) : IVcbO
 
             if (dto.Items.Any())
             {
-                var batchSql = new StringBuilder();
-                var batchParams = new DynamicParameters();
-                batchParams.Add("OrderId", id);
+                const string insertItemSql = @"
+                    INSERT INTO dbo.VcbOrderItems (OrderId, VariantId, Quantity, TotalPrice)
+                    VALUES (@OrderId, @VariantId, @Quantity, @TotalPrice);";
 
-                for (int i = 0; i < dto.Items.Count; i++)
+                var itemParams = dto.Items.Select(item => new
                 {
-                    var item = dto.Items[i];
-                    batchSql.AppendLine($@"
-                        INSERT INTO dbo.VcbOrderItems (OrderId, VariantId, Quantity, TotalPrice)
-                        VALUES (@OrderId, @VariantId{i}, @Quantity{i}, @TotalPrice{i});");
-                    batchParams.Add($"VariantId{i}", item.VariantId);
-                    batchParams.Add($"Quantity{i}", item.Quantity);
-                    batchParams.Add($"TotalPrice{i}", item.TotalPrice);
-                }
+                    OrderId = id,
+                    item.VariantId,
+                    item.Quantity,
+                    item.TotalPrice
+                });
 
-                await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: tx, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertItemSql, itemParams, transaction: tx, cancellationToken: cancellationToken));
             }
 
             // Sync Financial Transaction

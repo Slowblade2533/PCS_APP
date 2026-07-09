@@ -190,7 +190,7 @@ export class CategorySearchComponent implements ControlValueAccessor, OnInit {
 
   writeValue(obj: any): void {
     if (obj) {
-      this.categoryService.getCategoryById(obj).subscribe({
+      this.categoryService.getCategoryById(obj).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (cat) => {
           this.selectedCategory.set(cat);
           this.searchControl.setValue(cat.categoryName, { emitEvent: false });

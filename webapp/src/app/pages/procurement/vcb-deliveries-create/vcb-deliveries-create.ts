@@ -18,6 +18,7 @@ import { debounceTime, finalize, catchError } from 'rxjs/operators';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { VcbOrder, VcbOrderSearch } from '../../../shared/models/vcb-orders.models';
+import { VcbDeliveryItem, VcbDeliveryOrder } from '../../../shared/models/vcb-deliveries.models';
 import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
 import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
@@ -104,7 +105,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     effect(() => {
       const res = this.deliveryResource.value();
       if (res) {
-        const delivery: any = res.value || res.data || (res as any).id ? res : undefined;
+        const delivery = res.value ?? res.data;
         if (delivery) {
           this.deliveryForm.patchValue({
             deliveryNo: delivery.deliveryNo,
@@ -126,7 +127,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
 
           if (delivery.items && delivery.items.length > 0) {
             this.items.clear();
-            delivery.items.forEach((item: any) => {
+            delivery.items.forEach((item: VcbDeliveryItem) => {
               const itemForm = this.fb.group({
                 packageBoxNo: [item.packageBoxNo, Validators.required],
                 domesticTrackingNo: [item.domesticTrackingNo],
@@ -183,7 +184,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
           } else if (delivery.orders && Array.isArray(delivery.orders)) {
             this.selectedOrders.set(
               delivery.orders.map(
-                (o: any) =>
+                (o: VcbDeliveryOrder) =>
                   ({
                     id: o.orderId,
                     orderNo: o.orderNo!,
@@ -203,7 +204,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
     this.initForm();
     this.setupOrderSearch();
 
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id');
       if (id) {
         this.isEditMode.set(true);
@@ -509,7 +510,7 @@ export class VcbDeliveriesCreateComponent implements OnInit, HasUnsavedChanges {
         ? this.vcbDeliveriesService.updateVcbDelivery(this.deliveryId()!, formData)
         : this.vcbDeliveriesService.createVcbDelivery(formData);
 
-    request.subscribe({
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
         if (

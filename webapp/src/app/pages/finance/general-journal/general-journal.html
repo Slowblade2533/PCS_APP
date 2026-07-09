@@ -51,7 +51,8 @@
       balanceLabel="เงินคงเหลือทั้งหมด"
       [income]="totalMoneyIn()"
       [expense]="totalMoneyOut()"
-      [balance]="netBalance()"
+      [balance]="endingBalance()"
+      [balanceDesc]="'ยอดยกมา: ฿' + (cashBroughtForward() | number: '1.2-2') + ' | สุทธิรอบนี้: ฿' + (netBalance() | number: '1.2-2')"
     ></app-financial-summary-cards>
   }
 

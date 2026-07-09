@@ -20,9 +20,9 @@ import { ImageHoverPreview } from '../../../shared/components/image-hover-previe
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { AuthService } from '../../../shared/services/auth.service';
 import { ProductService } from '../../../shared/services/product.service';
+import { ProductCreatePayload, ProductDetail, ProductVariantDetail, ProductVariantCreatePayload } from '../../../shared/models/product.models';
 import { SweetAlertService } from '../../../shared/services/sweet-alert.service';
 import { ProductReviewModalComponent } from './product-review-modal/product-review-modal.component';
-
 @Component({
   selector: 'app-product-create',
   imports: [
@@ -85,7 +85,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
   });
 
   @HostListener('window:beforeunload', ['$event'])
-  unloadNotification($event: any): void {
+  unloadNotification($event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
       $event.returnValue = true;
     }
@@ -132,7 +132,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     return this.productForm.dirty && !this.isSubmitting();
   }
 
-  patchProductForm(product: any) {
+  patchProductForm(product: ProductDetail) {
     const nameTh = product.productNameTh;
     const nameEn = product.productNameEn;
     const desc = product.description;
@@ -159,7 +159,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     const variantsData = product.variants;
 
     if (variantsData && Array.isArray(variantsData)) {
-      variantsData.forEach((v: any) => {
+      variantsData.forEach((v: ProductVariantDetail) => {
         this.addVariantWithData(v);
       });
     }
@@ -192,7 +192,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
   getComparisonReport() {
     const current = this.productForm.getRawValue();
     const old = this.originalFormValue() || {};
-    const getCatName = (id: any) => (id ? `รหัสหมวดหมู่: ${id}` : '-');
+    const getCatName = (id: number | null | undefined) => (id ? `รหัสหมวดหมู่: ${id}` : '-');
     const oldNameTh = (old.productNameTh || '').trim();
     const newNameTh = (current.productNameTh || '').trim();
     const oldNameEn = (old.productNameEn || '').trim();
@@ -264,9 +264,9 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     const oldVariants = this.originalFormValue()?.variants || [];
     const currentVariants = this.productForm.getRawValue().variants || [];
 
-    return currentVariants.map((v: any, index: number) => {
+    return currentVariants.map((v: ProductVariantDetail, index: number) => {
       const oldV = oldVariants[index];
-      const getDimText = (item: any) => {
+      const getDimText = (item: Partial<ProductVariantDetail> | null | undefined) => {
         if (!item) return '-';
         const w = item.width ?? 0;
         const l = item.length ?? 0;
@@ -414,7 +414,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     });
   }
 
-  addVariantWithData(v: any): void {
+  addVariantWithData(v: ProductVariantDetail): void {
     const variantForm = this.fb.group({
       variantId: [v.variantId],
       sku: [v.sku, [Validators.required]],
@@ -530,8 +530,9 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     this.variants.removeAt(index);
   }
 
-  onVariantImageSelected(event: any, variantIndex: number): void {
-    const file = event.target.files[0];
+  onVariantImageSelected(event: Event, variantIndex: number): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       this.submitError.set('ขนาดไฟล์รูปภาพต้องไม่เกิน 2MB');
@@ -657,7 +658,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       forkJoin(uploadObservables)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: (responses: any[]) => {
+          next: (responses: { imageUrl: string }[]) => {
             responses.forEach((res, index) => {
               const fg = variantFormsWithUploads[index];
               fg.patchValue({
@@ -685,7 +686,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
     this.onPreSubmit();
   }
 
-  private buildPayload(): any {
+  private buildPayload(): ProductCreatePayload {
     const raw = this.productForm.getRawValue();
     const currentUserId = Number(this.authService.currentUser()?.id);
 
@@ -701,7 +702,7 @@ export class ProductCreate implements OnInit, HasUnsavedChanges {
       inventoryGroup: raw.inventoryGroup,
       updatedBy: this.currentMode() === 'edit' ? currentUserId : undefined,
       createdBy: this.currentMode() === 'create' ? currentUserId : undefined,
-      variants: (raw.variants ?? []).map((variant: any) => ({
+      variants: (raw.variants ?? []).map((variant: ProductVariantCreatePayload) => ({
         variantId: variant.variantId ? Number(variant.variantId) : undefined,
         sku: String(variant.sku ?? '').trim(),
         barcode: String(variant.barcode ?? '').trim() || undefined,

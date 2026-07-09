@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Investment } from '../../../shared/models/investment.models';
 import { InvestmentService } from '../../../shared/services/investment.service';
@@ -16,6 +16,7 @@ import { FinancialSummaryCardsComponent } from '../../../shared/components/finan
 export class InvestmentList {
   private readonly investmentService = inject(InvestmentService);
   private readonly swal = inject(SweetAlertService);
+  private readonly destroyRef = inject(DestroyRef);
 
   investmentsResource = rxResource({
     stream: () => this.investmentService.getInvestments(),
@@ -77,7 +78,7 @@ export class InvestmentList {
       )
       .then((confirmed) => {
         if (confirmed) {
-          this.investmentService.deleteInvestment(id).subscribe({
+          this.investmentService.deleteInvestment(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
               this.swal.success('ลบรายการสำเร็จ');
               this.investmentsResource.reload();

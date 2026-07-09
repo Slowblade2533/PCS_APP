@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PCS_API.DTOs;
 using PCS_API.Services;
@@ -178,6 +178,14 @@ public class FinancialController(
     public async Task<IActionResult> GetGeneralJournal([FromQuery] DateOnly? dateFrom, [FromQuery] DateOnly? dateTo, CancellationToken ct)
     {
         var result = await reportService.GetGeneralJournalAsync(dateFrom, dateTo, ct);
+        return Ok(result);
+    }
+ 
+    [HttpGet("reports/general-journal/cash-brought-forward")]
+    [Authorize(Policy = "CanViewReport")]
+    public async Task<IActionResult> GetCashBroughtForward([FromQuery] DateOnly? dateFrom, CancellationToken ct)
+    {
+        var result = await reportService.GetCashBroughtForwardBalanceAsync(dateFrom, ct);
         return Ok(result);
     }
 

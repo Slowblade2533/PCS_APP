@@ -49,6 +49,24 @@ public class FinancialReportRepository(ISqlConnectionFactory connectionFactory) 
         return await conn.QueryAsync<GeneralJournalRowDto>(new CommandDefinition(sql, p, cancellationToken: cancellationToken));
     }
 
+    public async Task<decimal> GetCashBroughtForwardBalanceAsync(DateOnly? dateFrom, CancellationToken cancellationToken = default)
+    {
+        if (!dateFrom.HasValue) return 0;
+
+        using var conn = connectionFactory.CreateConnection();
+        var p = new DynamicParameters();
+        p.Add("DateFrom", dateFrom.Value);
+
+        string sql = @"
+            SELECT ISNULL(SUM(le.DebitAmount), 0) - ISNULL(SUM(le.CreditAmount), 0)
+            FROM dbo.FinancialLedgerEntries le
+            INNER JOIN dbo.FinancialTransactions ft ON le.TransactionId = ft.TransactionId
+            INNER JOIN dbo.ChartOfAccounts ca ON le.AccountId = ca.AccountId
+            WHERE ca.AccountCode LIKE '100%' AND ft.TransactionDate < @DateFrom";
+
+        return await conn.ExecuteScalarAsync<decimal>(new CommandDefinition(sql, p, cancellationToken: cancellationToken));
+    }
+
     public async Task<decimal> GetBroughtForwardBalanceAsync(int accountId, DateOnly? dateFrom, CancellationToken cancellationToken = default)
     {
         using var conn = connectionFactory.CreateConnection();

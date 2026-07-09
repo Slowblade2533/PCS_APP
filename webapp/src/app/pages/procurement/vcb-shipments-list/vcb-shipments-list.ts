@@ -8,7 +8,8 @@ import { debounceTime } from 'rxjs/operators';
 import Swal from 'sweetalert2';
 import { environment } from '../../../../environments/environment';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
-import { VcbShipment, VcbShipmentSearch } from '../../../shared/models/vcb-shipments.models';
+import { VcbShipment, VcbShipmentItem, VcbShipmentSearch } from '../../../shared/models/vcb-shipments.models';
+import { VcbDelivery, VcbDeliveryItem, VcbDeliveryOrder } from '../../../shared/models/vcb-deliveries.models';
 import { PagedResult } from '../../../shared/models/pagination.models';
 import { VcbShipmentsService } from '../../../shared/services/vcb-shipments.service';
 import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
@@ -104,19 +105,19 @@ export class VcbShipmentsListComponent implements OnInit {
 
   viewDetails(shipmentId: number, billNo: string): void {
     const apiOrigin = environment.apiUrl.replace('/api', '');
-    this.vcbShipmentsService.getVcbShipmentById(shipmentId).subscribe((res) => {
-      const shipment: any = res.value || res.data || ((res as any).id ? res : undefined);
+    this.vcbShipmentsService.getVcbShipmentById(shipmentId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((res) => {
+      const shipment = res.value ?? res.data;
       if (shipment && shipment.items && shipment.items.length > 0) {
-        this.vcbDeliveriesService.getVcbDeliveryById(shipment.deliveryId).subscribe((deliveryRes) => {
-          const delivery: any = deliveryRes.value || deliveryRes.data || ((deliveryRes as any).id ? deliveryRes : undefined);
+        this.vcbDeliveriesService.getVcbDeliveryById(shipment.deliveryId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((deliveryRes) => {
+          const delivery = deliveryRes.value ?? deliveryRes.data;
 
           // VCB Orders Nos
-          const orderNos = (delivery?.orders || []).map((o: any) => o.orderNo).filter((no: any) => !!no);
+          const orderNos = (delivery?.orders || []).map((o: VcbDeliveryOrder) => o.orderNo).filter((no): no is string => !!no);
           const orderNosHtml =
             orderNos.length > 0
               ? orderNos
                   .map(
-                    (no: any) =>
+                    (no: string) =>
                       `<span class="inline-flex items-center rounded bg-orange-400 px-1.5 py-0.5 text-[11px] font-bold text-neutral-950 border border-orange-500/20 shadow-sm">${escapeHtml(no as string)}</span>`,
                   )
                   .join(' ')
@@ -179,7 +180,7 @@ export class VcbShipmentsListComponent implements OnInit {
           // Build boxes details html
           let boxesHtml = '';
           if (delivery?.items && delivery.items.length > 0) {
-            delivery.items.forEach((boxItem: any) => {
+            delivery.items.forEach((boxItem: VcbDeliveryItem) => {
               boxesHtml += `
                 <tr class="font-medium">
                   <td class="p-2 text-primary font-bold">${escapeHtml(boxItem.packageBoxNo)}</td>
@@ -271,7 +272,7 @@ export class VcbShipmentsListComponent implements OnInit {
               <th class="p-2 text-right">คืนเงิน</th>
             </tr></thead><tbody>`;
 
-          shipment.items.forEach((item: any) => {
+          shipment.items.forEach((item: VcbShipmentItem) => {
             let statusText =
               item.receiptStatus === 'Complete'
                 ? '<span class="text-success font-medium">รับครบ</span>'

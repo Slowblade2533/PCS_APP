@@ -3,7 +3,7 @@ import { Component, DestroyRef, inject, OnInit, signal, computed, effect, untrac
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, of } from 'rxjs';
+import { catchError, Observable, of } from 'rxjs';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import {
@@ -351,7 +351,7 @@ export class TransactionCreate implements OnInit {
     this.ledgerEntries.update((entries) => entries.filter((_, i) => i !== index));
   }
 
-  updateLedgerEntry(index: number, field: keyof LedgerEntryCreatePayload, value: any) {
+  updateLedgerEntry(index: number, field: keyof LedgerEntryCreatePayload, value: number | string) {
     this.autoGenerateLedger.set(false);
     this.ledgerEntries.update((entries) => {
       const newEntries = [...entries];
@@ -439,7 +439,7 @@ export class TransactionCreate implements OnInit {
         : this.financialService.createTransaction(payload);
 
       this.saveOnTheFlyIfNeeded(() => {
-        request$.subscribe({
+        request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: () => {
             this.router.navigate(['/finance/transactions']);
           },
@@ -471,8 +471,9 @@ export class TransactionCreate implements OnInit {
     }
   }
 
-  onFileSelected(event: any): void {
-    const file = event.target.files[0];
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       this.error.set('ขนาดไฟล์ต้องไม่เกิน 5MB');
@@ -587,7 +588,7 @@ export class TransactionCreate implements OnInit {
       return;
     }
 
-    const promises: any[] = [];
+    const promises: Observable<{ value: number }>[] = [];
 
     if (this.saveSourceAccountOnTheFly() && this.originBank() && this.sourceAccountNo()) {
       promises.push(
@@ -621,7 +622,7 @@ export class TransactionCreate implements OnInit {
     }
 
     import('rxjs').then(({ forkJoin }) => {
-      forkJoin(promises).subscribe({
+      forkJoin(promises).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           callback();
         },

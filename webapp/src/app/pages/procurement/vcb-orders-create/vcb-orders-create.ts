@@ -19,7 +19,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import { ImageHoverPreview } from '../../../shared/components/image-hover-preview/image-hover-preview';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
-import { VcbOrderCreate } from '../../../shared/models/vcb-orders.models';
+import { VcbOrderCreate, VcbOrderItem } from '../../../shared/models/vcb-orders.models';
 import { ProductListItem, ProductVariantDetail } from '../../../shared/models/product.models';
 import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { ProductService } from '../../../shared/services/product.service';
@@ -139,7 +139,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
           }
 
           this.items.clear();
-          order.items.forEach((item: any) => {
+          order.items.forEach((item: VcbOrderItem) => {
             const itemForm = this.fb.group({
               variantId: [item.variantId, Validators.required],
               sku: [item.sku],
@@ -183,7 +183,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
   }
 
   private checkEditMode(): void {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id');
       const mode = this.route.snapshot.queryParamMap.get('mode');
       if (id && mode === 'edit') {
@@ -344,7 +344,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
     }
 
     if (this.isEditMode() && this.editOrderId()) {
-      this.vcbOrdersService.updateVcbOrder(this.editOrderId()!, formData).subscribe({
+      this.vcbOrdersService.updateVcbOrder(this.editOrderId()!, formData).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           if (res.isSuccess) {
             this.orderForm.markAsPristine();
@@ -364,7 +364,7 @@ export class VcbOrdersCreateComponent implements OnInit, HasUnsavedChanges {
         },
       });
     } else {
-      this.vcbOrdersService.createVcbOrder(formData).subscribe({
+      this.vcbOrdersService.createVcbOrder(formData).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           if (res.isSuccess) {
             this.orderForm.markAsPristine();

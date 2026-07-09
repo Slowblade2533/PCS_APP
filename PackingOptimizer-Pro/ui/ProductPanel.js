@@ -30,6 +30,12 @@ class ProductPanel {
             clearBtn.addEventListener('click', () => this.handleClearAll());
         }
 
+        // Quick Default Buttons
+        const quick1 = document.getElementById('btn-quick-std-1');
+        const quick2 = document.getElementById('btn-quick-std-2');
+        if (quick1) quick1.addEventListener('click', () => this.applyQuickDefault(1));
+        if (quick2) quick2.addEventListener('click', () => this.applyQuickDefault(2));
+
         this.render();
     }
 
@@ -88,6 +94,9 @@ class ProductPanel {
         document.getElementById('product-modal-title').textContent = 'เพิ่มสินค้าใหม่';
         this.form.reset();
         
+        // Apply default standard product size 1
+        this.applyQuickDefault(1);
+
         // Reset checkboxes
         document.getElementById('prod-rot-roll').checked = true;
         document.getElementById('prod-rot-pitch').checked = true;
@@ -95,6 +104,26 @@ class ProductPanel {
         document.getElementById('prod-fragile').checked = false;
 
         this.modal.classList.add('active');
+    }
+
+    applyQuickDefault(type) {
+        if (type === 1) {
+            document.getElementById('prod-sku').value = 'SKU-STD-01';
+            document.getElementById('prod-name').value = 'สินค้าต่อกล่อง (ขนาดกลาง)';
+            document.getElementById('prod-width').value = 25.5;
+            document.getElementById('prod-length').value = 14.5;
+            document.getElementById('prod-height').value = 14.0;
+            document.getElementById('prod-weight').value = 2.0;
+            document.getElementById('prod-qty').value = 1;
+        } else if (type === 2) {
+            document.getElementById('prod-sku').value = 'SKU-STD-02';
+            document.getElementById('prod-name').value = 'สินค้าต่อกล่อง (ขนาดเล็ก)';
+            document.getElementById('prod-width').value = 34.0;
+            document.getElementById('prod-length').value = 16.0;
+            document.getElementById('prod-height').value = 11.0;
+            document.getElementById('prod-weight').value = 1.7;
+            document.getElementById('prod-qty').value = 1;
+        }
     }
 
     openEditModal(id) {

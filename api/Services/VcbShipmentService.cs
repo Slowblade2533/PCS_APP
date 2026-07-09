@@ -64,8 +64,9 @@ public class VcbShipmentService(
             await tx.CommitAsync(cancellationToken);
             return ResultDto<int>.Success(newId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error creating VcbShipment for DeliveryId={DeliveryId}", dto.DeliveryId);
             await tx.RollbackAsync(cancellationToken);
             throw;
         }
@@ -104,8 +105,9 @@ public class VcbShipmentService(
             await tx.CommitAsync(cancellationToken);
             return ResultDto<bool>.Success(true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error updating status for VcbShipment Id={Id} to Status={Status}", id, status);
             await tx.RollbackAsync(cancellationToken);
             throw;
         }
@@ -170,8 +172,9 @@ public class VcbShipmentService(
             await tx.CommitAsync(cancellationToken);
             return ResultDto<bool>.Success(true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error updating VcbShipment Id={Id}", id);
             await tx.RollbackAsync(cancellationToken);
             throw;
         }

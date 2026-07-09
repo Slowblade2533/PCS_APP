@@ -79,8 +79,10 @@ export class CategoriesList implements OnInit {
       });
   }
 
-  onLevelChange(event: any): void {
-    const val = event.target.value === 'null' ? null : +event.target.value;
+  onLevelChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    if (!target) return;
+    const val = target.value === 'null' ? null : +target.value;
     this.selectedLevel.set(val);
     this.pageNumber.set(1);
   }

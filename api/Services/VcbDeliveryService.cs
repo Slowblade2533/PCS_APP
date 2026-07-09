@@ -1,4 +1,4 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Repositories;
 
 namespace PCS_API.Services;
@@ -113,8 +113,9 @@ public class VcbDeliveryService(
             await tx.CommitAsync(cancellationToken);
             return newId;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error creating VcbDelivery DeliveryNo={DeliveryNo}", dto.DeliveryNo);
             await tx.RollbackAsync(cancellationToken);
             throw;
         }
@@ -238,8 +239,9 @@ public class VcbDeliveryService(
             await tx.CommitAsync(cancellationToken);
             return ResultDto<bool>.Success(true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error updating VcbDelivery Id={Id}", id);
             await tx.RollbackAsync(cancellationToken);
             throw;
         }

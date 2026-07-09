@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { bankLists } from '../../../shared/constants/banks.constants';
@@ -20,6 +20,7 @@ export class InvestorDetail implements OnInit {
   private readonly investorService = inject(InvestorService);
   private readonly investmentService = inject(InvestmentService);
   private readonly swal = inject(SweetAlertService);
+  private readonly destroyRef = inject(DestroyRef);
 
   investorId = signal<string | null>(null);
 
@@ -66,7 +67,7 @@ export class InvestorDetail implements OnInit {
   }
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id');
       if (id) {
         this.investorId.set(id);
@@ -89,7 +90,7 @@ export class InvestorDetail implements OnInit {
       )
       .then((confirmed) => {
         if (confirmed) {
-          this.investorService.deleteInvestor(inv.investorId).subscribe({
+          this.investorService.deleteInvestor(inv.investorId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
               this.swal.success('ลบข้อมูลสำเร็จ');
               this.router.navigate(['/investors']);

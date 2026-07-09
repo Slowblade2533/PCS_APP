@@ -13,6 +13,7 @@ export interface ProductCreatePayload {
   isStockTracked: boolean;
   inventoryGroup: InventoryGroup;
   createdBy?: number;
+  updatedBy?: number;
   variants: ProductVariantCreatePayload[];
 }
 
@@ -62,8 +63,15 @@ export interface ProductSearchParams {
 }
 
 export interface ProductVariantCreatePayload {
+  variantId?: number;
   sku: string;
+  variantNameTh?: string;
+  variantNameEn?: string;
   barcode?: string;
+  color?: string;
+  sizeLabel?: string;
+  stylePattern?: string;
+  condition?: string;
   unitOfMeasure: string;
   width: number;
   length: number;
@@ -83,6 +91,10 @@ export interface ProductVariantDetail {
   variantNameTh?: string;
   variantNameEn?: string;
   barcode?: string;
+  color?: string;
+  sizeLabel?: string;
+  stylePattern?: string;
+  condition?: string;
   imageUrl?: string;
   unitOfMeasure: string;
   width: number;

@@ -183,7 +183,7 @@ export class PurchaseOrderCreate implements OnInit {
     this.items.update((curr) => curr.filter((_, i) => i !== index));
   }
 
-  updateItem(index: number, field: keyof PurchaseOrderItemCreatePayload, value: any) {
+  updateItem(index: number, field: keyof PurchaseOrderItemCreatePayload, value: number | string) {
     this.items.update((curr) => {
       const newItems = [...curr];
       (newItems[index] as any)[field] = value;
@@ -211,7 +211,7 @@ export class PurchaseOrderCreate implements OnInit {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       this.uploadingSlip.set(true);
-      this.poService.uploadSlip(file).subscribe({
+      this.poService.uploadSlip(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           this.slipAttachmentUrl.set(res.imageUrl);
           this.uploadingSlip.set(false);
@@ -263,7 +263,7 @@ export class PurchaseOrderCreate implements OnInit {
     if (!this.poId()) return;
     this.swal.confirm('ยืนยันการลบ', 'คุณต้องการลบใบสั่งซื้อนี้ใช่หรือไม่? ข้อมูลจะไม่สามารถกู้คืนได้').then((res) => {
       if (res.isConfirmed) {
-        this.poService.delete(this.poId()!).subscribe({
+        this.poService.delete(this.poId()!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: () => {
             this.swal.success('ลบใบสั่งซื้อสำเร็จ');
             this.router.navigate(['/purchasing/purchase-orders']);
@@ -317,7 +317,7 @@ export class PurchaseOrderCreate implements OnInit {
       ? this.poService.update(this.poId()!, payload)
       : this.poService.create(payload);
 
-    request$.subscribe({
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.swal.success('บันทึกข้อมูลเรียบร้อย');
         this.router.navigate(['/purchasing/purchase-orders']);
@@ -339,7 +339,7 @@ export class PurchaseOrderCreate implements OnInit {
     if (!confirm(`ยืนยันการเปลี่ยนสถานะเป็น ${status}?`)) return;
 
     this.submitting.set(true);
-    this.poService.updateStatus(this.poId()!, status).subscribe({
+    this.poService.updateStatus(this.poId()!, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         window.location.reload();
       },

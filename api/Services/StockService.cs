@@ -1,11 +1,11 @@
-﻿using PCS_API.DTOs;
+using PCS_API.DTOs;
 using PCS_API.Models;
 using PCS_API.Repositories;
 using System.Data;
 
 namespace PCS_API.Services;
 
-public class StockService(IStockRepository repo, ISqlConnectionFactory connectionFactory) : IStockService
+public class StockService(IStockRepository repo, ISqlConnectionFactory connectionFactory, ILogger<StockService> logger) : IStockService
 {
     public async Task<PagedResultDto<StockDto>> GetStockStatusAsync(StockSearchDto search, CancellationToken cancellationToken = default)
     {
@@ -122,8 +122,10 @@ public class StockService(IStockRepository repo, ISqlConnectionFactory connectio
             await dbTransaction.CommitAsync(cancellationToken);
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            logger.LogError(ex, "Error processing stock transaction for VariantId={VariantId}, TransactionType={TransactionType}",
+                dto.VariantId, dto.TransactionType);
             await dbTransaction.RollbackAsync(cancellationToken);
             throw;
         }

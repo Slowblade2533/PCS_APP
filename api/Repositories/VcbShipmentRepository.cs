@@ -1,7 +1,6 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
 using PCS_API.DTOs;
-using System.Text;
 using PCS_API.Models;
 
 namespace PCS_API.Repositories;
@@ -102,28 +101,24 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
 
             if (dto.Items.Any())
             {
-                var batchSql = new StringBuilder();
-                var batchParams = new DynamicParameters();
-                batchParams.Add("ShipmentId", shipmentId);
+                const string insertItemSql = @"
+                    INSERT INTO dbo.VcbShipmentItems (ShipmentId, OrderItemId, VariantId, BoxNumbers, ReceiptStatus, ExpectedQuantity, GoodQuantity, DefectiveQuantity, RefundAmount)
+                    VALUES (@ShipmentId, @OrderItemId, @VariantId, @BoxNumbers, @ReceiptStatus, @ExpectedQuantity, @GoodQuantity, @DefectiveQuantity, @RefundAmount);";
 
-                for (int i = 0; i < dto.Items.Count; i++)
+                var itemParams = dto.Items.Select(item => new
                 {
-                    var item = dto.Items[i];
-                    batchSql.AppendLine($@"
-                        INSERT INTO dbo.VcbShipmentItems (ShipmentId, OrderItemId, VariantId, BoxNumbers, ReceiptStatus, ExpectedQuantity, GoodQuantity, DefectiveQuantity, RefundAmount)
-                        VALUES (@ShipmentId, @OrderItemId{i}, @VariantId{i}, @BoxNumbers{i}, @ReceiptStatus{i}, @ExpectedQuantity{i}, @GoodQuantity{i}, @DefectiveQuantity{i}, @RefundAmount{i});");
-                    
-                    batchParams.Add($"OrderItemId{i}", item.OrderItemId);
-                    batchParams.Add($"VariantId{i}", item.VariantId);
-                    batchParams.Add($"BoxNumbers{i}", item.BoxNumbers);
-                    batchParams.Add($"ReceiptStatus{i}", item.ReceiptStatus);
-                    batchParams.Add($"ExpectedQuantity{i}", item.ExpectedQuantity);
-                    batchParams.Add($"GoodQuantity{i}", item.GoodQuantity);
-                    batchParams.Add($"DefectiveQuantity{i}", item.DefectiveQuantity);
-                    batchParams.Add($"RefundAmount{i}", item.RefundAmount);
-                }
+                    ShipmentId = shipmentId,
+                    item.OrderItemId,
+                    item.VariantId,
+                    item.BoxNumbers,
+                    item.ReceiptStatus,
+                    item.ExpectedQuantity,
+                    item.GoodQuantity,
+                    item.DefectiveQuantity,
+                    item.RefundAmount
+                });
 
-                await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: transaction, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertItemSql, itemParams, transaction: transaction, cancellationToken: cancellationToken));
             }
 
             return shipmentId;
@@ -182,28 +177,24 @@ public class VcbShipmentRepository(ISqlConnectionFactory connectionFactory) : IV
 
             if (dto.Items != null && dto.Items.Any())
             {
-                var batchSql = new System.Text.StringBuilder();
-                var batchParams = new DynamicParameters();
-                batchParams.Add("ShipmentId", id);
+                const string insertItemSql = @"
+                    INSERT INTO dbo.VcbShipmentItems (ShipmentId, OrderItemId, VariantId, BoxNumbers, ReceiptStatus, ExpectedQuantity, GoodQuantity, DefectiveQuantity, RefundAmount)
+                    VALUES (@ShipmentId, @OrderItemId, @VariantId, @BoxNumbers, @ReceiptStatus, @ExpectedQuantity, @GoodQuantity, @DefectiveQuantity, @RefundAmount);";
 
-                for (int i = 0; i < dto.Items.Count; i++)
+                var itemParams = dto.Items.Select(item => new
                 {
-                    var item = dto.Items[i];
-                    batchSql.AppendLine($@"
-                        INSERT INTO dbo.VcbShipmentItems (ShipmentId, OrderItemId, VariantId, BoxNumbers, ReceiptStatus, ExpectedQuantity, GoodQuantity, DefectiveQuantity, RefundAmount)
-                        VALUES (@ShipmentId, @OrderItemId{i}, @VariantId{i}, @BoxNumbers{i}, @ReceiptStatus{i}, @ExpectedQuantity{i}, @GoodQuantity{i}, @DefectiveQuantity{i}, @RefundAmount{i});");
-                    
-                    batchParams.Add($"OrderItemId{i}", item.OrderItemId);
-                    batchParams.Add($"VariantId{i}", item.VariantId);
-                    batchParams.Add($"BoxNumbers{i}", item.BoxNumbers);
-                    batchParams.Add($"ReceiptStatus{i}", item.ReceiptStatus);
-                    batchParams.Add($"ExpectedQuantity{i}", item.ExpectedQuantity);
-                    batchParams.Add($"GoodQuantity{i}", item.GoodQuantity);
-                    batchParams.Add($"DefectiveQuantity{i}", item.DefectiveQuantity);
-                    batchParams.Add($"RefundAmount{i}", item.RefundAmount);
-                }
+                    ShipmentId = id,
+                    item.OrderItemId,
+                    item.VariantId,
+                    item.BoxNumbers,
+                    item.ReceiptStatus,
+                    item.ExpectedQuantity,
+                    item.GoodQuantity,
+                    item.DefectiveQuantity,
+                    item.RefundAmount
+                });
 
-                await conn.ExecuteAsync(new CommandDefinition(batchSql.ToString(), batchParams, transaction: transaction, cancellationToken: cancellationToken));
+                await conn.ExecuteAsync(new CommandDefinition(insertItemSql, itemParams, transaction: transaction, cancellationToken: cancellationToken));
             }
 
             return true;

@@ -17,7 +17,7 @@ import { catchError } from 'rxjs/operators';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { environment } from '../../../../environments/environment';
 import { GoodsReceiptCreatePayload, GoodsReceiptDetail, GoodsReceiptItemCreatePayload } from '../../../shared/models/goods-receipts.models';
-import { PurchaseOrderDetail } from '../../../shared/models/purchase-orders.models';
+import { PurchaseOrderDetail, PurchaseOrderItem } from '../../../shared/models/purchase-orders.models';
 import { PaymentMethod } from '../../../shared/models/shared.models';
 import { GoodsReceiptsService } from '../../../shared/services/goods-receipts.service';
 import { PurchaseOrdersService } from '../../../shared/services/purchase-orders.service';
@@ -38,7 +38,6 @@ export class GoodsReceiptCreate implements OnInit {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   apiOrigin = environment.apiUrl.replace('/api', '');
-
 
   receiptId = signal<number | null>(null);
   isViewMode = signal<boolean>(false);
@@ -89,7 +88,7 @@ export class GoodsReceiptCreate implements OnInit {
       if (poData && !this.isViewMode()) {
         untracked(() => {
           const newItems: GoodsReceiptItemCreatePayload[] = poData.items
-            .map((pi: any) => {
+            .map((pi: PurchaseOrderItem) => {
               const expectedQty = pi.quantity - pi.receivedQuantity;
               return {
                 poItemId: pi.poItemId,
@@ -100,8 +99,7 @@ export class GoodsReceiptCreate implements OnInit {
                 damagedQuantity: 0,
               };
             })
-            .filter((i: any) => i.expectedQuantity > 0);
-
+            .filter((i: GoodsReceiptItemCreatePayload) => i.expectedQuantity > 0);
           this.items.set(newItems);
         });
       }
@@ -122,16 +120,15 @@ export class GoodsReceiptCreate implements OnInit {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const poId = params.get('poId');
       if (poId) {
-        // we set sourcePoId only if not viewMode, but actually wait, we can just set it and viewMode condition applies in effect
         this.sourcePoId.set(Number(poId));
       }
     });
   }
 
-  updateItem(index: number, field: keyof GoodsReceiptItemCreatePayload, value: any) {
+  updateItem(index: number, field: keyof GoodsReceiptItemCreatePayload, value: number | string) {
     this.items.update((curr) => {
       const newItems = [...curr];
-      (newItems[index] as any)[field] = value;
+      (newItems[index] as unknown as Record<string, number | string>)[field] = value;
       return newItems;
     });
   }
@@ -173,7 +170,7 @@ export class GoodsReceiptCreate implements OnInit {
     this.submitting.set(true);
     this.error.set(null);
 
-    this.grService.create(payload).subscribe({
+    this.grService.create(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.router.navigate(['/purchasing/goods-receipts']);
       },
@@ -199,7 +196,7 @@ export class GoodsReceiptCreate implements OnInit {
       .then((res) => {
         if (res.isConfirmed) {
           this.submitting.set(true);
-          this.grService.complete(this.receiptId()!).subscribe({
+          this.grService.complete(this.receiptId()!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
               window.location.reload();
             },

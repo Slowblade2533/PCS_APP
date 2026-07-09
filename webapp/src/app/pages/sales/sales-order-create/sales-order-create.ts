@@ -82,7 +82,7 @@ export class SalesOrderCreate implements OnInit {
     this.items.update((curr) => curr.filter((_, i) => i !== index));
   }
 
-  updateItem(index: number, field: keyof SalesOrderItemCreatePayload, value: any) {
+  updateItem(index: number, field: keyof SalesOrderItemCreatePayload, value: number | string) {
     this.items.update((curr) => {
       const newItems = [...curr];
       (newItems[index] as any)[field] = value;
@@ -139,7 +139,7 @@ export class SalesOrderCreate implements OnInit {
     this.submitting.set(true);
     this.error.set(null);
 
-    this.salesService.create(payload).subscribe({
+    this.salesService.create(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.router.navigate(['/sales/orders']);
       },
@@ -160,7 +160,7 @@ export class SalesOrderCreate implements OnInit {
       return;
 
     this.submitting.set(true);
-    this.salesService.complete(this.orderId()!).subscribe({
+    this.salesService.complete(this.orderId()!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         window.location.reload();
       },
@@ -176,7 +176,7 @@ export class SalesOrderCreate implements OnInit {
     if (!confirm('ยืนยันการยกเลิกใบสั่งขายนี้?')) return;
 
     this.submitting.set(true);
-    this.salesService.cancel(this.orderId()!).subscribe({
+    this.salesService.cancel(this.orderId()!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         window.location.reload();
       },

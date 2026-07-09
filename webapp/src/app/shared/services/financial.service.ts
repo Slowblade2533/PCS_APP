@@ -183,6 +183,14 @@ export class FinancialService {
     });
   }
 
+  getCashBroughtForward(dateFrom?: string): Observable<number> {
+    let p = new HttpParams();
+    if (dateFrom) p = p.set('dateFrom', dateFrom);
+    return this.http.get<number>(`${this.apiUrl}/reports/general-journal/cash-brought-forward`, {
+      params: p,
+    });
+  }
+
   getGeneralLedger(
     accountId: number,
     dateFrom?: string,

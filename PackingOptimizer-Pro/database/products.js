@@ -4,7 +4,7 @@
  */
 class ProductDatabase {
     constructor() {
-        this.key = 'products';
+        this.key = 'products_v3';
         this.products = this.load();
     }
 
@@ -12,39 +12,27 @@ class ProductDatabase {
         const defaults = [
             {
                 id: 'p1',
-                sku: 'SKU-BOOK-01',
-                name: 'Standard Textbook',
-                width: 15.0,
-                length: 22.0,
-                height: 3.0,
-                weight: 0.8,
-                quantity: 5,
+                sku: 'SKU-STD-01',
+                name: 'สินค้าต่อกล่อง (ขนาดกลาง)',
+                width: 25.5,
+                length: 14.5,
+                height: 14.0,
+                weight: 2.0,
+                quantity: 1,
                 rotationAllowed: { roll: true, pitch: true, yaw: true },
                 fragile: false
             },
             {
                 id: 'p2',
-                sku: 'SKU-MUG-02',
-                name: 'Ceramic Coffee Mug',
-                width: 12.0,
-                length: 12.0,
-                height: 10.0,
-                weight: 0.4,
-                quantity: 2,
-                rotationAllowed: { roll: false, pitch: false, yaw: true }, // Keep upright
-                fragile: true
-            },
-            {
-                id: 'p3',
-                sku: 'SKU-LAPTOP-03',
-                name: 'Slim Ultrabook Laptop',
-                width: 24.0,
-                length: 35.0,
-                height: 2.0,
-                weight: 1.6,
+                sku: 'SKU-STD-02',
+                name: 'สินค้าต่อกล่อง (ขนาดเล็ก)',
+                width: 34.0,
+                length: 16.0,
+                height: 11.0,
+                weight: 1.7,
                 quantity: 1,
                 rotationAllowed: { roll: true, pitch: true, yaw: true },
-                fragile: true
+                fragile: false
             }
         ];
         return window.StorageManager.get(this.key, defaults);

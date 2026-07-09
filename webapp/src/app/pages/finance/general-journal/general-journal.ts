@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { FinancialService } from '../../../shared/services/financial.service';
 import { GeneralJournalRow } from '../../../shared/models/financial.models';
@@ -26,6 +27,7 @@ export class GeneralJournal implements OnInit {
   rows = signal<(GeneralJournalRow & { isAlternate?: boolean })[]>([]);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
+  cashBroughtForward = signal<number>(0);
 
   totalMoneyIn = computed(() => {
     return this.rows()
@@ -41,6 +43,10 @@ export class GeneralJournal implements OnInit {
 
   netBalance = computed(() => {
     return this.totalMoneyIn() - this.totalMoneyOut();
+  });
+
+  endingBalance = computed(() => {
+    return this.cashBroughtForward() + this.netBalance();
   });
 
   isCashAccount(code: string): boolean {
@@ -81,14 +87,16 @@ export class GeneralJournal implements OnInit {
   loadData() {
     this.loading.set(true);
     this.error.set(null);
-    this.financialService
-      .getGeneralJournal(this.dateFrom(), this.dateTo())
+    forkJoin({
+      journal: this.financialService.getGeneralJournal(this.dateFrom(), this.dateTo()),
+      broughtForward: this.financialService.getCashBroughtForward(this.dateFrom()),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (data) => {
+        next: ({ journal, broughtForward }) => {
           let currentTxId = -1;
           let isAlternate = false;
-          const processed = data.map((row) => {
+          const processed = journal.map((row) => {
             if (row.transactionId !== currentTxId) {
               currentTxId = row.transactionId;
               isAlternate = !isAlternate;
@@ -96,6 +104,7 @@ export class GeneralJournal implements OnInit {
             return { ...row, isAlternate };
           });
           this.rows.set(processed);
+          this.cashBroughtForward.set(broughtForward);
           this.loading.set(false);
         },
         error: (err) => {

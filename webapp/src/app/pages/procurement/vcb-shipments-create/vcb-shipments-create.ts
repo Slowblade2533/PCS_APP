@@ -21,8 +21,8 @@ import { environment } from '../../../../environments/environment';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { HasUnsavedChanges } from '../../../shared/guards/has-unsaved-changes.interface';
 import { VcbOrder, VcbOrderItem } from '../../../shared/models/vcb-orders.models';
-import { VcbDelivery, VcbDeliverySearch } from '../../../shared/models/vcb-deliveries.models';
-import { VcbShipmentCreate } from '../../../shared/models/vcb-shipments.models';
+import { VcbShipment, VcbShipmentCreate, VcbShipmentItem } from '../../../shared/models/vcb-shipments.models';
+import { VcbDelivery, VcbDeliveryItem, VcbDeliveryOrder, VcbDeliverySearch } from '../../../shared/models/vcb-deliveries.models';
 import { VcbDeliveriesService } from '../../../shared/services/vcb-deliveries.service';
 import { VcbOrdersService } from '../../../shared/services/vcb-orders.service';
 import { VcbShipmentsService } from '../../../shared/services/vcb-shipments.service';
@@ -85,14 +85,14 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       if (!params) return of(null);
       return this.vcbShipmentsService.getVcbShipmentById(params).pipe(
         switchMap((res) => {
-          const shipment: any = res.value || res.data || ((res as any).id ? res : undefined);
+          const shipment = res.value ?? res.data;
           if (!shipment) return of(null);
           return this.vcbDeliveriesService.getVcbDeliveryById(shipment.deliveryId).pipe(
             switchMap((deliveryRes) => {
-              const delivery: any = deliveryRes.value || deliveryRes.data || ((deliveryRes as any).id ? deliveryRes : undefined);
+              const delivery = deliveryRes.value ?? deliveryRes.data;
               if (!delivery || !delivery.orders?.length)
                 return of({ shipment, delivery, orderResponses: [] });
-              const orderReqs = delivery.orders.map((o: any) =>
+              const orderReqs = delivery.orders.map((o: VcbDeliveryOrder) =>
                 this.vcbOrdersService.getVcbOrderById(o.orderId),
               );
               return forkJoin(orderReqs).pipe(
@@ -115,9 +115,9 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       if (!params) return of(null);
       return this.vcbDeliveriesService.getVcbDeliveryById(params).pipe(
         switchMap((deliveryRes) => {
-          const delivery: any = deliveryRes.value || deliveryRes.data || ((deliveryRes as any).id ? deliveryRes : undefined);
+          const delivery = deliveryRes.value ?? deliveryRes.data;
           if (!delivery || !delivery.orders?.length) return of({ delivery, orderResponses: [] });
-          const orderReqs = delivery.orders.map((o: any) =>
+          const orderReqs = delivery.orders.map((o: VcbDeliveryOrder) =>
             this.vcbOrdersService.getVcbOrderById(o.orderId),
           );
           return forkJoin(orderReqs).pipe(map((orderResponses) => ({ delivery, orderResponses })));
@@ -150,7 +150,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       const data = this.shipmentDataResource.value();
       if (data && this.isEditMode()) {
         untracked(() => {
-          this.applyEditData(data.shipment, data.delivery, data.orderResponses as any[]);
+          this.applyEditData(data.shipment, data.delivery!, data.orderResponses as VcbOrder[]);
         });
       }
     });
@@ -159,7 +159,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       const data = this.deliveryDataResource.value();
       if (data && !this.isEditMode()) {
         untracked(() => {
-          this.applyNewDeliveryData(data.delivery, data.orderResponses as any[]);
+          this.applyNewDeliveryData(data.delivery!, data.orderResponses as VcbOrder[]);
         });
       }
     });
@@ -169,7 +169,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     this.initForm();
     this.setupOrderSearch();
 
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const idStr = params.get('id');
       if (idStr) {
         const id = parseInt(idStr, 10);
@@ -181,7 +181,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
-  applyEditData(shipment: any, fullDelivery: any, orderResponses: any[]): void {
+  applyEditData(shipment: VcbShipment, fullDelivery: VcbDelivery, orderResponses: VcbOrder[]): void {
     this.shipmentForm.patchValue({
       deliveryId: shipment.deliveryId,
       receiptDate: shipment.receiptDate ? this.formatDate(new Date(shipment.receiptDate)) : this.formatDate(new Date()),
@@ -195,7 +195,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       const tempSubBoxes: string[] = [];
       if (fullDelivery.items) {
         const receivedSet = new Set<string>(fullDelivery.receivedBoxNumbers || []);
-        fullDelivery.items.forEach((dItem: any) => {
+        fullDelivery.items.forEach((dItem: VcbDeliveryItem) => {
           if (dItem.containedBoxNumbers) {
             try {
               const subBoxes = JSON.parse(dItem.containedBoxNumbers);
@@ -204,7 +204,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                   if (sub.boxNo && !tempSubBoxes.includes(sub.boxNo)) {
                     const isRec = receivedSet.has(sub.boxNo);
                     const isCurrentShipmentBox = shipment.items.some(
-                      (si: any) =>
+                      (si: VcbShipmentItem) =>
                         si.boxNumbers &&
                         si.boxNumbers
                           .split(',')
@@ -221,7 +221,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
               if (!tempSubBoxes.includes(dItem.containedBoxNumbers)) {
                 const isRec = receivedSet.has(dItem.containedBoxNumbers);
                 const isCurrentShipmentBox = shipment.items.some(
-                  (si: any) =>
+                  (si: VcbShipmentItem) =>
                     si.boxNumbers &&
                     si.boxNumbers
                       .split(',')
@@ -240,9 +240,9 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
 
       const tempOrderItems: VcbOrderItem[] = [];
       orderResponses.forEach((orderRes) => {
-        const order = orderRes.value || orderRes.data;
+        const order = orderRes;
         if (order && order.items) {
-          order.items.forEach((item: any) => {
+          order.items.forEach((item: VcbOrderItem) => {
             tempOrderItems.push(item);
           });
         }
@@ -250,7 +250,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       this.availableOrderItems.set(tempOrderItems);
 
       this.items.clear();
-      shipment.items.forEach((sItem: any) => {
+      shipment.items.forEach((sItem: VcbShipmentItem) => {
         const matchingOrderItem = tempOrderItems.find((aoi) => aoi.id === sItem.orderItemId);
         const expectedQty = sItem.expectedQuantity;
 
@@ -304,7 +304,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       this.isEditing.set(false);
       const data = this.shipmentDataResource.value();
       if (data) {
-        this.applyEditData(data.shipment, data.delivery, data.orderResponses as any[]);
+        this.applyEditData(data.shipment, data.delivery!, data.orderResponses as VcbOrder[]);
       }
     } else {
       // Enter Edit
@@ -445,7 +445,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     };
 
     if (this.isEditMode() && this.shipmentId()) {
-      this.vcbShipmentsService.updateVcbShipment(this.shipmentId()!, dto).subscribe({
+      this.vcbShipmentsService.updateVcbShipment(this.shipmentId()!, dto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           this.isSubmitting.set(false);
           if (res.isSuccess) {
@@ -467,6 +467,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                     if (result.isConfirmed) {
                       this.vcbShipmentsService
                         .updateVcbShipmentStatus(this.shipmentId()!, 'Completed')
+                        .pipe(takeUntilDestroyed(this.destroyRef))
                         .subscribe(() => {
                           this.swal.success('รับเข้าสต็อกเรียบร้อย');
                           this.router.navigate(['/procurement/vcb-shipments']);
@@ -487,7 +488,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
         },
       });
     } else {
-      this.vcbShipmentsService.createVcbShipment(dto).subscribe({
+      this.vcbShipmentsService.createVcbShipment(dto).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res) => {
           this.isSubmitting.set(false);
           if (res.isSuccess) {
@@ -506,6 +507,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
                       const newId = (res.value || res.data)!;
                       this.vcbShipmentsService
                         .updateVcbShipmentStatus(newId, 'Completed')
+                        .pipe(takeUntilDestroyed(this.destroyRef))
                         .subscribe(() => {
                           this.swal.success('รับเข้าสต็อกเรียบร้อย');
                           this.router.navigate(['/procurement/vcb-shipments']);
@@ -541,7 +543,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
     }
   }
 
-  applyNewDeliveryData(fullDelivery: any, orderResponses: any[]): void {
+  applyNewDeliveryData(fullDelivery: VcbDelivery, orderResponses: VcbOrder[]): void {
     if (fullDelivery) {
       this.selectedDelivery.set(fullDelivery);
       this.shipmentForm.patchValue({ deliveryId: fullDelivery.id });
@@ -552,7 +554,7 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
       const tempSubBoxes: string[] = [];
       if (fullDelivery.items) {
         const receivedSet = new Set<string>(fullDelivery.receivedBoxNumbers || []);
-        fullDelivery.items.forEach((dItem: any) => {
+        fullDelivery.items.forEach((dItem: VcbDeliveryItem) => {
           if (dItem.containedBoxNumbers) {
             try {
               const subBoxes = JSON.parse(dItem.containedBoxNumbers);
@@ -582,14 +584,14 @@ export class VcbShipmentsCreateComponent implements OnInit, HasUnsavedChanges {
 
       const tempOrderItems: VcbOrderItem[] = [];
       orderResponses.forEach((orderRes) => {
-        const order = orderRes.value || orderRes.data;
+        const order = orderRes;
         if (order && order.items) {
-          order.items.forEach((item: any) => {
+          order.items.forEach((item: VcbOrderItem) => {
             tempOrderItems.push(item);
           });
           order.items
-            .filter((item: any) => (item.remainingQuantity ?? item.quantity) > 0)
-            .forEach((item: any) => this.addItemToShipment(item));
+            .filter((item: VcbOrderItem) => (item.remainingQuantity ?? item.quantity) > 0)
+            .forEach((item: VcbOrderItem) => this.addItemToShipment(item));
         }
       });
       this.availableOrderItems.set(tempOrderItems);
