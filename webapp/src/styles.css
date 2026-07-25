@@ -41,3 +41,53 @@
     }
   }
 }
+
+/* 🖨️ Global A4 Print Styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* Reset body and container backgrounds & layouts for print */
+  html, body, app-root, .drawer, .drawer-content, main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide non-printable elements strictly */
+  .print\:hidden,
+  .drawer-side,
+  .drawer-overlay,
+  .drawer-toggle,
+  .drawer-button,
+  header,
+  nav,
+  aside,
+  footer {
+    display: none !important;
+  }
+
+  /* Page break rules for A4 documents */
+  .a4-page {
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+}

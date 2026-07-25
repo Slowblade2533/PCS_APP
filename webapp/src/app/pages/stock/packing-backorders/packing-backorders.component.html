@@ -1,0 +1,198 @@
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <span>🔄</span> จัดการรายการค้างส่งและจัดส่งทดแทน (Backorders & Substitutions)
+      </h1>
+      <p class="text-slate-500 text-sm mt-1">
+        ติดตามออเดอร์ที่จัดส่งไม่ครบในรอบแรก คีย์ส่งสินค้าตามหลังหรือเปลี่ยนสินค้าทดแทนย้อนหลังแบบ Manual
+      </p>
+    </div>
+    <button (click)="loadBackorders()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all shadow flex items-center gap-2">
+      <span>🔄</span> รีเฟรชรายการ
+    </button>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="relative w-full md:w-96">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm" 
+        (ngModelChange)="applyFilter()"
+        placeholder="ค้นหาเลขออเดอร์, เลขพัสดุ, SKU, หรือชื่อสินค้า..." 
+        class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <span class="absolute left-3 top-3 text-slate-400">🔍</span>
+    </div>
+    <div class="text-xs text-slate-500 font-medium">
+      รายการค้างส่งทั้งหมด: <strong class="text-slate-900 text-sm">{{ filteredBackorders.length }}</strong> รายการ
+    </div>
+  </div>
+
+  <!-- Backorders Table -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600 font-medium text-xs border-b border-slate-200">
+          <tr>
+            <th class="p-4">แพลตฟอร์ม</th>
+            <th class="p-4">เลขออเดอร์</th>
+            <th class="p-4">เลขพัสดุ (Tracking)</th>
+            <th class="p-4">รหัส SKU ที่สั่งเดิม</th>
+            <th class="p-4">ชื่อสินค้าเดิม</th>
+            <th class="p-4 text-center">สั่ง (Ordered)</th>
+            <th class="p-4 text-center">ส่งแล้ว (Shipped)</th>
+            <th class="p-4 text-center">ค้างส่ง (Pending)</th>
+            <th class="p-4 text-center">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let item of filteredBackorders" class="hover:bg-slate-50 transition-colors">
+            <td class="p-4">
+              <span class="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                [ngClass]="{'bg-sky-100 text-sky-800': item.platform === 'Lazada', 'bg-orange-100 text-orange-800': item.platform === 'Shopee'}">
+                {{ item.platform }}
+              </span>
+            </td>
+            <td class="p-4 font-mono font-medium text-slate-800">{{ item.orderNo }}</td>
+            <td class="p-4 font-mono text-indigo-600 font-medium">{{ item.trackingNo }}</td>
+            <td class="p-4 font-mono font-bold text-slate-900">{{ item.sku }}</td>
+            <td class="p-4 text-slate-700 max-w-xs truncate">{{ item.productName || item.sku }}</td>
+            <td class="p-4 text-center font-bold text-slate-800">{{ item.orderedQuantity }}</td>
+            <td class="p-4 text-center font-bold text-emerald-600">{{ item.shippedQuantity }}</td>
+            <td class="p-4 text-center">
+              <span class="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg font-black text-sm">
+                {{ item.orderedQuantity - item.shippedQuantity }}
+              </span>
+            </td>
+            <td class="p-4 text-center">
+              <button 
+                (click)="openResolveModal(item)" 
+                class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium shadow-sm transition-all flex items-center gap-1.5 mx-auto">
+                <span>📦</span> ดำเนินการส่งตามหลัง
+              </button>
+            </td>
+          </tr>
+
+          <tr *ngIf="filteredBackorders.length === 0 && !isLoading">
+            <td colspan="9" class="p-12 text-center text-slate-400">
+              <div class="text-4xl mb-2">🎉</div>
+              <div class="text-base font-semibold text-slate-700">ไม่มีรายการค้างส่งในขณะนี้</div>
+              <p class="text-xs text-slate-400 mt-1">ออเดอร์ทั้งหมดได้รับการจัดส่งครบถ้วนเรียบร้อยแล้ว</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Resolve & Substitution Modal -->
+<div *ngIf="showResolveModal && selectedItem" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden space-y-6">
+    <div class="p-5 bg-slate-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📦</span>
+        <h3 class="font-bold text-base">ดำเนินการจัดส่งสินค้าตามหลัง / ส่งทดแทน</h3>
+      </div>
+      <button (click)="closeResolveModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+    </div>
+
+    <div class="p-6 space-y-5">
+      <!-- Original Item Info -->
+      <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-xs">
+        <div class="text-slate-400">ออเดอร์: <strong class="text-slate-800">{{ selectedItem.orderNo }}</strong> ({{ selectedItem.platform }})</div>
+        <div class="text-slate-400">พัสดุเดิม: <strong class="text-indigo-600 font-mono">{{ selectedItem.trackingNo }}</strong></div>
+        <div class="text-slate-800 font-bold text-sm mt-1">
+          สินค้าที่สั่งเดิม: {{ selectedItem.sku }} - {{ selectedItem.productName }}
+        </div>
+        <div class="text-amber-700 font-semibold mt-1">
+          สั่ง {{ selectedItem.orderedQuantity }} ชิ้น | ส่งแล้ว {{ selectedItem.shippedQuantity }} ชิ้น | <span class="underline">ค้างส่ง {{ selectedItem.orderedQuantity - selectedItem.shippedQuantity }} ชิ้น</span>
+        </div>
+      </div>
+
+      <!-- Resolution Mode Selection -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-700">รูปแบบการดำเนินการ:</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button 
+            type="button"
+            (click)="resolutionType = 'EXACT_FULFILLMENT'"
+            [ngClass]="{'bg-indigo-600 text-white border-indigo-600': resolutionType === 'EXACT_FULFILLMENT', 'bg-slate-50 text-slate-700 border-slate-200': resolutionType !== 'EXACT_FULFILLMENT'}"
+            class="p-2.5 border rounded-xl text-xs font-medium transition-all text-center">
+            🟢 ส่งสินค้าเดิม
+          </button>
+          <button 
+            type="button"
+            (click)="resolutionType = 'SUBSTITUTION'"
+            [ngClass]="{'bg-amber-600 text-white border-amber-600': resolutionType === 'SUBSTITUTION', 'bg-slate-50 text-slate-700 border-slate-200': resolutionType !== 'SUBSTITUTION'}"
+            class="p-2.5 border rounded-xl text-xs font-medium transition-all text-center">
+            🟡 ส่งสินค้าทดแทน
+          </button>
+          <button 
+            type="button"
+            (click)="resolutionType = 'REFUND_CANCEL'"
+            [ngClass]="{'bg-rose-600 text-white border-rose-600': resolutionType === 'REFUND_CANCEL', 'bg-slate-50 text-slate-700 border-slate-200': resolutionType !== 'REFUND_CANCEL'}"
+            class="p-2.5 border rounded-xl text-xs font-medium transition-all text-center">
+            🔴 ยกเลิก/คืนเงิน
+          </button>
+        </div>
+      </div>
+
+      <!-- Substitution Input (If Substitution Selected) -->
+      <div *ngIf="resolutionType === 'SUBSTITUTION'" class="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+        <label class="text-xs font-bold text-amber-900">ระบุ SKU สินค้าที่ส่งทดแทน:</label>
+        <input 
+          type="text" 
+          [(ngModel)]="substituteSku"
+          placeholder="เช่น ช้อนสีเงิน (SKU-SILVER-01)"
+          class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+      </div>
+
+      <!-- Quantity & Tracking Input -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-bold text-slate-700">จำนวนที่ส่งครั้งนี้:</label>
+          <input 
+            type="number" 
+            [(ngModel)]="shippedQuantity"
+            min="1" 
+            [max]="selectedItem.orderedQuantity - selectedItem.shippedQuantity"
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-emerald-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-700">เลขพัสดุใหม่ที่ส่งตามหลัง (ถ้ามี):</label>
+          <input 
+            type="text" 
+            [(ngModel)]="followUpTrackingNo"
+            placeholder="เช่น TH0982374..."
+            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+
+      <!-- Customer Agreement Note -->
+      <div class="space-y-1">
+        <label class="text-xs font-bold text-slate-700">หมายเหตุข้อตกลงกับลูกค้า:</label>
+        <textarea 
+          [(ngModel)]="customerNote"
+          rows="2"
+          placeholder="เช่น ลูกค้าตกลงรับช้อนสีเงิน x1 แทนช้อนสีทอง x1 ที่ค้างส่ง..."
+          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+      <button (click)="closeResolveModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition-all">
+        ยกเลิก
+      </button>
+      <button 
+        (click)="submitResolution()" 
+        [disabled]="isResolving"
+        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-md disabled:opacity-50 flex items-center gap-1.5">
+        <span>💾</span> ยืนยันจัดส่งและตัดสต๊อกจริง
+      </button>
+    </div>
+  </div>
+</div>

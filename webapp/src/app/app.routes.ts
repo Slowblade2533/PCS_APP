@@ -69,6 +69,20 @@ export const routes: Routes = [
         data: { permission: 'stock:view' },
       },
       {
+        path: 'stock/packing-import',
+        loadComponent: () =>
+          import('./pages/stock/packing-import/packing-import.component').then(
+            (m) => m.PackingImportComponent,
+          ),
+      },
+      {
+        path: 'stock/packing-backorders',
+        loadComponent: () =>
+          import('./pages/stock/packing-backorders/packing-backorders.component').then(
+            (m) => m.PackingBackordersComponent,
+          ),
+      },
+      {
         path: 'stock/adjust',
         loadComponent: () =>
           import('./pages/stock/stock-transaction/stock-transaction').then(

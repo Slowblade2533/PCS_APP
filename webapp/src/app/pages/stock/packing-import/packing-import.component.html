@@ -1,0 +1,540 @@
+<div class="space-y-6 max-w-7xl mx-auto p-4 md:p-6 pb-20 print:p-0 print:m-0 print:max-w-none print:space-y-0">
+  
+  <!-- Header Title & Action Buttons -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 print:hidden">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded-lg text-xs">Stock Management</span>
+        <span class="text-slate-300">•</span>
+        <span class="text-xs text-slate-500 font-medium">Multi-Platform Packing Optimizer</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-800 tracking-tight mt-1">นำเข้าข้อมูลแพ๊คสินค้า (Lazada & Shopee)</h1>
+      <p class="text-sm text-slate-500 mt-1">อัปโหลดไฟล์ Excel รายการแพ๊คสินค้า แยกกล่อง แยกแพลตฟอร์ม ตรวจสแกน SKU และออกใบแพ๊ค A4 พร้อม 2D QR Code</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button *ngIf="parcelCards.length > 0" (click)="openPrintPreview()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2">
+        <span>🖨️</span>
+        <span>แสดงตัวอย่างก่อนพิมพ์ A4</span>
+      </button>
+      <button *ngIf="parcelCards.length > 0" (click)="saveDraftBatch()" [disabled]="isSavingDraft" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-all shadow-sm flex items-center gap-2 disabled:opacity-50">
+        <span>💾</span>
+        <span>{{ isSavingDraft ? 'กำลังบันทึก...' : 'บันทึกเป็นร่างเอกสารแพ๊ค' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Drag & Drop Zone -->
+  <div 
+    class="border-2 border-dashed rounded-3xl p-8 text-center transition-all bg-white shadow-sm cursor-pointer print:hidden"
+    [ngClass]="{
+      'border-indigo-400 bg-indigo-50/50 scale-[0.99]': isDragging,
+      'border-slate-200 hover:border-indigo-300': !isDragging
+    }"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <div class="max-w-md mx-auto space-y-4">
+      <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner">
+        📦
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-slate-800">ลากไฟล์ Excel รายการแพ๊คสินค้ามาวางที่นี่</h3>
+        <p class="text-xs text-slate-400 mt-1">รองรับไฟล์ Excel ของ Lazada และ Shopee (อัปโหลดพร้อมกันได้มากกว่า 1 ไฟล์)</p>
+      </div>
+
+      <div class="flex justify-center">
+        <label class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm cursor-pointer transition-all shadow-sm flex items-center gap-2">
+          <span>📁 เลือกไฟล์ Excel</span>
+          <input type="file" multiple accept=".xlsx, .xls" (change)="onFileSelected($event)" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Selected Files Badges & Results Status -->
+  <div *ngIf="parseResults.length > 0" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3 print:hidden">
+    <div class="flex items-center justify-between">
+      <h3 class="font-semibold text-slate-800 text-sm flex items-center gap-2">
+        <span>📄</span> รายชื่อไฟล์ที่นำเข้า ({{ parseResults.length }} ไฟล์)
+      </h3>
+      <button (click)="clearLoadedData()" class="text-xs text-rose-600 hover:underline">ล้างข้อมูลทั้งหมด</button>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <div *ngFor="let res of parseResults" 
+        class="px-3 py-1.5 rounded-xl border text-xs font-medium flex items-center gap-2"
+        [ngClass]="{
+          'bg-sky-50 border-sky-200 text-sky-700': res.platform === 'Lazada',
+          'bg-orange-50 border-orange-200 text-orange-700': res.platform === 'Shopee',
+          'bg-rose-50 border-rose-200 text-rose-700': !res.isValid
+        }">
+        <span>{{ res.platform === 'Lazada' ? '🔷 [Lazada]' : (res.platform === 'Shopee' ? '🟧 [Shopee]' : '⚠️ [Invalid]') }}</span>
+        <span>{{ res.fileName }}</span>
+        <span *ngIf="!res.isValid" class="text-rose-600 font-semibold">(โครงสร้างคอลัมน์ไม่ถูกต้อง)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall Summary Cards & Platform Breakdown -->
+  <div *ngIf="parcelCards.length > 0" class="space-y-4 print:hidden">
+    <!-- Overall Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="text-xs text-slate-400 font-medium">ออเดอร์รวมทุกแพลตฟอร์ม</div>
+        <div class="text-2xl font-bold text-slate-800 mt-1">{{ summary.totalOrders | number }}</div>
+        <div class="text-xs text-slate-500 mt-1">คำสั่งซื้อ</div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="text-xs text-slate-400 font-medium">กล่องพัสดุรวม</div>
+        <div class="text-2xl font-bold text-indigo-600 mt-1">{{ summary.totalParcels | number }}</div>
+        <div class="text-xs text-slate-500 mt-1">กล่อง (Tracking ID)</div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="text-xs text-slate-400 font-medium">จำนวนสินค้าทั้งหมด</div>
+        <div class="text-2xl font-bold text-emerald-600 mt-1">{{ summary.totalItems | number }}</div>
+        <div class="text-xs text-slate-500 mt-1">ชิ้น (Units)</div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div class="text-xs text-slate-400 font-medium">สถานะสแกน SKU กับ DB</div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">🟢 พบ {{ summary.matchedSkus }}</span>
+          <span class="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">🔴 ไม่พบ {{ summary.unmatchedSkus }}</span>
+        </div>
+        <div class="text-xs text-slate-400 mt-2">ตรวจสอบกับ dbo.ProductVariants</div>
+      </div>
+    </div>
+
+    <!-- Platform Breakdown Summary Banner -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Lazada Banner -->
+      <div class="bg-sky-50/70 border border-sky-100 p-4 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-xl bg-sky-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">LZ</span>
+          <div>
+            <h4 class="font-bold text-sky-900 text-sm">🔷 Lazada Platform Summary</h4>
+            <div class="text-xs text-sky-700 mt-0.5">
+              {{ lazadaSummary.totalOrders }} ออเดอร์ | {{ lazadaSummary.totalParcels }} กล่อง | {{ lazadaSummary.totalItems }} ชิ้น
+            </div>
+          </div>
+        </div>
+        <button (click)="setPlatformFilter('Lazada')" [class.bg-sky-600]="activePlatformFilter === 'Lazada'" [class.text-white]="activePlatformFilter === 'Lazada'" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 text-sky-800 bg-white hover:bg-sky-100 transition-all">
+          {{ activePlatformFilter === 'Lazada' ? '✓ กำลังดูอยู่' : 'กรองเฉพาะ Lazada' }}
+        </button>
+      </div>
+
+      <!-- Shopee Banner -->
+      <div class="bg-orange-50/70 border border-orange-100 p-4 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-xl bg-orange-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">SP</span>
+          <div>
+            <h4 class="font-bold text-orange-900 text-sm">🟧 Shopee Platform Summary</h4>
+            <div class="text-xs text-orange-700 mt-0.5">
+              {{ shopeeSummary.totalOrders }} ออเดอร์ | {{ shopeeSummary.totalParcels }} กล่อง | {{ shopeeSummary.totalItems }} ชิ้น
+            </div>
+          </div>
+        </div>
+        <button (click)="setPlatformFilter('Shopee')" [class.bg-orange-600]="activePlatformFilter === 'Shopee'" [class.text-white]="activePlatformFilter === 'Shopee'" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-300 text-orange-800 bg-white hover:bg-orange-100 transition-all">
+          {{ activePlatformFilter === 'Shopee' ? '✓ กำลังดูอยู่' : 'กรองเฉพาะ Shopee' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Temp Data Table & Platform Filtering -->
+  <div *ngIf="parcelCards.length > 0" class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden print:hidden">
+    
+    <!-- Table Header & Platform Filter Tabs -->
+    <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">ตารางรายการกล่องพัสดุและสินค้าที่ต้องแพ๊ค (Temp Data Preview)</h3>
+        <p class="text-xs text-slate-500 mt-0.5">แสดงข้อมูลกล่องพัสดุ รหัสติดตาม และผลสแกน SKU กับฐานข้อมูล</p>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+        <button (click)="setPlatformFilter('ALL')" 
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          [ngClass]="activePlatformFilter === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+          🌐 ทั้งหมด ({{ parcelCards.length }})
+        </button>
+        <button (click)="setPlatformFilter('Lazada')" 
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          [ngClass]="activePlatformFilter === 'Lazada' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+          🔷 Lazada ({{ lazadaSummary.totalParcels }})
+        </button>
+        <button (click)="setPlatformFilter('Shopee')" 
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          [ngClass]="activePlatformFilter === 'Shopee' ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'">
+          🟧 Shopee ({{ shopeeSummary.totalParcels }})
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-slate-600">
+        <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+          <tr>
+            <th class="p-4">แพลตฟอร์ม</th>
+            <th class="p-4">เลขคำสั่งซื้อ (Order No)</th>
+            <th class="p-4">หมายเลขติดตามพัสดุ (Tracking No)</th>
+            <th class="p-4">ขนส่ง</th>
+            <th class="p-4">สถานะพัสดุ</th>
+            <th class="p-4">รายการสินค้า & SKU</th>
+            <th class="p-4 text-center">จำนวน (ชิ้น)</th>
+            <th class="p-4">สถานะ DB SKU</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <ng-container *ngFor="let card of filteredParcelCards">
+            <tr *ngFor="let item of card.items; let firstItem = first" [ngClass]="{'bg-amber-50/30': card.isMultiParcel}">
+              <td *ngIf="firstItem" [attr.rowspan]="card.items.length" class="p-4 align-top">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-bold"
+                  [ngClass]="card.platform === 'Lazada' ? 'bg-sky-100 text-sky-700' : 'bg-orange-100 text-orange-700'">
+                  {{ card.platform === 'Lazada' ? '🔷 Lazada' : '🟧 Shopee' }}
+                </span>
+              </td>
+              <td *ngIf="firstItem" [attr.rowspan]="card.items.length" class="p-4 font-medium text-slate-800 align-top">
+                {{ card.orderNo }}
+                <div class="text-xs text-slate-400 mt-0.5" *ngIf="card.orderDate">{{ card.orderDate }}</div>
+              </td>
+              <td *ngIf="firstItem" [attr.rowspan]="card.items.length" class="p-4 font-mono font-medium text-indigo-600 align-top">
+                {{ card.trackingNo }}
+              </td>
+              <td *ngIf="firstItem" [attr.rowspan]="card.items.length" class="p-4 text-xs text-slate-600 align-top">
+                {{ card.shippingProvider }}
+              </td>
+              <td *ngIf="firstItem" [attr.rowspan]="card.items.length" class="p-4 align-top">
+                <span *ngIf="card.isMultiParcel" class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-lg">
+                  📦 พัสดุแยกส่ง (กล่อง {{ card.parcelSeq }}/{{ card.totalParcelsInOrder }})
+                </span>
+                <span *ngIf="!card.isMultiParcel" class="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg">
+                  กล่องเดี่ยว
+                </span>
+              </td>
+              <td class="p-4">
+                <div class="font-medium text-slate-800">{{ item.productName || item.sku }}</div>
+                <div class="text-xs text-slate-400 font-mono mt-0.5">SKU: {{ item.sku }}</div>
+              </td>
+              <td class="p-4 text-center font-bold text-slate-800">
+                {{ item.orderedQuantity }}
+              </td>
+              <td class="p-4">
+                <span *ngIf="item.isSkuMatched" class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-semibold text-xs rounded-lg inline-flex items-center gap-1">
+                  🟢 พบใน DB (ID: {{ item.variantId }})
+                </span>
+                <span *ngIf="!item.isSkuMatched" class="px-2.5 py-1 bg-rose-100 text-rose-700 font-semibold text-xs rounded-lg inline-flex items-center gap-1">
+                  🔴 ไม่พบใน DB
+                </span>
+              </td>
+            </tr>
+          </ng-container>
+
+          <tr *ngIf="filteredParcelCards.length === 0">
+            <td colspan="8" class="p-8 text-center text-slate-400">
+              ไม่พบรายการกล่องพัสดุในหมวดแพลตฟอร์มที่เลือก
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Packing History DataTable -->
+  <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4 print:hidden">
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">ประวัติการนำเข้าและสร้างร่างงวดแพ๊คสินค้า (History Logs)</h3>
+        <p class="text-xs text-slate-500 mt-0.5">งวดเอกสารแพ๊คทั้งหมดที่เคยบันทึกไว้ในระบบฐานข้อมูล</p>
+      </div>
+      <button (click)="loadHistoryBatches()" class="text-xs text-indigo-600 hover:underline">🔄 โหลดประวัติใหม่</button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm text-slate-600">
+        <thead class="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-100">
+          <tr>
+            <th class="p-4">รหัสงวด (Batch No)</th>
+            <th class="p-4">วันที่นำเข้า</th>
+            <th class="p-4 text-center">จำนวนไฟล์</th>
+            <th class="p-4 text-center">จำนวนออเดอร์</th>
+            <th class="p-4 text-center">จำนวนกล่อง</th>
+            <th class="p-4 text-center">จำนวนสินค้ารวม</th>
+            <th class="p-4 text-center">สถานะ</th>
+            <th class="p-4 text-center">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let b of historyBatches">
+            <td class="p-4 font-mono font-bold text-indigo-600">{{ b.batchNo }}</td>
+            <td class="p-4 text-xs text-slate-500">{{ b.importedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="p-4 text-center font-semibold">{{ b.totalFiles }}</td>
+            <td class="p-4 text-center font-semibold">{{ b.totalOrders }}</td>
+            <td class="p-4 text-center font-semibold text-indigo-600">{{ b.totalParcels }}</td>
+            <td class="p-4 text-center font-semibold text-emerald-600">{{ b.totalItems }}</td>
+            <td class="p-4 text-center">
+              <span class="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-lg">
+                {{ b.status }}
+              </span>
+            </td>
+            <td class="p-4 text-center">
+              <button (click)="viewBatchDetail(b.batchId)" class="px-3 py-1 bg-slate-100 hover:bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-lg transition-all">
+                👁️ ดูรายละเอียด/พิมพ์ A4
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="historyBatches.length === 0">
+            <td colspan="8" class="p-8 text-center text-slate-400">ยังไม่มีประวัติการนำเข้าร่างเอกสารแพ๊ค</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- A4 PRINT PREVIEW MODAL -->
+  <div *ngIf="showPrintModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto print:block print:overflow-visible">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:rounded-none print:overflow-visible">
+      
+      <!-- Modal Top Navigation Bar (Hidden on print) -->
+      <div class="sticky top-0 bg-white border-b border-slate-100 p-4 px-6 flex items-center justify-between z-10 print:hidden gap-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <h3 class="font-bold text-slate-800 text-base">หน้ารายงานใบแพ๊ค A4 พร้อม 2D Square QR Code</h3>
+          
+          <!-- Filter inside Modal -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl gap-1 text-xs">
+            <button (click)="setPlatformFilter('ALL')" [class.bg-white]="activePlatformFilter === 'ALL'" class="px-2 py-1 rounded-lg font-semibold">ทั้งหมด</button>
+            <button (click)="setPlatformFilter('Lazada')" [class.bg-sky-500]="activePlatformFilter === 'Lazada'" [class.text-white]="activePlatformFilter === 'Lazada'" class="px-2 py-1 rounded-lg font-semibold">🔷 Lazada</button>
+            <button (click)="setPlatformFilter('Shopee')" [class.bg-orange-500]="activePlatformFilter === 'Shopee'" [class.text-white]="activePlatformFilter === 'Shopee'" class="px-2 py-1 rounded-lg font-semibold">🟧 Shopee</button>
+          </div>
+
+          <!-- Print Mode Selector inside Modal -->
+          <div class="flex items-center bg-indigo-50 p-1 rounded-xl gap-1 text-xs border border-indigo-100">
+            <button (click)="setPrintMode('compact')" [class.bg-indigo-600]="printMode === 'compact'" [class.text-white]="printMode === 'compact'" [class.shadow-sm]="printMode === 'compact'" class="px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 text-slate-700">
+              <span>📋 ตารางสรุปรวม (ประหยัดกระดาษ)</span>
+            </button>
+            <button (click)="setPrintMode('full')" [class.bg-indigo-600]="printMode === 'full'" [class.text-white]="printMode === 'full'" [class.shadow-sm]="printMode === 'full'" class="px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 text-slate-700">
+              <span>📦 ใบแพ๊ค 1 A4/กล่อง</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+          <button (click)="triggerPrint()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition-all flex items-center gap-2 shadow-sm">
+            <span>🖨️ พิมพ์ออกเครื่องพิมพ์ (A4)</span>
+          </button>
+          <button (click)="closePrintPreview()" class="px-3 py-2 text-slate-400 hover:text-slate-600 font-bold text-lg">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- PRINT CONTAINER -->
+      <div class="p-8 space-y-8 print:p-0 print:space-y-0 printable-area">
+        
+        <!-- SECTION 1: MASTER PICK LIST (PAGE 1) -->
+        <div class="a4-page bg-white p-6 border rounded-2xl border-slate-200 print:border-none print:p-4">
+          <div class="border-b-2 border-slate-800 pb-4 mb-4 flex justify-between items-start">
+            <div>
+              <span class="px-2.5 py-1 bg-slate-900 text-white font-bold text-xs rounded-lg uppercase">Master Pick List</span>
+              <h2 class="text-xl font-bold text-slate-900 mt-1">ใบสรุประหยัดเวลาหยิบสินค้า (แยกตามแพลตฟอร์ม)</h2>
+              <p class="text-xs text-slate-500">พิมพ์สำหรับพนักงานคลังสินค้าหยิบของในรอบเดียว</p>
+            </div>
+            <div class="text-right font-mono text-xs text-slate-500">
+              <div>วันที่ออกรายงาน: {{ todayDate | date:'dd/MM/yyyy HH:mm' }}</div>
+              <div>จำนวนกล่องพัสดุรวม: {{ filteredParcelCards.length }} กล่อง</div>
+            </div>
+          </div>
+
+          <table class="w-full text-left text-xs border border-slate-300">
+            <thead class="bg-slate-100 font-bold text-slate-800 border-b border-slate-300">
+              <tr>
+                <th class="p-2 border-r border-slate-300">แพลตฟอร์ม</th>
+                <th class="p-2 text-center border-r border-slate-300 w-16">2D QR SKU</th>
+                <th class="p-2 border-r border-slate-300">รหัส SKU สินค้า</th>
+                <th class="p-2 border-r border-slate-300">ชื่อรายการสินค้า</th>
+                <th class="p-2 text-center border-r border-slate-300">จำนวนที่ต้องหยิบ (ชิ้น)</th>
+                <th class="p-2 text-center">สถานะ SKU DB</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of filteredMasterPickList" class="border-b border-slate-200">
+                <td class="p-2 border-r border-slate-200 font-bold">
+                  <span [ngClass]="item.platform === 'Lazada' ? 'text-sky-700' : 'text-orange-700'">
+                    {{ item.platform === 'Lazada' ? '🔷 Lazada' : '🟧 Shopee' }}
+                  </span>
+                </td>
+                <td class="p-1 border-r border-slate-200 text-center">
+                  <img *ngIf="item.qrCodeUrl" [src]="item.qrCodeUrl" class="w-10 h-10 mx-auto object-contain" />
+                </td>
+                <td class="p-2 border-r border-slate-200 font-mono font-bold">{{ item.sku }}</td>
+                <td class="p-2 border-r border-slate-200 font-medium">{{ item.productName }}</td>
+                <td class="p-2 border-r border-slate-200 text-center font-bold text-sm text-indigo-700">{{ item.totalQty }}</td>
+                <td class="p-2 text-center">
+                  <span *ngIf="item.isSkuMatched" class="text-emerald-700 font-bold">🟢 Match</span>
+                  <span *ngIf="!item.isSkuMatched" class="text-rose-700 font-bold">🔴 Unmatch</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="page-break print:block hidden"></div>
+
+        <!-- SECTION 2A: COMPACT ORDER PACKING LIST (PRINT MODE: COMPACT) -->
+        <ng-container *ngIf="printMode === 'compact'">
+          <div class="a4-page bg-white p-6 border rounded-2xl border-slate-200 print:border-none print:p-4 space-y-4">
+            
+            <div class="border-b-2 border-slate-800 pb-3 flex justify-between items-center">
+              <div>
+                <span class="px-2.5 py-1 bg-indigo-900 text-white font-bold text-xs rounded-lg uppercase">Compact Packing Summary</span>
+                <h3 class="text-base font-bold text-slate-900 mt-1">รายการแพ๊คสินค้าแยกตามคำสั่งซื้อ (โหมดประหยัดกระดาษ)</h3>
+              </div>
+              <div class="text-right text-xs text-slate-500 font-mono">
+                รวม {{ filteredParcelCards.length }} กล่อง / คำสั่งซื้อ
+              </div>
+            </div>
+
+            <!-- Compact List of Orders -->
+            <div class="space-y-4">
+              <div *ngFor="let card of filteredParcelCards" class="compact-order-card border border-slate-300 rounded-xl overflow-hidden bg-white">
+                
+                <!-- Order Header Row -->
+                <div class="bg-slate-100 p-2.5 px-3 flex items-center justify-between border-b border-slate-300 text-xs">
+                  <div class="flex items-center gap-3">
+                    <span class="px-2 py-0.5 rounded text-[11px] font-bold"
+                      [ngClass]="card.platform === 'Lazada' ? 'bg-sky-600 text-white' : 'bg-orange-600 text-white'">
+                      {{ card.platform }}
+                    </span>
+                    <div class="font-mono font-bold text-slate-800">
+                      Order No: {{ card.orderNo }}
+                    </div>
+                    <div class="font-mono font-semibold text-indigo-700">
+                      Tracking: {{ card.trackingNo }}
+                    </div>
+                    <div class="text-slate-500" *ngIf="card.shippingProvider">
+                      ({{ card.shippingProvider }})
+                    </div>
+                    <span *ngIf="card.isMultiParcel" class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-bold rounded">
+                      📦 กล่อง {{ card.parcelSeq }}/{{ card.totalParcelsInOrder }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <img *ngIf="card.trackingQrUrl" [src]="card.trackingQrUrl" class="w-8 h-8 object-contain" />
+                  </div>
+                </div>
+
+                <!-- Order Items Table -->
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-[11px]">
+                    <tr>
+                      <th class="p-1.5 px-2 text-center border-r border-slate-200 w-16">2D QR SKU</th>
+                      <th class="p-1.5 px-3 border-r border-slate-200">รหัส SKU สินค้า</th>
+                      <th class="p-1.5 px-3 border-r border-slate-200">ชื่อรายการสินค้า</th>
+                      <th class="p-1.5 px-3 text-center border-r border-slate-200 w-28">จำนวนที่ต้องแพ๊ค</th>
+                      <th class="p-1.5 px-3 text-center w-24">สถานะ DB</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of card.items" class="border-b border-slate-200 last:border-b-0">
+                      <td class="p-1 px-2 border-r border-slate-200 text-center">
+                        <img *ngIf="item.qrCodeUrl" [src]="item.qrCodeUrl" class="w-10 h-10 mx-auto object-contain" />
+                      </td>
+                      <td class="p-1.5 px-3 border-r border-slate-200 font-mono font-bold text-slate-800">{{ item.sku }}</td>
+                      <td class="p-1.5 px-3 border-r border-slate-200 text-slate-700">{{ item.productName || item.sku }}</td>
+                      <td class="p-1.5 px-3 border-r border-slate-200 text-center font-bold text-indigo-700 text-sm">{{ item.orderedQuantity }} ชิ้น</td>
+                      <td class="p-1.5 px-3 text-center font-semibold text-[11px]">
+                        <span *ngIf="item.isSkuMatched" class="text-emerald-700">🟢 Match</span>
+                        <span *ngIf="!item.isSkuMatched" class="text-rose-700">🔴 Unmatch</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+              </div>
+            </div>
+
+          </div>
+        </ng-container>
+
+        <!-- SECTION 2B: PARCEL CARDS (1 TRACKING = 1 A4 PARCEL CARD) -->
+        <ng-container *ngIf="printMode === 'full'">
+          <div *ngFor="let card of filteredParcelCards" class="a4-page bg-white p-6 border rounded-2xl border-slate-200 print:border-none print:p-4 page-break">
+            
+            <!-- Parcel Card Header -->
+            <div class="border-2 border-slate-800 p-4 rounded-xl mb-4 flex items-center justify-between">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="px-3 py-1 text-xs font-black uppercase text-white rounded-lg"
+                    [ngClass]="card.platform === 'Lazada' ? 'bg-sky-600' : 'bg-orange-600'">
+                    {{ card.platform }} PARCEL CARD
+                  </span>
+
+                  <span *ngIf="card.isMultiParcel" class="px-2.5 py-1 bg-amber-400 text-slate-900 text-xs font-black rounded-lg">
+                    📦 พัสดุแยกส่ง (กล่อง {{ card.parcelSeq }}/{{ card.totalParcelsInOrder }})
+                  </span>
+                </div>
+                <div class="text-xs font-semibold text-slate-600">ขนส่ง: {{ card.shippingProvider }}</div>
+              </div>
+
+              <!-- Square 2D QR Code for Tracking -->
+              <div class="text-center">
+                <img *ngIf="card.trackingQrUrl" [src]="card.trackingQrUrl" class="w-24 h-24 mx-auto" />
+                <div class="text-[10px] font-mono font-bold mt-0.5 text-slate-700">{{ card.trackingNo }}</div>
+              </div>
+            </div>
+
+            <!-- Order & Tracking Meta Info -->
+            <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs mb-4">
+              <div>
+                <span class="text-slate-400 font-medium">หมายเลขคำสั่งซื้อ (Order No):</span>
+                <div class="font-mono font-bold text-slate-800 text-sm mt-0.5">{{ card.orderNo }}</div>
+              </div>
+              <div>
+                <span class="text-slate-400 font-medium">หมายเลขติดตามพัสดุ (Tracking ID):</span>
+                <div class="font-mono font-bold text-indigo-700 text-sm mt-0.5">{{ card.trackingNo }}</div>
+              </div>
+            </div>
+
+            <!-- Items Table inside Parcel Card -->
+            <div class="space-y-2">
+              <h4 class="font-bold text-xs uppercase text-slate-700">รายการสินค้าในกล่องพัสดุนี้:</h4>
+              <table class="w-full text-left text-xs border border-slate-300">
+                <thead class="bg-slate-100 font-bold text-slate-800 border-b border-slate-300">
+                  <tr>
+                    <th class="p-2 border-r border-slate-300">2D QR Code SKU</th>
+                    <th class="p-2 border-r border-slate-300">รหัส SKU สินค้า</th>
+                    <th class="p-2 border-r border-slate-300">รายละเอียดสินค้า</th>
+                    <th class="p-2 text-center">จำนวน (ชิ้น)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of card.items" class="border-b border-slate-200">
+                    <td class="p-2 border-r border-slate-200 text-center w-20">
+                      <img *ngIf="item.qrCodeUrl" [src]="item.qrCodeUrl" class="w-14 h-14 mx-auto" />
+                    </td>
+                    <td class="p-2 border-r border-slate-200 font-mono font-bold">{{ item.sku }}</td>
+                    <td class="p-2 border-r border-slate-200 font-medium">{{ item.productName || item.sku }}</td>
+                    <td class="p-2 text-center font-bold text-sm text-indigo-700">{{ item.orderedQuantity }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Signature Area -->
+            <div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end text-xs text-slate-500">
+              <div>ผู้จัดแพ๊คสินค้า: ...........................................</div>
+              <div>ผู้ตรวจสอบสินค้า: ...........................................</div>
+            </div>
+
+          </div>
+        </ng-container>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>

@@ -1,4 +1,4 @@
-using System.Threading.RateLimiting;
+ï»¿using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -141,8 +141,10 @@ builder.Services.AddScoped<IVcbShipmentService, VcbShipmentService>();
 builder.Services.AddScoped<IVcbDeliveryService, VcbDeliveryService>();
 builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<IStockService, StockService>();
+builder.Services.AddScoped<IPackingRepository, PackingRepository>();
+builder.Services.AddScoped<IPackingService, PackingService>();
 
-// ÄÄ Financial, Sales & Procurement modules ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Financial, Sales & Procurement modules 
 builder.Services.AddScoped<IChartOfAccountRepository, ChartOfAccountRepository>();
 builder.Services.AddScoped<IChartOfAccountService, ChartOfAccountService>();
 builder.Services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
@@ -158,7 +160,7 @@ builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
 builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 
-// ÄÄ Investors & Investments modules ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Investors & Investments modules 
 builder.Services.AddScoped<IInvestorRepository, InvestorRepository>();
 builder.Services.AddScoped<IInvestorBankAccountRepository, InvestorBankAccountRepository>();
 builder.Services.AddScoped<IInvestmentRepository, InvestmentRepository>();
@@ -188,7 +190,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ÄÄ Security Headers ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Security Headers 
 // Applied early so every response carries them, including error responses.
 app.Use(async (context, next) =>
 {
@@ -207,10 +209,10 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ÄÄ Public static files (non-upload assets) ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Public static files (non-upload assets) 
 app.UseStaticFiles();
 
-// ÄÄ Protected uploaded files ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Protected uploaded files 
 // Requires authentication. The path /api/uploads/* is served only if the
 // request carries a valid AuthCookie. Unauthenticated callers receive 401.
 var uploadsPath = Path.Combine(
@@ -261,7 +263,7 @@ app.MapGet("/api/uploads/{**path}", async (HttpContext context, string path, IWe
     await context.Response.SendFileAsync(requestedFile);
 });
 
-// ÄÄ Custom CSRF Validation Middleware ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//  Custom CSRF Validation Middleware 
 // Validates the double-submit cookie pattern for all state-changing requests.
 // Exemptions: GET/HEAD/OPTIONS/TRACE (safe methods), login, and csrf-token endpoints.
 app.Use(async (context, next) =>

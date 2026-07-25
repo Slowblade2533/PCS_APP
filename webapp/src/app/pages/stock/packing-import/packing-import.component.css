@@ -1,0 +1,54 @@
+@media print {
+  .print\:static {
+    position: static !important;
+  }
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+  .print\:bg-transparent {
+    background-color: transparent !important;
+  }
+  .print\:max-w-none {
+    max-width: none !important;
+  }
+  .print\:max-h-none {
+    max-height: none !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+  .print\:rounded-none {
+    border-radius: 0 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:bg-white {
+    background-color: #ffffff !important;
+  }
+  .print\:overflow-visible {
+    overflow: visible !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:page-break-after-always {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .a4-page {
+    width: 210mm;
+    min-height: 270mm;
+    margin: 0 auto;
+    padding: 10mm;
+    box-sizing: border-box;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .compact-order-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

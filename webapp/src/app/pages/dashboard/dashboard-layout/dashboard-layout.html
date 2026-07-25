@@ -1,9 +1,9 @@
 <div class="drawer lg:drawer-open">
   <input id="main-drawer" type="checkbox" class="drawer-toggle" />
 
-  <div class="drawer-content flex flex-col bg-base-200 min-h-screen relative">
+  <div class="drawer-content flex flex-col bg-base-200 min-h-screen relative print:bg-white print:min-h-0 print:block">
     <div
-      class="sticky top-0 z-10 lg:hidden bg-base-100/90 backdrop-blur shadow-sm p-1 px-2 flex items-center gap-2"
+      class="sticky top-0 z-10 lg:hidden bg-base-100/90 backdrop-blur shadow-sm p-1 px-2 flex items-center gap-2 print:hidden"
     >
       <label for="main-drawer" class="btn btn-ghost btn-square btn-sm drawer-button">
         <svg
@@ -24,12 +24,12 @@
       <span class="font-semibold text-base">เมนูระบบ</span>
     </div>
 
-    <main class="flex-1">
+    <main class="flex-1 print:p-0 print:m-0">
       <router-outlet></router-outlet>
     </main>
   </div>
 
-  <div class="drawer-side z-50">
+  <div class="drawer-side z-50 print:hidden">
     <label for="main-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
     <app-dashboard-sidebar></app-dashboard-sidebar>
   </div>
