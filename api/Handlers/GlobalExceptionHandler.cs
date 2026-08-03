@@ -3,7 +3,7 @@ using System.Net;
 
 namespace PCS_API.Handlers;
 
-public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IWebHostEnvironment env) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
@@ -18,21 +18,22 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         var statusCode = HttpStatusCode.InternalServerError;
         var message = "เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้งในภายหลัง";
+        var isDev = env.IsDevelopment();
 
         if (exception is KeyNotFoundException)
         {
             statusCode = HttpStatusCode.NotFound;
-            message = exception.Message;
+            message = isDev || !exception.Message.Contains('/') && !exception.Message.Contains('\\') ? exception.Message : "ไม่พบข้อมูลที่ระบุ";
         }
         else if (exception is ArgumentException)
         {
             statusCode = HttpStatusCode.BadRequest;
-            message = exception.Message;
+            message = isDev || !exception.Message.Contains('/') && !exception.Message.Contains('\\') ? exception.Message : "ข้อมูลไม่ถูกต้อง";
         }
         else if (exception is InvalidOperationException)
         {
             statusCode = HttpStatusCode.Conflict;
-            message = exception.Message;
+            message = isDev || !exception.Message.Contains('/') && !exception.Message.Contains('\\') ? exception.Message : "ไม่สามารถดำเนินรายการได้";
         }
 
         httpContext.Response.StatusCode = (int)statusCode;
@@ -42,9 +43,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         {
             statusCode = (int)statusCode,
             message,
-            detailed = httpContext.RequestServices.GetService<IWebHostEnvironment>()?.IsDevelopment() == true
-                ? exception.ToString()
-                : null
+            detailed = isDev ? exception.ToString() : null
         };
 
         await httpContext.Response.WriteAsJsonAsync(errorResponse, cancellationToken);

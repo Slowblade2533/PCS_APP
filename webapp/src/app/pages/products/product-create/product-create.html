@@ -146,7 +146,7 @@
           </div>
         } @else {
           <div formArrayName="variants" class="space-y-6">
-            @for (variant of variants.controls; track $index) {
+            @for (variant of variants.controls; track variant.value.sku || variant.value.variantId || $index) {
               <div
                 [formGroupName]="$index"
                 class="p-4 border border-base-300 rounded-xl bg-base-50/50 relative"

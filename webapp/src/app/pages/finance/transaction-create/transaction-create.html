@@ -1019,7 +1019,7 @@
           </div>
 
           <div class="space-y-4">
-            @for (entry of ledgerEntries(); track $index) {
+            @for (entry of ledgerEntries(); track entry.accountId || $index) {
               <div
                 class="flex flex-col md:flex-row gap-3 items-start p-4 bg-base-200/30 border border-base-200/50 rounded-xl relative"
               >

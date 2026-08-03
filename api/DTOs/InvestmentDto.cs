@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace PCS_API.DTOs
@@ -53,10 +53,15 @@ namespace PCS_API.DTOs
 
     public class InvestmentCreateDto
     {
+        [System.ComponentModel.DataAnnotations.Required]
         public Guid InvestorId { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(0, 10)]
         public int InvestmentType { get; set; } // 0 = Equity, 1 = Loan
+        [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "Principal amount must be greater than 0")]
         public decimal PrincipalAmount { get; set; }
+        [System.ComponentModel.DataAnnotations.MaxLength(10)]
         public string Currency { get; set; } = "THB";
+        [System.ComponentModel.DataAnnotations.Range(0, 100)]
         public decimal? InterestRate { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? MaturityDate { get; set; }
@@ -72,21 +77,28 @@ namespace PCS_API.DTOs
 
     public class InvestmentInterestScheduleCreateDto
     {
+        [System.ComponentModel.DataAnnotations.Range(1, 1200)]
         public int StartMonth { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(1, 1200)]
         public int EndMonth { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(0, 100)]
         public decimal InterestRate { get; set; }
     }
 
     public class InvestmentScheduleCreateDto
     {
+        [System.ComponentModel.DataAnnotations.Range(1, 1200)]
         public int InstallmentNumber { get; set; }
         public DateTime DueDate { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue)]
         public decimal PrincipalAmount { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue)]
         public decimal InterestAmount { get; set; }
     }
 
     public class InvestmentRepaymentDto
     {
+        [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "Paid amount must be greater than 0")]
         public decimal PaidAmount { get; set; }
         public int? CompanyBankAccountId { get; set; }
         public bool IsCash { get; set; }

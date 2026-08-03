@@ -768,7 +768,7 @@
               </div>
 
               <div formArrayName="interestSchedules" class="space-y-2">
-                @for (item of interestSchedules.controls; track i; let i = $index) {
+                @for (item of interestSchedules.controls; track item.value.scheduleId || item.value.startMonth || i; let i = $index) {
                   <div
                     [formGroupName]="i"
                     class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-base-200/30 p-2 rounded-lg"
@@ -892,7 +892,7 @@
               </div>
 
               <div formArrayName="schedules" class="space-y-3">
-                @for (row of schedules.controls; track i; let i = $index) {
+                @for (row of schedules.controls; track row.value.scheduleId || row.value.installmentNumber || i; let i = $index) {
                   <div
                     [formGroupName]="i"
                     class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-base-200/40 p-3 rounded-lg border border-base-200"

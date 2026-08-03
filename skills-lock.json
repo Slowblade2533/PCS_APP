@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "agentmap": {
+      "source": "raymondchins/agentmap",
+      "sourceType": "github",
+      "skillPath": "skills/agentmap/SKILL.md",
+      "computedHash": "c9a5bc73bbd24b68388bef677cba5b7e2f87bd8fcd22e4180b5372dada71a00f"
+    },
     "analyzing-dotnet-performance": {
       "source": "dotnet/skills",
       "sourceType": "github",
@@ -78,6 +84,12 @@
       "sourceType": "github",
       "skillPath": "skills/documentation-and-adrs/SKILL.md",
       "computedHash": "d751b98cb2894feb833af869f397aaaadd9a3a679882331c1a5b254e8ed1399a"
+    },
+    "dotnet-backend": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dotnet-backend/SKILL.md",
+      "computedHash": "e7addbff31f84d64fc23c53a8e63a6abb6ccaa424fe5e4aac0d57bcafbe63d73"
     },
     "dotnet-trace-collect": {
       "source": "dotnet/skills",
